@@ -1,13 +1,27 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Chrome, Github, Linkedin, Mail, ArrowRight, ArrowLeft, Shield, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useResumeStorage } from "@/_core/hooks/useResumeStorage";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Chrome,
+  Github,
+  Layers,
+  Linkedin,
+  Lock,
+  Mail,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -18,9 +32,11 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
 
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : ""
+  );
   const convertParam = params.get("convert") === "true";
   const redirectParam = params.get("redirect") || "/builder";
 
@@ -48,10 +64,13 @@ export default function Login() {
   };
 
   const handleMockLogin = (provider: string) => {
-    const name = provider.charAt(0).toUpperCase() + provider.slice(1) + " Candidate";
+    const base = provider === "google" ? "Google" : provider === "github" ? "GitHub" : "LinkedIn";
+    const name = `${base} Candidate`;
     const userEmail = `${provider}.candidate@gmail.com`;
-    const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
-    
+    const finalRedirect = convertParam
+      ? `${redirectParam}?convert=true`
+      : redirectParam;
+
     window.location.href = `/api/mock/login?provider=${provider}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(userEmail)}&redirect=${encodeURIComponent(finalRedirect)}`;
   };
 
@@ -63,154 +82,286 @@ export default function Login() {
     }
     const isOwner = email.includes("admin");
     const name = isOwner ? "Surag (Admin)" : "Email Candidate";
-    const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
-    
+    const finalRedirect = convertParam
+      ? `${redirectParam}?convert=true`
+      : redirectParam;
+
     window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(finalRedirect)}`;
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center relative overflow-hidden font-sans">
-      {/* Decorative Background Shapes */}
-      <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-blue-100/60 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-indigo-100/50 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-[40%] right-[5%] w-[20%] h-[20%] bg-emerald-100/40 rounded-full blur-[80px] pointer-events-none" />
+    <div className="min-h-screen bg-background text-foreground font-sans">
+      {/* Desktop: brand glow behind card */}
+      <div className="hidden md:flex min-h-screen items-center justify-center relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-[#0566d9]/8 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md p-4 relative z-10">
-        {/* Back to Landing */}
-        <Link href="/">
-          <Button variant="ghost" className="text-slate-500 hover:text-slate-900 mb-4 gap-2 hover:bg-white/60 transition">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Landing
-          </Button>
-        </Link>
-
-        <Card className="border border-slate-200 bg-white/80 backdrop-blur-xl shadow-xl rounded-2xl overflow-hidden">
-          <CardHeader className="text-center pt-8 pb-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200/50">
-              <Shield className="w-7 h-7 text-white" />
+        <div className="w-full max-w-[420px] p-4 relative z-10">
+          <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
+            {/* Logo */}
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-[#1e40af] flex items-center justify-center mb-4">
+                <Layers className="w-6 h-6 text-primary-foreground" strokeWidth={1.5} />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">
+                {convertParam ? "Secure Your Guest Resume" : "Welcome back"}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                {convertParam
+                  ? "Sign in to save your guest progress to the cloud."
+                  : "Sign in to sync your resumes and continue building."}
+              </p>
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
-              {convertParam ? "Secure Your Guest Resume" : "Welcome Back"}
-            </CardTitle>
-            <CardDescription className="text-slate-500 text-sm mt-2">
-              {convertParam 
-                ? "Sign in or create an account to back up your guest work to the cloud."
-                : "Sign in to sync resumes, access AI tools, and manage your career profile."}
-            </CardDescription>
-          </CardHeader>
 
-          <CardContent className="space-y-5 px-6">
-            {/* Email Form */}
+            {/* Form */}
             <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="login-email" className="text-xs font-semibold text-slate-600">Email Address</Label>
+                <label htmlFor="email" className="text-xs font-medium text-foreground">
+                  Email
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="login-email"
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+                  <input
+                    id="email"
                     type="email"
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
-                    required
+                    className="w-full h-10 pl-10 pr-3 rounded-lg bg-surface-lowest border border-border text-foreground placeholder:text-muted-foreground/50 text-sm focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="login-password" className="text-xs font-semibold text-slate-600">Password</Label>
+                <label htmlFor="password" className="text-xs font-medium text-foreground">
+                  Password
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+                  <input
+                    id="password"
+                    type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
+                    className="w-full h-10 pl-10 pr-3 rounded-lg bg-surface-lowest border border-border text-foreground placeholder:text-muted-foreground/50 text-sm focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
                 </div>
                 <div className="flex justify-end">
-                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700 font-medium transition">
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
                     Forgot password?
                   </button>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg h-11 flex items-center justify-center gap-2 transition duration-200 font-semibold shadow-md shadow-blue-200/40">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember"
+                  checked={remember}
+                  onCheckedChange={(v) => setRemember(v === true)}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer select-none">
+                  Remember me
+                </label>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl"
+              >
                 Sign In
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 ml-1.5" strokeWidth={1.5} />
               </Button>
             </form>
 
             {/* Divider */}
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-4 text-slate-400 text-xs font-medium uppercase tracking-widest">Or continue with</span>
-              <div className="flex-grow border-t border-slate-200"></div>
+            <div className="relative flex py-4 items-center mt-4">
+              <div className="flex-grow border-t border-border" />
+              <span className="flex-shrink mx-3 text-xs text-muted-foreground uppercase tracking-widest font-medium">
+                or continue with
+              </span>
+              <div className="flex-grow border-t border-border" />
             </div>
 
-            {/* Social Logins */}
+            {/* OAuth */}
             <div className="grid grid-cols-3 gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockLogin("google")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Chrome className="w-4 h-4 mr-2 text-red-500" />
-                Google
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockLogin("github")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Github className="w-4 h-4 mr-2 text-slate-800" />
-                GitHub
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockLogin("linkedin")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Linkedin className="w-4 h-4 mr-2 text-blue-600 fill-current" />
-                LinkedIn
-              </Button>
+              {[
+                { icon: Chrome, label: "Google", provider: "google", color: "" },
+                { icon: Github, label: "GitHub", provider: "github", color: "" },
+                { icon: Linkedin, label: "LinkedIn", provider: "linkedin", color: "text-[#0A66C2]" },
+              ].map((item) => (
+                <Button
+                  key={item.provider}
+                  variant="outline"
+                  onClick={() => handleMockLogin(item.provider)}
+                  className="h-10 border-border bg-transparent hover:bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <item.icon className={cn("w-4 h-4 mr-2", item.color)} strokeWidth={1.5} />
+                  <span className="text-xs font-medium">{item.label}</span>
+                </Button>
+              ))}
             </div>
-          </CardContent>
 
-          <CardFooter className="flex flex-col gap-4 bg-slate-50/50 border-t border-slate-100 px-6 py-5 text-center">
-            {/* Registration CTA */}
-            <p className="text-sm text-slate-600">
+            {/* Footer */}
+            <div className="mt-8 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                  Create one
+                </Link>
+              </p>
+              <Link
+                href={redirectParam}
+                className="block text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Continue as Guest (No account needed)
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== MOBILE ===== */}
+      <div className="md:hidden min-h-screen flex flex-col bg-background">
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 h-14 border-b border-border">
+          <Link href="/" className="flex items-center gap-2">
+            <ArrowLeft className="w-5 h-5 text-foreground" strokeWidth={1.5} />
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-[#1e40af] flex items-center justify-center">
+              <Layers className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={1.5} />
+            </div>
+            <span className="font-semibold text-sm text-foreground">HexaCv</span>
+          </div>
+          <div className="w-5" />
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-32">
+          <h1 className="text-2xl font-bold text-foreground mb-1">
+            {convertParam ? "Secure Your Guest Resume" : "Welcome back"}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-8">
+            {convertParam
+              ? "Sign in to save your guest progress."
+              : "Sign in to sync your resumes."}
+          </p>
+
+          <form onSubmit={handleEmailSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-email" className="text-xs font-medium text-foreground">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+                <input
+                  id="mobile-email"
+                  type="email"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-surface-lowest border border-border text-foreground placeholder:text-muted-foreground/50 text-sm focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-password" className="text-xs font-medium text-foreground">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+                <input
+                  id="mobile-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-surface-lowest border border-border text-foreground placeholder:text-muted-foreground/50 text-sm focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button type="button" className="text-xs text-primary hover:text-primary/80 font-medium transition-colors">
+                  Forgot password?
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="mobile-remember"
+                checked={remember}
+                onCheckedChange={(v) => setRemember(v === true)}
+                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              />
+              <label htmlFor="mobile-remember" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Remember me
+              </label>
+            </div>
+
+            {/* Divider */}
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-border" />
+              <span className="flex-shrink mx-3 text-xs text-muted-foreground uppercase tracking-widest font-medium">
+                or continue with
+              </span>
+              <div className="flex-grow border-t border-border" />
+            </div>
+
+            {/* OAuth — stacked on mobile */}
+            <div className="flex flex-col gap-3">
+              {[
+                { icon: Chrome, label: "Google", provider: "google", color: "" },
+                { icon: Github, label: "GitHub", provider: "github", color: "" },
+                { icon: Linkedin, label: "LinkedIn", provider: "linkedin", color: "text-[#0A66C2]" },
+              ].map((item) => (
+                <Button
+                  key={item.provider}
+                  variant="outline"
+                  onClick={() => handleMockLogin(item.provider)}
+                  className="h-11 border-border bg-transparent hover:bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <item.icon className={cn("w-4 h-4 mr-2", item.color)} strokeWidth={1.5} />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </Button>
+              ))}
+            </div>
+
+            <p className="text-center text-sm text-muted-foreground pt-2">
               Don't have an account?{" "}
-              <Link href="/register">
-                <span className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition">
-                  Create Free Account
-                </span>
+              <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                Create one
               </Link>
             </p>
 
-            {/* Guest Mode Link */}
-            <Link href={redirectParam}>
-              <span className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer transition flex items-center justify-center gap-1.5 font-medium">
-                <Sparkles className="w-3.5 h-3.5" />
-                Continue as Guest (No account needed)
-              </span>
+            <Link
+              href={redirectParam}
+              className="block text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Continue as Guest
             </Link>
+          </form>
+        </div>
 
-            <p className="text-[10px] text-slate-400 leading-normal max-w-[280px] mx-auto">
-              By continuing, you agree to HexaCv's Terms of Service and Privacy Policy. Secured by HexaStack Solutions.
-            </p>
-          </CardFooter>
-        </Card>
+        {/* Sticky submit button */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3 pb-[env(safe-area-inset-bottom)]">
+          <Button
+            type="submit"
+            onClick={(e) => {
+              e.preventDefault();
+              handleEmailSubmit(e as any);
+            }}
+            className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl"
+          >
+            Sign In
+            <ArrowRight className="w-4 h-4 ml-1.5" strokeWidth={1.5} />
+          </Button>
+        </div>
       </div>
     </div>
   );

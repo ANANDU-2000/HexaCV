@@ -378,6 +378,22 @@ export async function getOrganizationMembers(orgId: string) {
   return detailedList;
 }
 
+export async function updateOrganizationMemberRole(orgId: string, memberId: string, role: string) {
+  const db = await getDb();
+  if (!db) {
+    const member = mockDb.organizationMembers.find(m => m.organizationId === orgId && m.id === memberId);
+    if (member) {
+      member.role = role;
+      return true;
+    }
+    return false;
+  }
+  await db.update(organizationMembers).set({ role }).where(
+    and(eq(organizationMembers.organizationId, orgId), eq(organizationMembers.id, memberId))
+  );
+  return true;
+}
+
 export async function removeOrganizationMember(orgId: string, memberId: string) {
   const db = await getDb();
   if (!db) {

@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { BottomNav } from "@/components/BottomNav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +23,9 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
-  FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings 
+  FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings, Plus 
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -55,11 +57,20 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
+  const [isTablet, setIsTablet] = useState(false);
   const { loading, user } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+    setIsTablet(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsTablet(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   if (loading) {
     return <DashboardLayoutSkeleton />
@@ -69,6 +80,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider
+      defaultOpen={!isTablet}
       style={
         {
           "--sidebar-width": `${sidebarWidth}px`,
@@ -177,10 +189,13 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className={cn(
+                        'h-10 transition-all font-normal relative',
+                        isActive && 'bg-primary/10 before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-primary'
+                      )}
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        className={cn('h-4 w-4', isActive && 'text-primary')}
                       />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -258,22 +273,68 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Desktop top header */}
+        {!isMobile && (
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+            <h1 className="text-lg font-semibold tracking-tight">
+              {activeMenuItem?.label || 'Dashboard'}
+            </h1>
+            <Button
+              size="sm"
+              onClick={() => setLocation('/builder?mode=scratch')}
+              className="h-8 rounded-lg text-xs font-semibold"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              New Resume
+            </Button>
+          </header>
         )}
-        <main className="flex-1 p-4">{children}</main>
+
+        {/* Mobile header */}
+        {isMobile && (
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+            <h1 className="text-sm font-semibold tracking-tight">
+              {activeMenuItem?.label || 'Dashboard'}
+            </h1>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-lg p-0.5 hover:bg-accent/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Avatar className="h-8 w-8 border">
+                      <AvatarFallback className="text-xs font-medium">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-popover">
+                  <DropdownMenuItem onClick={() => setLocation('/dashboard/settings')} className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <button
+                onClick={() => setLocation('/login')}
+                className="flex items-center justify-center h-8 w-8 rounded-full bg-muted hover:bg-accent transition-colors"
+              >
+                <Avatar className="h-8 w-8 border">
+                  <AvatarFallback className="text-xs font-bold text-muted-foreground">G</AvatarFallback>
+                </Avatar>
+              </button>
+            )}
+          </header>
+        )}
+
+        <main className={cn("flex-1 p-4", isMobile && "pb-20")}>{children}</main>
       </SidebarInset>
+
+      {isMobile && <BottomNav />}
     </>
   );
 }
