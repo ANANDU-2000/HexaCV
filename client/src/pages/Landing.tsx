@@ -1,674 +1,1082 @@
-import { Button } from "@/components/ui/button";
-import { usePWA } from "@/hooks/usePWA";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { nanoid } from "nanoid";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { usePWA } from '@/hooks/usePWA';
 import {
   ArrowRight,
-  Check,
-  ChevronRight,
   Download,
-  FileDown,
-  Layout,
-  Layers,
-  LogIn,
-  Menu,
-  Play,
-  Shield,
-  Smartphone,
-  Sparkles,
-  Star,
-  Target,
-  Upload,
-  UserPlus,
-  X,
   Zap,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
-
-const features = [
-  {
-    icon: Upload,
-    title: "Smart Upload",
-    desc: "Drag-and-drop your existing resume. Extracts every field instantly — no server uploads, no data leaks.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI Tailoring",
-    desc: "Match your resume to any job description. AI suggests keywords and rephrases bullets in real time.",
-  },
-  {
-    icon: Target,
-    title: "Job Targeting",
-    desc: "Scan against live job posts. See exactly where you score high and what to improve for each role.",
-  },
-  {
-    icon: Layout,
-    title: "Template Library",
-    desc: "ATS-optimized layouts — classic, modern, or minimalist. 98% parser-test pass rate.",
-  },
-  {
-    icon: FileDown,
-    title: "Instant PDF Export",
-    desc: "Print-ready PDF in one click. Preserves fonts, spacing, and ATS compatibility.",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile-Ready",
-    desc: "Full-featured on any screen. Build, edit, and export from your phone.",
-  },
-];
-
-const templates = [
-  { name: "Classic", desc: "Traditional two-column", color: "from-blue-500/20 to-indigo-500/10" },
-  { name: "Modern", desc: "Clean single-column", color: "from-emerald-500/20 to-teal-500/10" },
-  { name: "Minimal", desc: "Typography-first", color: "from-violet-500/20 to-purple-500/10" },
-  { name: "Executive", desc: "Metric-heavy", color: "from-amber-500/20 to-orange-500/10" },
-];
-
-const testimonials = [
-  {
-    name: "Alex Mercer",
-    role: "Senior Frontend Engineer",
-    initials: "AM",
-    color: "from-blue-500 to-blue-600",
-    text: "I was struggling to get callbacks for senior React roles. HexaCv's ATS scan showed I was missing key framework terms. After adding them, my response rate tripled.",
-  },
-  {
-    name: "David Chen",
-    role: "Cybersecurity Consultant",
-    initials: "DC",
-    color: "from-violet-500 to-violet-600",
-    text: "Finding a builder that runs completely client-side is fantastic. All parsing happens in memory on my machine. My private data never touches a server.",
-  },
-  {
-    name: "Sophia Reynolds",
-    role: "Product Manager",
-    initials: "SR",
-    color: "from-emerald-500 to-emerald-600",
-    text: "The keyword targeting feature is an eye-opener. It highlighted gaps I missed across multiple job descriptions. I exported a PDF that parses flawlessly.",
-  },
-];
-
-const pricingPlans = [
-  {
-    name: "Free",
-    price: "$0",
-    desc: "Perfect for getting started",
-    features: ["1 resume", "ATS score check", "PDF export", "Basic templates"],
-    popular: false,
-  },
-  {
-    name: "Pro",
-    price: "$12",
-    period: "/mo",
-    desc: "For serious job seekers",
-    features: ["Unlimited resumes", "AI tailoring", "Job targeting scans", "All templates", "Priority support"],
-    cta: "Start Free Trial",
-    popular: true,
-  },
-  {
-    name: "Enterprise",
-    price: "$29",
-    period: "/mo",
-    desc: "For teams & agencies",
-    features: ["Everything in Pro", "Team collaboration", "API access", "Custom branding", "Dedicated support"],
-    cta: "Contact Sales",
-    popular: false,
-  },
-];
-
-function useScrollPast(ref: React.RefObject<HTMLElement | null>) {
-  const [past, setPast] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setPast(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-      },
-      { threshold: 0 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-
-  return past;
-}
-
-function useActiveDot(containerRef: React.RefObject<HTMLDivElement | null>, itemCount: number) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const handleScroll = () => {
-      const children = Array.from(el.children) as HTMLElement[];
-      let closest = 0;
-      let closestDist = Infinity;
-
-      children.forEach((child, i) => {
-        const rect = child.getBoundingClientRect();
-        const dist = Math.abs(rect.left - el.getBoundingClientRect().left);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closest = i;
-        }
-      });
-
-      setActiveIndex(closest);
-    };
-
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, [containerRef, itemCount]);
-
-  return activeIndex;
-}
-
-function ensureGuestSession() {
-  if (!localStorage.getItem("guest_session_id")) {
-    localStorage.setItem("guest_session_id", nanoid());
-  }
-}
+  Target,
+  Smartphone,
+  Upload,
+  Layers,
+  Check,
+  AlertCircle,
+  Sparkles,
+  Clock,
+  Shield,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Play,
+  ArrowUpRight,
+  FileDown,
+  RefreshCw,
+  Info,
+  Star,
+  Activity,
+} from 'lucide-react';
+import { Link } from 'wouter';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 export default function Landing() {
-  const { installPrompt, installApp } = usePWA();
+  const { installPrompt, isOnline, installApp } = usePWA();
   const { isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  const heroRef = useRef<HTMLElement>(null);
-  const featuresRowRef = useRef<HTMLDivElement>(null);
-  const heroPast = useScrollPast(heroRef);
-  const featureDotIndex = useActiveDot(featuresRowRef, features.length);
+  // Hero Simulator states
+  const [activeHeroTab, setActiveHeroTab] = useState<'parser' | 'scorer' | 'polish'>('parser');
+  
+  // Parser simulation state
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseProgress, setParseProgress] = useState(0);
+  const [parsedData, setParsedData] = useState<any>(null);
 
-  const handleGetStarted = () => {
-    ensureGuestSession();
-    setLocation("/builder");
+  // Scorer simulation state
+  const [atsScore, setAtsScore] = useState(72);
+  const [appliedSkills, setAppliedSkills] = useState<string[]>(['React', 'TypeScript', 'Node.js']);
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
+
+  // Polish template style state
+  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'modern' | 'tech'>('modern');
+
+  // Before & After optimize simulation state
+  const [beforeAfterOptimized, setBeforeAfterOptimized] = useState(false);
+  const [isOptimizingSlider, setIsOptimizingSlider] = useState(false);
+  const [optimizeProgress, setOptimizeProgress] = useState(0);
+
+  // FAQ Accordion state
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  // Parser simulation logic
+  const handleStartParsing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsParsing(true);
+    setParseProgress(0);
+    setParsedData(null);
   };
 
-  const handleBuildFromScratch = () => {
-    ensureGuestSession();
-    setLocation("/builder?mode=scratch");
+  useEffect(() => {
+    let interval: any;
+    if (isParsing && parseProgress < 100) {
+      interval = setInterval(() => {
+        setParseProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsParsing(false);
+            setParsedData({
+              name: 'Sarah Jenkins',
+              title: 'Senior Software Engineer',
+              skills: ['React', 'TypeScript', 'Node.js', 'Next.js', 'PostgreSQL', 'AWS'],
+              experiences: 3,
+            });
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 120);
+    }
+    return () => clearInterval(interval);
+  }, [isParsing, parseProgress]);
+
+  // Apply ATS suggestion logic
+  const handleApplySuggestion = () => {
+    if (suggestionApplied) return;
+    setSuggestionApplied(true);
+    // Animate score from 72 to 96
+    let score = 72;
+    const interval = setInterval(() => {
+      score += 1;
+      setAtsScore(score);
+      if (score >= 96) {
+        clearInterval(interval);
+        setAppliedSkills((prev) => [...prev, 'Cloud Architecture', 'CI/CD']);
+      }
+    }, 25);
   };
 
-  const navLinks = [
-    { label: "Templates", href: "#templates" },
-    { label: "Pricing", href: "#pricing" },
+  // Reset Scorer simulation
+  const handleResetScorer = () => {
+    setSuggestionApplied(false);
+    setAtsScore(72);
+    setAppliedSkills(['React', 'TypeScript', 'Node.js']);
+  };
+
+  // Before/After optimizer simulation logic
+  const handleBeforeAfterOptimize = () => {
+    if (beforeAfterOptimized) {
+      setBeforeAfterOptimized(false);
+      return;
+    }
+    setIsOptimizingSlider(true);
+    setOptimizeProgress(0);
+  };
+
+  useEffect(() => {
+    let interval: any;
+    if (isOptimizingSlider && optimizeProgress < 100) {
+      interval = setInterval(() => {
+        setOptimizeProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsOptimizingSlider(false);
+            setBeforeAfterOptimized(true);
+            return 100;
+          }
+          return prev + 25;
+        });
+      }, 150);
+    }
+    return () => clearInterval(interval);
+  }, [isOptimizingSlider, optimizeProgress]);
+
+  // FAQ Toggle logic
+  const toggleFaq = (index: number) => {
+    setActiveFaq(activeFaq === index ? null : index);
+  };
+
+  const faqData = [
+    {
+      q: 'How does the client-side parser work? Is my data safe?',
+      a: 'Unlike other systems that upload your resumes to third-party databases, HexaCv parses files entirely inside your browser sandbox. We leverage client-side binary parsing scripts. Your private data is never sent to, stored on, or processed by a server.',
+    },
+    {
+      q: 'Do I need to pay or create an account to download my resume?',
+      a: 'No. The core builder and local optimizer are 100% free with no credit card required. You can import, format, analyze, and export your resumes as high-quality, parser-compliant PDFs instantly.',
+    },
+    {
+      q: 'What is an "ATS trap" and how does HexaCv avoid it?',
+      a: 'ATS systems (Applicant Tracking Systems) run resumes through text extractors. Multi-column tables, visual shapes, header/footer text slots, and text inside non-standard image layers easily cause parser failures. HexaCv uses standard, single-column and double-column structures explicitly designed to extract properly in 99% of modern ATS systems.',
+    },
+    {
+      q: 'Can I use HexaCv while traveling or offline?',
+      a: 'Yes! HexaCv is configured as a fully compliant Progressive Web App (PWA). Just click "Install App" in the top bar to place it on your home screen or desktop. It will work completely offline, allowing you to edit resumes anywhere.',
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden">
-      {/* Ambient glow */}
-      <div className="fixed top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-20 pointer-events-none" />
-      <div className="fixed top-1/3 right-1/4 w-[400px] h-[400px] bg-[#0566d9]/5 rounded-full blur-3xl -z-20 pointer-events-none" />
-      <div className="fixed bottom-1/4 left-1/3 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-20 pointer-events-none" />
+    <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden glass-bg bg-grid-pattern">
+      {/* Mesh Gradient Glowing Orbs */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl -z-20 pointer-events-none animate-drift-orb-1"></div>
+      <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-500/5 dark:bg-indigo-500/5 rounded-full blur-3xl -z-20 pointer-events-none animate-drift-orb-2"></div>
+      <div className="absolute top-[60%] left-10 w-[300px] h-[300px] bg-emerald-500/5 dark:bg-emerald-500/5 rounded-full blur-3xl -z-20 pointer-events-none"></div>
 
-      {/* Navbar */}
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-16">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#1e40af] flex items-center justify-center">
-              <Layers className="w-4 h-4 text-white" strokeWidth={1.5} />
-            </div>
-            <span className="font-semibold text-lg tracking-tight text-foreground">HexaCv</span>
-          </Link>
+      {/* Top Navigation Bar */}
+      <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-slate-200/40 dark:border-white/5 transition-all">
+        <div className="flex justify-between items-center px-6 md:px-12 h-16 w-full max-w-7xl mx-auto">
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <span className="text-primary text-[28px]"><Layers className="w-6 h-6 text-blue-600 dark:text-blue-400" /></span>
+            <span className="font-bold text-xl text-foreground dark:text-slate-100 tracking-tight group-hover:text-primary transition-colors">HexaCv</span>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Features
+            </a>
+            <a href="#why-hexacv" className="text-sm text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Before & After
+            </a>
+            <a href="#testimonials" className="text-sm text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Reviews
+            </a>
+            <a href="#faq" className="text-sm text-slate-600 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              FAQs
+            </a>
+          </nav>
 
           <div className="flex items-center gap-3">
             {installPrompt && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={installApp}
-                className="hidden md:inline-flex gap-2 text-muted-foreground"
+                id="btn-install-pwa"
+                className="hidden sm:inline-flex gap-2 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-350 hover:text-primary dark:hover:text-blue-400 bg-card hover:bg-slate-100/50 dark:bg-white/5 transition-all"
               >
-                <Download className="w-4 h-4" strokeWidth={1.5} />
-                Install
+                <Download className="w-4 h-4" />
+                Install App
               </Button>
             )}
-
             {isAuthenticated ? (
               <Link href="/builder">
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Dashboard
+                <Button size="sm" id="btn-nav-dashboard" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all">
+                  Go to Dashboard
                 </Button>
               </Link>
             ) : (
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hidden md:inline-flex">
-                  Log In
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/login">
+                  <Button variant="ghost" size="sm" id="btn-nav-login" className="text-slate-600 dark:text-slate-400 hover:text-foreground font-medium hover:bg-slate-100/50 dark:hover:bg-white/5">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/builder">
+                  <Button size="sm" id="btn-nav-build" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all">
+                    Build Resume
+                  </Button>
+                </Link>
+              </div>
             )}
-
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-elevated transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5 text-foreground" strokeWidth={1.5} />
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Full-screen hamburger menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <div className="max-w-7xl mx-auto px-6 h-full flex flex-col">
-            <div className="flex items-center justify-between h-16 border-b border-border">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#1e40af] flex items-center justify-center">
-                  <Layers className="w-4 h-4 text-white" strokeWidth={1.5} />
-                </div>
-                <span className="font-semibold text-lg text-foreground">HexaCv</span>
+      <main className="flex-grow pt-20">
+        {/* HERO SECTION */}
+        <section className="max-w-7xl mx-auto px-6 md:px-12 pt-16 md:pt-24 pb-20 relative">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            
+            {/* Left Hero Content */}
+            <div className="lg:col-span-6 space-y-8 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/30 text-blue-800 dark:text-blue-300 rounded-full text-xs font-semibold tracking-wide">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Powered by Local Client-Side Engines</span>
               </div>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-elevated transition-colors"
-                aria-label="Close menu"
-              >
-                <X className="w-5 h-5 text-foreground" strokeWidth={1.5} />
-              </button>
-            </div>
-
-            <nav className="flex-1 flex flex-col justify-center gap-2 max-w-sm mx-auto w-full">
-              {navLinks.map((link, i) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="text-2xl font-semibold text-foreground py-4 hover:text-primary transition-colors border-b border-border/50"
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-
-            <div className="pb-12 space-y-3 max-w-sm mx-auto w-full">
-              <Link href="/login" onClick={() => setMenuOpen(false)}>
-                <Button className="w-full h-12 bg-surface-elevated hover:bg-border text-foreground border border-border font-semibold rounded-xl">
-                  <LogIn className="w-4 h-4 mr-2" strokeWidth={1.5} />
-                  Log In
-                </Button>
-              </Link>
-              <Link href="/register" onClick={() => setMenuOpen(false)}>
-                <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.25)]">
-                  <UserPlus className="w-4 h-4 mr-2" strokeWidth={1.5} />
-                  Create Account
-                </Button>
-              </Link>
-              <p className="text-xs text-muted-foreground text-center pt-2">
-                Start building instantly — no account needed.
+              
+              <h1 className="text-4xl md:text-5xl lg:text-[56px] font-extrabold text-slate-900 dark:text-white leading-[1.1] tracking-tight">
+                Next-Gen Resume Building.<br />
+                <span className="text-shimmer">Designed for ATS Victory.</span>
+              </h1>
+              
+              <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                Upload, optimize, and format high-scoring professional resumes client-side. Built for ambitious professionals who value speed, data privacy, and clean typography.
               </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main>
-        {/* ===== HERO ===== */}
-        <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-28 pb-16 md:pt-36 md:pb-24">
-          <div className="max-w-3xl mx-auto text-center space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs font-medium text-primary">
-              <Sparkles className="w-3.5 h-3.5" strokeWidth={1.5} />
-              AI-Powered Resume Builder
-            </div>
-
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground">
-              Build a Resume That{" "}
-              <span className="bg-gradient-to-r from-primary to-[#0566d9] bg-clip-text text-transparent">
-                Actually Gets You Interviews
-              </span>
-            </h1>
-
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-              Upload your existing resume or build from scratch. Our AI tailors every section to the job you want —
-              matching keywords, beating ATS filters, and landing you more callbacks.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-primary" strokeWidth={1.5} />
-                No credit card
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-primary" strokeWidth={1.5} />
-                Works offline
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-primary" strokeWidth={1.5} />
-                Export in seconds
-              </span>
-            </div>
-
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-2">
-              <Button
-                onClick={handleGetStarted}
-                className="w-full sm:w-auto h-12 px-8 bg-gradient-to-r from-primary to-[#1e40af] hover:from-primary/90 hover:to-[#1e40af]/90 text-primary-foreground font-semibold rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.3)] hover:shadow-[0_8px_30px_rgba(59,130,246,0.4)] transition-all duration-300"
-              >
-                Get Started Free
-                <ArrowRight className="w-5 h-5 ml-2" strokeWidth={1.5} />
-              </Button>
-              <Button
-                onClick={handleBuildFromScratch}
-                variant="outline"
-                className="w-full sm:w-auto h-12 px-8 border-border text-foreground hover:bg-surface-elevated font-semibold rounded-xl"
-              >
-                <Play className="w-4 h-4 mr-2" strokeWidth={1.5} />
-                Build from Scratch
-              </Button>
-            </div>
-          </div>
-
-          {/* Resume preview card — below the headline */}
-          <div className="relative max-w-md mx-auto mt-16">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-full blur-3xl -z-10" />
-
-            <div className="relative transform-gpu hover:rotate-0 transition-transform duration-500">
-              <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-2xl blur-2xl" />
-
-              <div className="relative bg-white dark:bg-[#f8fafc] rounded-xl shadow-[0_20px_60px_rgba(59,130,246,0.25)] p-7 border border-border/30">
-                <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
-                  <div>
-                    <div className="h-3 w-36 rounded-full bg-gray-800" />
-                    <div className="h-2 w-24 rounded-full bg-gray-400 mt-2" />
-                  </div>
-                  <div className="h-2 w-16 rounded-full bg-primary/20" />
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="h-2 w-20 rounded-full bg-gray-500" />
-                  <div className="space-y-2">
-                    <div className="h-2 w-full rounded-full bg-gray-300" />
-                    <div className="h-2 w-3/4 rounded-full bg-gray-300" />
-                    <div className="h-2 w-5/6 rounded-full bg-gray-300" />
-                  </div>
-                  <div className="space-y-2 pt-1">
-                    <div className="h-2 w-full rounded-full bg-gray-300" />
-                    <div className="h-2 w-2/3 rounded-full bg-gray-300" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="h-2 w-16 rounded-full bg-gray-500 mb-3" />
-                  <div className="flex flex-wrap gap-2">
-                    {["React", "TypeScript", "Node.js", "AWS", "Docker"].map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-3 py-1 text-xs font-medium text-gray-700 bg-primary/10 rounded-full"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="absolute -top-3 -right-3 flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
-                  <Zap className="w-3 h-3" strokeWidth={2} />
-                  ATS 96%
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== FEATURES — horizontal scroll with dot indicator ===== */}
-        <section className="border-t border-border py-16">
-          <div className="max-w-7xl mx-auto px-6 mb-10 text-center">
-            <span className="inline-block text-xs font-semibold text-primary uppercase tracking-widest mb-4">
-              Everything You Need
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-              Built to Get You Hired
-            </h2>
-          </div>
-
-          <div
-            ref={featuresRowRef}
-            className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-none px-6 pb-4"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="snap-start shrink-0 w-[280px] sm:w-[320px] bg-card border border-border rounded-xl p-6 hover:bg-surface-elevated transition-colors duration-300 group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center mb-5 group-hover:bg-primary/20 transition-colors">
-                  <f.icon className="w-5 h-5 text-primary" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Dot indicator */}
-          <div className="flex items-center justify-center gap-2 mt-4">
-            {features.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  featuresRowRef.current?.children[i]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-                }}
-                className={cn(
-                  "rounded-full transition-all duration-300",
-                  i === featureDotIndex
-                    ? "w-6 h-2 bg-primary"
-                    : "w-2 h-2 bg-border hover:bg-muted-foreground"
-                )}
-                aria-label={`Go to feature ${i + 1}`}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* ===== TEMPLATES ===== */}
-        <section id="templates" className="border-t border-border">
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="text-center mb-12 space-y-4">
-              <span className="inline-block text-xs font-semibold text-primary uppercase tracking-widest">
-                Professional Designs
-              </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-                Choose Your Template
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Every layout is tested against real ATS engines.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {templates.map((t) => (
-                <div
-                  key={t.name}
-                  className="group relative bg-card rounded-xl border border-border overflow-hidden cursor-pointer"
-                >
-                  <div className="aspect-[3/4] p-4 flex flex-col">
-                    <div className="flex-1 rounded-lg p-4 flex flex-col gap-2" style={{ backgroundImage: `linear-gradient(to bottom right, ${t.color})` }}>
-                      <div className="h-2 w-3/4 rounded bg-foreground/20" />
-                      <div className="h-2 w-1/2 rounded bg-foreground/20" />
-                      <div className="flex-1 flex flex-col gap-1.5 mt-3">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div key={i} className="h-1.5 w-full rounded bg-foreground/10" />
-                        ))}
-                      </div>
-                      <div className="flex gap-1.5 mt-2">
-                        <div className="h-3 w-12 rounded-full bg-primary/20" />
-                        <div className="h-3 w-14 rounded-full bg-primary/20" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Button
-                      onClick={handleGetStarted}
-                      variant="outline"
-                      size="sm"
-                      className="border-primary text-primary hover:bg-primary/10"
-                    >
-                      <Play className="w-3 h-3 mr-1.5" strokeWidth={1.5} />
-                      Preview
-                    </Button>
-                  </div>
-
-                  <div className="px-5 py-4 border-t border-border">
-                    <h4 className="font-semibold text-sm text-foreground">{t.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ===== TESTIMONIALS ===== */}
-        <section className="border-t border-border bg-surface-elevated/30">
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="text-center mb-12 space-y-4">
-              <span className="inline-block text-xs font-semibold text-primary uppercase tracking-widest">
-                Trusted by Professionals
-              </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-                What Our Users Say
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {testimonials.map((t) => (
-                <div key={t.name} className="bg-card rounded-xl border border-border p-6 flex flex-col">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-primary/40 text-primary/40" strokeWidth={1.5} />
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed flex-1">"{t.text}"</p>
-                  <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border">
-                    <div
-                      className={cn(
-                        "w-9 h-9 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold",
-                        t.color
-                      )}
-                    >
-                      {t.initials}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">{t.role}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ===== PRICING ===== */}
-        <section id="pricing" className="border-t border-border">
-          <div className="max-w-7xl mx-auto px-6 py-20">
-            <div className="text-center mb-12 space-y-4">
-              <span className="inline-block text-xs font-semibold text-primary uppercase tracking-widest">
-                Simple Pricing
-              </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-                Start Free, Upgrade When You're Ready
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                All plans include a 14-day free trial.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {pricingPlans.map((plan) => (
-                <div
-                  key={plan.name}
-                  className={cn(
-                    "relative bg-card rounded-xl border p-8 flex flex-col",
-                    plan.popular ? "border-primary shadow-[0_4px_20px_rgba(59,130,246,0.15)]" : "border-border"
-                  )}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-semibold px-3 py-1 rounded-full">
-                      Most Popular
-                    </div>
-                  )}
-
-                  <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1 mb-4">{plan.desc}</p>
-
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                    {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
-                  </div>
-
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                        <Check className="w-4 h-4 text-primary shrink-0" strokeWidth={2} />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    onClick={handleGetStarted}
-                    className={cn(
-                      "w-full h-11 font-semibold rounded-xl",
-                      plan.popular
-                        ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_4px_12px_rgba(59,130,246,0.25)]"
-                        : "bg-surface-elevated hover:bg-border text-foreground border border-border"
-                    )}
-                  >
-                    {plan.cta || "Get Started"}
-                    <ChevronRight className="w-4 h-4 ml-1" strokeWidth={1.5} />
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                <Link href="/builder">
+                  <Button size="lg" id="btn-hero-start" className="w-full sm:w-auto px-8 py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/10 hover:shadow-blue-500/20 transition-all hover:scale-[1.02] duration-300 animate-pulse-glow gap-2">
+                    Start Building Free
+                    <ArrowRight className="w-5 h-5" />
                   </Button>
+                </Link>
+                <a href="#why-hexacv" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full px-8 py-6 glass-panel rounded-xl font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5">
+                    See Live Demo
+                  </Button>
+                </a>
+              </div>
+              
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm text-slate-500 pt-2 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>100% Client-Side Private</span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-blue-500" />
+                  <span>No Account Required</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-blue-500" />
+                  <span>Offline PWA Ready</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Hero Interactive Simulator Dashboard */}
+            <div className="lg:col-span-6 relative w-full mt-12 lg:mt-0 z-10">
+              <div className="glass-panel rounded-2xl shadow-2xl border border-slate-200/50 dark:border-white/10 p-1 bg-white/40 dark:bg-slate-900/30 overflow-hidden">
+                {/* Simulator Tabs */}
+                <div className="flex border-b border-slate-200/50 dark:border-white/5 bg-slate-100/40 dark:bg-slate-950/40 rounded-t-xl overflow-hidden p-1.5">
+                  <button
+                    onClick={() => setActiveHeroTab('parser')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                      activeHeroTab === 'parser'
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-300 shadow-sm border border-slate-200/30'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 hover:bg-white/5'
+                    }`}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    AI Parser
+                  </button>
+                  <button
+                    onClick={() => setActiveHeroTab('scorer')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                      activeHeroTab === 'scorer'
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-300 shadow-sm border border-slate-200/30'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 hover:bg-white/5'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    ATS Tailoring
+                  </button>
+                  <button
+                    onClick={() => setActiveHeroTab('polish')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                      activeHeroTab === 'polish'
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-300 shadow-sm border border-slate-200/30'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 hover:bg-white/5'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Design Polish
+                  </button>
+                </div>
+
+                {/* Dashboard Content */}
+                <div className="p-6 min-h-[380px] flex flex-col justify-between bg-white/60 dark:bg-slate-900/40 relative">
+                  
+                  {/* TAB 1: Parser Simulation */}
+                  {activeHeroTab === 'parser' && (
+                    <div className="space-y-5 animate-fade-slide-up w-full">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Local Parser Engine</h3>
+                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-mono">sandbox-active</span>
+                      </div>
+                      
+                      {!parsedData && !isParsing ? (
+                        <div className="border border-dashed border-slate-300 dark:border-white/10 rounded-xl p-8 text-center bg-slate-50/50 dark:bg-slate-950/20 hover:border-blue-500/50 hover:bg-blue-500/[0.02] transition-colors cursor-pointer" onClick={handleStartParsing}>
+                          <Upload className="w-8 h-8 mx-auto text-slate-400 dark:text-slate-650 mb-3 animate-bounce" />
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Upload existing resume PDF or Docx</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-500">Processing happens locally on your CPU</p>
+                          <Button size="sm" className="mt-4 bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-200 border-none font-bold text-xs" onClick={handleStartParsing}>
+                            Try Demo File
+                          </Button>
+                        </div>
+                      ) : isParsing ? (
+                        <div className="space-y-6 py-8">
+                          <div className="relative w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="absolute h-full bg-blue-600 dark:bg-blue-400 transition-all duration-150" style={{ width: `${parseProgress}%` }}></div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5">
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                              Scanning content segments...
+                            </span>
+                            <span>{parseProgress}%</span>
+                          </div>
+                          
+                          {/* Animated laser-scanner preview */}
+                          <div className="h-28 rounded-lg border border-slate-200 dark:border-white/5 relative bg-slate-900/5 dark:bg-slate-950/40 overflow-hidden flex flex-col justify-center px-4 font-mono text-[9px] text-slate-500 dark:text-slate-450 leading-relaxed">
+                            <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-500 dark:bg-blue-400 animate-[bounce_2s_infinite] shadow-[0_0_10px_2px_rgba(59,130,246,0.5)]"></div>
+                            <div>[EXTRACTING] Sarah Jenkins - Sr. Software Engineer</div>
+                            <div>[SKILLS FOUND] React, TypeScript, Node, Webpack</div>
+                            <div>[EXPERIENCE SCANNED] Acme Labs (3 yrs), Zenith AI (2 yrs)</div>
+                            <div>[SANITIZING] Removing unsafe tags & invisible parser traps</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 animate-fade-slide-up">
+                          <div className="flex items-center gap-2.5 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-emerald-800 dark:text-emerald-400 text-xs">
+                            <Check className="w-4 h-4 shrink-0 bg-emerald-500 text-white rounded-full p-0.5" />
+                            <span>Successfully parsed document entirely in-browser. No database logs created.</span>
+                          </div>
+                          
+                          <div className="bg-slate-50/50 dark:bg-slate-950/20 rounded-xl p-4 border border-slate-200/50 dark:border-white/5 text-xs space-y-3 font-sans">
+                            <div className="flex justify-between border-b border-slate-200/30 dark:border-white/5 pb-2">
+                              <span className="text-slate-500">Parsed Name:</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">{parsedData.name}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-200/30 dark:border-white/5 pb-2">
+                              <span className="text-slate-500">Extracted Title:</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">{parsedData.title}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-200/30 dark:border-white/5 pb-2">
+                              <span className="text-slate-500">Extracted Experiences:</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">{parsedData.experiences} Roles Found</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {parsedData.skills.map((skill: string, index: number) => (
+                                <span key={index} className="px-2 py-0.5 bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-500/10 text-blue-700 dark:text-blue-300 rounded text-[10px] font-semibold">{skill}</span>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2.5">
+                            <Link href="/builder" className="flex-1">
+                              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">
+                                Load into Builder
+                              </Button>
+                            </Link>
+                            <Button variant="outline" size="sm" className="text-xs" onClick={() => setParsedData(null)}>
+                              Parse Another
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: ATS Scorer Simulation */}
+                  {activeHeroTab === 'scorer' && (
+                    <div className="space-y-4 animate-fade-slide-up w-full">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">ATS Keyword Scorer</h3>
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                          Target Job: <span className="font-semibold text-slate-800 dark:text-slate-200">Cloud Systems Eng</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-6 items-center p-4 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-white/5 rounded-2xl">
+                        {/* Score Circle Progress */}
+                        <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="40" cy="40" r="34" stroke="currentColor" className="text-slate-100 dark:text-white/5" strokeWidth="6" fill="transparent" />
+                            <circle
+                              cx="40"
+                              cy="40"
+                              r="34"
+                              stroke={atsScore >= 90 ? '#10b981' : '#2563eb'}
+                              strokeWidth="6"
+                              fill="transparent"
+                              strokeDasharray="213.6"
+                              strokeDashoffset={213.6 - (213.6 * atsScore) / 100}
+                              className="transition-all duration-500 ease-out"
+                            />
+                          </svg>
+                          <span className={`absolute text-base font-extrabold transition-colors duration-300 ${atsScore >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                            {atsScore}%
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                            {atsScore < 90 ? 'Improvement Recommended' : 'Excellent Job Alignment!'}
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+                            {atsScore < 90
+                              ? 'Your resume is missing key cloud architecture keywords required by the target job post.'
+                              : 'High relevance match detected. Perfect parser-to-job matching score.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Suggestion Card */}
+                      <div className="glass-floating rounded-xl border border-slate-200 dark:border-white/10 p-3.5 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs">
+                            <Zap className={`w-3.5 h-3.5 fill-current text-amber-500 ${!suggestionApplied && 'animate-pulse'}`} />
+                            <span>ATS Alignment Recommendation</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">+24% Score</span>
+                        </div>
+                        <p className="text-[10px] text-slate-650 dark:text-slate-350 leading-relaxed">
+                          Add experience working with <span className="font-semibold text-blue-600 dark:text-blue-400">"Cloud Architecture"</span> and <span className="font-semibold text-blue-600 dark:text-blue-400">"CI/CD"</span> deployment pathways to match job descriptions.
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleApplySuggestion}
+                            disabled={suggestionApplied}
+                            className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all ${
+                              suggestionApplied
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 border border-slate-200/50 dark:border-white/5 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:scale-[1.02]'
+                            }`}
+                          >
+                            {suggestionApplied ? 'Applied Suggestion' : 'Apply Suggestion'}
+                          </button>
+                          {suggestionApplied && (
+                            <button onClick={handleResetScorer} className="text-[10px] font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: Design Polish Simulation */}
+                  {activeHeroTab === 'polish' && (
+                    <div className="space-y-4 animate-fade-slide-up w-full">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Layout Engine Styling</h3>
+                        <div className="flex gap-1.5 bg-slate-100/60 dark:bg-slate-950/40 p-0.5 rounded-lg border border-slate-200/30 dark:border-white/5">
+                          <button
+                            onClick={() => setSelectedTemplate('classic')}
+                            className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${
+                              selectedTemplate === 'classic' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-xs' : 'text-slate-500'
+                            }`}
+                          >
+                            Classic
+                          </button>
+                          <button
+                            onClick={() => setSelectedTemplate('modern')}
+                            className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${
+                              selectedTemplate === 'modern' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-xs' : 'text-slate-500'
+                            }`}
+                          >
+                            Modern
+                          </button>
+                          <button
+                            onClick={() => setSelectedTemplate('tech')}
+                            className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${
+                              selectedTemplate === 'tech' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-xs' : 'text-slate-500'
+                            }`}
+                          >
+                            Elegant
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Mockup Resume Card Render */}
+                      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-4 shadow-sm min-h-[220px] transition-all duration-300">
+                        <div className={`space-y-3 ${selectedTemplate === 'classic' ? 'font-serif' : 'font-sans'}`}>
+                          
+                          {/* Resume Header */}
+                          <div className={`border-b pb-2 ${
+                            selectedTemplate === 'tech'
+                              ? 'border-blue-500/20 flex justify-between items-center'
+                              : 'border-slate-150 dark:border-white/10 text-center'
+                          }`}>
+                            <div className={selectedTemplate === 'tech' ? 'text-left' : 'text-center'}>
+                              <div className="font-extrabold text-sm text-slate-900 dark:text-slate-100 tracking-tight">Sarah K. Jenkins</div>
+                              <div className="text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider mt-0.5">Senior Systems Architect</div>
+                            </div>
+                            {selectedTemplate === 'tech' && (
+                              <div className="text-[8px] text-slate-400 text-right font-mono">
+                                Seattle, WA • sjenkins@email.com
+                              </div>
+                            )}
+                          </div>
+
+                          {selectedTemplate !== 'tech' && (
+                            <div className="text-[8px] text-slate-400 text-center">
+                              Seattle, WA • sjenkins@email.com • github.com/sjenkins
+                            </div>
+                          )}
+
+                          {/* Work Experience */}
+                          <div>
+                            <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 tracking-wider uppercase mb-1.5 border-b border-slate-100 dark:border-white/5 pb-0.5">
+                              Professional History
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-[9px] font-bold text-slate-800 dark:text-slate-200">
+                                <span>Principal Cloud Engineer @ Acme Services</span>
+                                <span className="font-normal text-slate-400 font-mono">2023 - Present</span>
+                              </div>
+                              <div className="space-y-1 pl-1">
+                                <div className="h-1 bg-slate-200 dark:bg-slate-850 rounded w-11/12"></div>
+                                <div className="h-1 bg-slate-200 dark:bg-slate-850 rounded w-4/5"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Technical Skills */}
+                          <div>
+                            <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 tracking-wider uppercase mb-1.5 border-b border-slate-100 dark:border-white/5 pb-0.5">
+                              Technical Expertise
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {['React', 'TypeScript', 'AWS', 'Docker', 'CI/CD', 'Kubernetes'].map((skill, index) => (
+                                <span
+                                  key={index}
+                                  className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${
+                                    selectedTemplate === 'tech'
+                                      ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                                      : selectedTemplate === 'modern'
+                                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                                      : 'border border-slate-200 text-slate-600 font-serif'
+                                  }`}
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dashboard Bottom Controls */}
+                  <div className="border-t border-slate-200/50 dark:border-white/5 pt-3 mt-4 flex items-center justify-between text-[10px] text-slate-500">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span>Client Side Sandbox Active</span>
+                    </div>
+                    <span className="font-mono text-[9px]">V.1.04</span>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* LOGO MARQUEE */}
+        <section className="bg-slate-50/50 dark:bg-slate-950/20 border-t border-b border-slate-200/40 dark:border-white/5 py-10 overflow-hidden select-none">
+          <div className="max-w-7xl mx-auto px-6 text-center mb-6">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-650">Our Candidates Placed At Top Industry Leaders</span>
+          </div>
+          <div className="relative flex items-center overflow-x-hidden w-full">
+            <div className="animate-marquee gap-16 md:gap-24 items-center">
+              {['GOOGLE', 'MICROSOFT', 'META', 'STRIPE', 'AIRBNB', 'NETFLIX', 'AMAZON', 'UBER', 'SLACK', 'SHOPIFY'].map((company, index) => (
+                <span key={index} className="text-base md:text-lg font-black tracking-[0.25em] text-slate-350 dark:text-slate-700 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200">
+                  {company}
+                </span>
               ))}
+            </div>
+            {/* Duplicate for seamless marquee infinite loop */}
+            <div className="animate-marquee gap-16 md:gap-24 items-center" aria-hidden="true">
+              {['GOOGLE', 'MICROSOFT', 'META', 'STRIPE', 'AIRBNB', 'NETFLIX', 'AMAZON', 'UBER', 'SLACK', 'SHOPIFY'].map((company, index) => (
+                <span key={index + 20} className="text-base md:text-lg font-black tracking-[0.25em] text-slate-350 dark:text-slate-700 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200">
+                  {company}
+                </span>
+              ))}
+            </div>
+            
+            {/* Fade overlays at ends */}
+            <div className="absolute top-0 left-0 h-full w-24 bg-gradient-to-r from-background to-transparent pointer-events-none"></div>
+            <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-background to-transparent pointer-events-none"></div>
+          </div>
+        </section>
+
+        {/* WHY HEXACV & BEFORE/AFTER OPTIMIZER */}
+        <section id="why-hexacv" className="max-w-7xl mx-auto px-6 md:px-12 py-24 border-b border-slate-200/40 dark:border-white/5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            
+            <div className="lg:col-span-5 space-y-6">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+                Stop Sending Weak Resumes. <br />
+                <span className="text-blue-600 dark:text-blue-400">Optimize Instantly.</span>
+              </h2>
+              
+              <p className="text-slate-600 dark:text-slate-355 text-base leading-relaxed">
+                Standard templates are highly stylized but structurally broken, blocking ATS database parsers. HexaCv resolves these format issues dynamically while inserting required keyword contexts.
+              </p>
+              
+              <div className="space-y-4 pt-2">
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center text-red-650 dark:text-red-400 font-bold text-xs shrink-0">
+                    ✕
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-0.5">Complex layout failures</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Headers, footers, graphic charts, and multi-column divisions confuse parsing engines.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-650 dark:text-emerald-450 font-bold text-xs shrink-0">
+                    ✓
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-0.5">High-scoring readability structure</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Standard single/double columns parsed smoothly. Direct formatting outputs.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  onClick={handleBeforeAfterOptimize}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 hover:opacity-90 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isOptimizingSlider && 'animate-spin'}`} />
+                  {beforeAfterOptimized ? 'Revert to Unoptimized' : 'Simulate Optimization Scan'}
+                </button>
+              </div>
+            </div>
+
+            {/* Before / After Morphing Widget */}
+            <div className="lg:col-span-7 relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                
+                {/* Overlay Scanner Line while simulating optimization */}
+                {isOptimizingSlider && (
+                  <div className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-center items-center">
+                    <div className="w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-[pulse_1s_infinite] border-b border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
+                    <div className="bg-slate-900 text-white text-[10px] font-mono font-bold px-3 py-1.5 rounded-full mt-4 shadow-xl border border-white/10 backdrop-blur-sm animate-pulse">
+                      OPTIMIZING ALIGNMENTS ({optimizeProgress}%)
+                    </div>
+                  </div>
+                )}
+
+                {/* Left Card: Before (Unoptimized) */}
+                <div className={`glass-panel rounded-2xl p-5 border border-red-500/20 dark:border-red-500/10 shadow-lg transition-all duration-500 relative ${
+                  beforeAfterOptimized ? 'opacity-30 scale-95 saturate-50' : 'opacity-100'
+                }`}>
+                  <div className="absolute top-4 right-4 bg-red-150 dark:bg-red-950/50 text-red-700 dark:text-red-400 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border border-red-200 dark:border-red-900/30">
+                    ATS Score: 42%
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <div className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        Sarah_Resume_v2_edit.pdf
+                        <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                      </div>
+                      <div className="text-[10px] text-slate-500">Last Modified: Dec 2025</div>
+                    </div>
+                    
+                    <div className="border border-dashed border-red-500/20 rounded-xl p-3 space-y-3 bg-red-500/[0.01]">
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                          ⚠️ Objective Cliché Phrase
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-normal pl-3">
+                          "Highly motivated individual seeking a challenging position to utilize skills and grow..."
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                          ⚠️ Spelling & Grammar Typo
+                        </div>
+                        <p className="text-[10px] text-slate-550 pl-3">
+                          "Responsable for building web apps." <span className="text-red-500 font-mono">(responsable → responsible)</span>
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                          ⚠️ Weak Verb & No Metrics
+                        </div>
+                        <p className="text-[10px] text-slate-550 pl-3">
+                          "Helped with making the website look better using HTML and CSS."
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-slate-400 italic">
+                      ✕ Parser will fail to match skill keywords
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Card: After (Optimized) */}
+                <div className={`glass-panel rounded-2xl p-5 border border-emerald-500/30 dark:border-emerald-500/10 shadow-xl transition-all duration-500 relative ${
+                  beforeAfterOptimized ? 'opacity-100 scale-100 ring-2 ring-emerald-500/20' : 'opacity-40 scale-95'
+                }`}>
+                  <div className="absolute top-4 right-4 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-450 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border border-emerald-250 dark:border-emerald-900/30">
+                    ATS Score: 98%
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <div className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        Sarah_Jenkins_Engineer.pdf
+                        <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 bg-emerald-100 dark:bg-emerald-950 rounded-full p-0.5" />
+                      </div>
+                      <div className="text-[10px] text-slate-500">Processed by HexaCv Engine</div>
+                    </div>
+
+                    <div className="border border-emerald-500/10 rounded-xl p-3 space-y-3 bg-emerald-500/[0.02]">
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-405 flex items-center gap-1">
+                          ✓ High-Impact Career Summary
+                        </div>
+                        <p className="text-[10px] text-slate-700 dark:text-slate-300 leading-normal pl-3">
+                          "Senior Systems Architect with 5+ years experience building highly scalable microservices..."
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-405 flex items-center gap-1">
+                          ✓ Typo Rectification Done
+                        </div>
+                        <p className="text-[10px] text-slate-700 dark:text-slate-300 pl-3">
+                          "Responsible for architecting cloud infrastructure..."
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-405 flex items-center gap-1">
+                          ✓ Metric Quantified Experience
+                        </div>
+                        <p className="text-[10px] text-slate-700 dark:text-slate-300 pl-3">
+                          "Architected modern frontend systems using React and TypeScript, boosting conversion by 22%."
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      ✓ Single-column structural extraction complete
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* FEATURES BENTO GRID */}
+        <section id="features" className="max-w-7xl mx-auto px-6 md:px-12 py-24 border-b border-slate-200/40 dark:border-white/5">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Engineered For Career Growth
+            </h2>
+            <p className="text-base text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+              Everything you need to craft high-quality resumes. Secure, local, and exceptionally optimized.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[240px]">
+            
+            {/* Card 1: Parser (Col Span 8) */}
+            <div className="glass-panel glass-interactive rounded-2xl md:col-span-8 p-8 flex flex-col justify-between overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-slate-100">Intelligent Client-Side PDF Parser</h3>
+                <p className="text-slate-550 dark:text-slate-400 text-sm leading-relaxed max-w-xl">
+                  Upload an existing resume file. Our parser extracts experience fields, titles, dates, and skills directly in your browser. No files are uploaded to any server, keeping your data confidential.
+                </p>
+              </div>
+              <div className="flex gap-2 text-xs font-mono text-slate-450 pt-2">
+                <span>[X] No APIs</span>
+                <span>[X] No Tracking</span>
+                <span>[X] In-Memory Processing</span>
+              </div>
+            </div>
+
+            {/* Card 2: Privacy (Col Span 4) */}
+            <div className="glass-panel glass-interactive rounded-2xl md:col-span-4 p-8 flex flex-col justify-between overflow-hidden relative">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-slate-100">Zero Server Data Leak</h3>
+                <p className="text-slate-550 dark:text-slate-400 text-xs leading-relaxed">
+                  Your resume contains phone numbers, emails, and employment history. We guarantee 100% data residency in your browser.
+                </p>
+              </div>
+              <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                Local Sandbox Secure
+              </div>
+            </div>
+
+            {/* Card 3: ATS Score Diagnostics (Col Span 4) */}
+            <div className="glass-panel glass-interactive rounded-2xl md:col-span-4 p-8 flex flex-col justify-between overflow-hidden relative">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                  <Target className="w-5 h-5" />
+                </div>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-slate-100">ATS Alignment Index</h3>
+                <p className="text-slate-550 dark:text-slate-400 text-xs leading-relaxed">
+                  Scan your work history items against target descriptions to extract keywords, check spelling, and score formatting structures.
+                </p>
+              </div>
+              <div className="text-[10px] font-mono text-slate-400">
+                Keyword Matching • Format Auditing
+              </div>
+            </div>
+
+            {/* Card 4: Template Styles (Col Span 8) */}
+            <div className="glass-panel glass-interactive rounded-2xl md:col-span-8 p-8 flex flex-col justify-between overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <h3 className="font-extrabold text-lg text-slate-900 dark:text-slate-100">Parser-Friendly PDF Export</h3>
+                <p className="text-slate-550 dark:text-slate-400 text-sm leading-relaxed max-w-xl">
+                  Choose from layouts explicitly optimized for ATS engines. Adjust spacing, margins, and typography sizes dynamically, and print standard PDF layouts instantly.
+                </p>
+              </div>
+              <div className="flex gap-4 text-xs font-semibold text-slate-500">
+                <span>✓ Times New Roman & Arial Fallbacks</span>
+                <span>✓ Print-Ready CSS rules</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* STATISTICS SECTION */}
+        <section className="bg-slate-50/50 dark:bg-[#080f1d] border-t border-b border-slate-200/40 dark:border-white/5 py-16">
+          <div className="max-w-7xl mx-auto px-6 md:px-12">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+              
+              <div className="space-y-1">
+                <div className="text-3xl md:text-5xl font-black text-blue-600 dark:text-blue-400">98%</div>
+                <div className="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-200">ATS Parsing Accuracy</div>
+                <p className="text-[10px] md:text-xs text-slate-450">Verified layout parser testing</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-3xl md:text-5xl font-black text-indigo-600 dark:text-indigo-400">3.2x</div>
+                <div className="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-200">Callback Multiplier</div>
+                <p className="text-[10px] md:text-xs text-slate-450">Based on candidate reports</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-3xl md:text-5xl font-black text-emerald-600 dark:text-emerald-400">0</div>
+                <div className="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-200">Server Logs Generated</div>
+                <p className="text-[10px] md:text-xs text-slate-450">100% private in-browser storage</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white">{"< 2m"}</div>
+                <div className="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-200">Avg Optimization Time</div>
+                <p className="text-[10px] md:text-xs text-slate-450">Fast, streamlined interface</p>
+              </div>
+
             </div>
           </div>
         </section>
 
-        {/* ===== CLOSING CTA ===== */}
-        <section className="relative overflow-hidden border-t border-border">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent pointer-events-none" />
-          <div className="absolute top-1/2 left-1/4 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        {/* TESTIMONIALS SECTION */}
+        <section id="testimonials" className="max-w-7xl mx-auto px-6 md:px-12 py-24 border-b border-slate-200/40 dark:border-white/5">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Endorsed By Professionals
+            </h2>
+            <p className="text-base text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+              See how candidates are securing interviews at world-class companies using HexaCv.
+            </p>
+          </div>
 
-          <div className="relative max-w-4xl mx-auto px-6 py-20 text-center space-y-8">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
-              <Sparkles className="w-7 h-7 text-primary" strokeWidth={1.5} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <div className="glass-panel rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                  "I was struggling to get callbacks for senior React roles. HexaCv's ATS scan showed that my resume was missing key framework terms. After adding them and using their classic layout, my response rate tripled."
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center font-extrabold text-xs">
+                  AM
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-slate-800 dark:text-slate-200">Alex Mercer</div>
+                  <div className="text-[10px] text-slate-500">Senior Frontend Engineer</div>
+                </div>
+              </div>
             </div>
 
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight leading-tight">
-              Ready to Land Your Next Interview?
+            <div className="glass-panel rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                  "As a security analyst, I'm extremely cautious about uploading my personal data to resume websites. Finding a builder that runs completely client-side is fantastic. All parsing occurs in memory on my PC."
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-extrabold text-xs">
+                  DC
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-slate-800 dark:text-slate-200">David Chen</div>
+                  <div className="text-[10px] text-slate-500">Cybersecurity Consultant</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-panel rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                  "The before-and-after check is an eye-opener. It highlighted spelling typos I missed, and the font formatting adjustments look incredibly polished. I exported a PDF that parses flawlessly."
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center font-extrabold text-xs">
+                  SR
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-slate-800 dark:text-slate-200">Sophia Reynolds</div>
+                  <div className="text-[10px] text-slate-500">Product Manager</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* FAQ ACCORDION SECTION */}
+        <section id="faq" className="max-w-4xl mx-auto px-6 py-24 border-b border-slate-200/40 dark:border-white/5">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Frequently Asked Questions
             </h2>
-
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Join thousands of professionals who've transformed their job search. No credit card needed.
+            <p className="text-base text-slate-500 dark:text-slate-400">
+              Clear answers about privacy, operations, and PDF styling mechanisms.
             </p>
+          </div>
 
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-2">
-              <Button
-                onClick={handleGetStarted}
-                className="h-13 px-10 bg-gradient-to-r from-primary to-[#1e40af] hover:from-primary/90 hover:to-[#1e40af]/90 text-primary-foreground font-semibold rounded-xl text-base shadow-[0_4px_20px_rgba(59,130,246,0.3)] hover:shadow-[0_8px_30px_rgba(59,130,246,0.4)] transition-all duration-300"
-              >
-                Build Your Resume Free
-                <ArrowRight className="w-5 h-5 ml-2" strokeWidth={1.5} />
-              </Button>
+          <div className="space-y-4">
+            {faqData.map((faq, index) => (
+              <div key={index} className="glass-panel rounded-2xl overflow-hidden border border-slate-200/35 dark:border-white/5 transition-all">
+                <button
+                  onClick={() => toggleFaq(index)}
+                  className="w-full flex justify-between items-center px-6 py-5 text-left font-bold text-sm md:text-base text-slate-800 dark:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors focus:outline-hidden"
+                >
+                  <span>{faq.q}</span>
+                  {activeFaq === index ? (
+                    <ChevronUp className="w-5 h-5 text-slate-500 shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-slate-500 shrink-0" />
+                  )}
+                </button>
+                
+                {activeFaq === index && (
+                  <div className="px-6 pb-5 pt-1 text-xs md:text-sm text-slate-550 dark:text-slate-400 leading-relaxed border-t border-slate-100/50 dark:border-white/5 bg-slate-50/[0.01] animate-fade-slide-up">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA BOTTOM SECTION */}
+        <section className="bg-gradient-to-br from-slate-900 via-blue-950/40 to-slate-900 text-white py-24 relative overflow-hidden border-t border-slate-200/40 dark:border-white/5">
+          {/* Subtle grid pattern background */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+          <div className="absolute -top-24 left-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-3xl -z-0 pointer-events-none"></div>
+
+          <div className="container max-w-4xl mx-auto px-6 text-center relative z-10 space-y-8">
+            <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center mx-auto border border-white/10 backdrop-blur-sm shadow-inner">
+              <Sparkles className="w-7 h-7 text-blue-400" />
+            </div>
+            
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight max-w-2xl mx-auto">
+              Build Your High-Scoring ATS Resume Today
+            </h2>
+            
+            <p className="text-slate-300 max-w-xl mx-auto text-base md:text-lg leading-relaxed">
+              No subscription paywalls. No data logs. Build, style, scan, and download a professional resume in minutes.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <Link href="/builder">
+                <Button
+                  size="lg"
+                  id="btn-cta-build"
+                  className="w-full sm:w-auto bg-[#b8c4ff] text-[#002584] hover:bg-[#b8c4ff]/90 font-bold transition-all shadow-md gap-2 py-6 px-8 text-base border-none hover:scale-[1.02] duration-300"
+                >
+                  Create My Resume
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
               {installPrompt && (
                 <Button
-                  variant="outline"
-                  className="h-13 px-8 border-border text-foreground hover:bg-surface-elevated font-semibold rounded-xl text-base"
+                  size="lg"
+                  id="btn-cta-install"
+                  className="w-full sm:w-auto bg-white/5 border border-white/15 text-white hover:bg-white/10 font-bold transition-all gap-2 py-6 px-8 text-base"
                   onClick={installApp}
                 >
-                  <Download className="w-4 h-4 mr-2" strokeWidth={1.5} />
+                  <Download className="w-4 h-4" />
                   Install Offline App
                 </Button>
               )}
@@ -677,88 +1085,79 @@ export default function Landing() {
         </section>
       </main>
 
-      {/* ===== STICKY BOTTOM CTA ===== */}
-      <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-lg border-t border-border transition-transform duration-300 pb-[env(safe-area-inset-bottom)]",
-          heroPast ? "translate-y-0" : "translate-y-full"
-        )}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <Button
-            onClick={handleGetStarted}
-            className="w-full h-12 bg-gradient-to-r from-primary to-[#1e40af] hover:from-primary/90 hover:to-[#1e40af]/90 text-primary-foreground font-semibold rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.3)] text-base"
-          >
-            Get Started Free
-            <ArrowRight className="w-5 h-5 ml-2" strokeWidth={1.5} />
-          </Button>
-        </div>
-      </div>
-
-      {/* ===== FOOTER ===== */}
-      <footer className="bg-surface-lowest border-t border-border">
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+      {/* FOOTER */}
+      <footer className="bg-slate-950 text-slate-400 py-16 border-t border-slate-200/20 dark:border-white/5 relative z-10">
+        <div className="container max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-4 gap-10 mb-12">
+            
             <div className="space-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#1e40af] flex items-center justify-center">
-                  <Layers className="w-4 h-4 text-white" strokeWidth={1.5} />
-                </div>
-                <span className="font-semibold text-lg text-foreground">HexaCv</span>
+              <div className="flex items-center gap-3 group cursor-pointer">
+                <span className="text-white text-[24px]"><Layers className="w-6 h-6 text-blue-400" /></span>
+                <span className="font-bold text-white text-lg tracking-tight group-hover:text-blue-400 transition-colors">HexaCv</span>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                AI-powered resume builder that runs entirely in your browser. Build, tailor, and export — no data ever leaves your machine.
+              <p className="text-sm leading-relaxed text-slate-450">
+                Next-generation local resume building and ATS optimization dashboard.
               </p>
             </div>
-
+            
             <div>
-              <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-5">Product</h4>
-              <ul className="space-y-3">
-                {[
-                  { label: "Templates", href: "#templates" },
-                  { label: "Pricing", href: "#pricing" },
-                  { label: "Changelog", href: "#" },
-                ].map((link) => (
-                  <li key={link.label}>
-                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
+              <h3 className="font-semibold text-white mb-4 text-sm tracking-wider uppercase">Features</h3>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <a href="#features" className="hover:text-white transition-colors">
+                    AI Parsing
+                  </a>
+                </li>
+                <li>
+                  <a href="#why-hexacv" className="hover:text-white transition-colors">
+                    ATS Audit
+                  </a>
+                </li>
               </ul>
             </div>
-
+            
             <div>
-              <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-5">Company</h4>
-              <ul className="space-y-3">
-                {[
-                  { label: "HexaStack Solutions", href: "https://www.hexastacksolutions.com/" },
-                  { label: "Privacy Policy", href: "#" },
-                  { label: "Terms of Service", href: "#" },
-                  { label: "Contact", href: "#" },
-                ].map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      target={link.href.startsWith("http") ? "_blank" : undefined}
-                      rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
+              <h3 className="font-semibold text-white mb-4 text-sm tracking-wider uppercase">Company</h3>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <a
+                    href="https://www.hexastacksolutions.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    HexaStack Solutions
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.hexastacksolutions.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition-colors"
+                  >
+                    Visit Website
+                  </a>
+                </li>
               </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-white mb-4 text-sm tracking-wider uppercase">About</h3>
+              <p className="text-sm leading-relaxed">
+                Prepared by <strong>Surag & Anandu Krishna</strong>
+              </p>
+              <p className="text-sm text-slate-500 mt-2 font-medium">HexaStack Solutions</p>
             </div>
           </div>
 
-          <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} HexaStack Solutions. Crafted by Surag & Anandu Krishna.</p>
+          <div className="border-t border-white/5 pt-8 text-center text-xs text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>© 2026 HexaStack Solutions. Prepared by Surag & Anandu Krishna.</p>
             <a
               href="https://www.hexastacksolutions.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors font-medium"
+              className="text-blue-400 hover:text-blue-300 transition-colors font-semibold"
             >
               www.hexastacksolutions.com
             </a>

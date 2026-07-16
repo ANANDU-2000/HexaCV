@@ -75,7 +75,7 @@ export default function AffiliateSystem({ userId }: AffiliateProps) {
       </div>
 
       {/* Grid Stats */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid sm:grid-cols-3 gap-6">
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="pb-2">
             <CardDescription className="text-xs uppercase font-bold text-slate-500 tracking-wider">

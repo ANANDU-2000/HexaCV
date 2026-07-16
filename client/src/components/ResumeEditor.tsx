@@ -10,7 +10,7 @@ import {
   Download, Eye, EyeOff, Edit3, Settings, Undo, Redo, ZoomIn, ZoomOut, 
   Sparkles, CheckCircle2, AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown,
   User, AlignLeft, Code, Briefcase, Folder, GraduationCap, Award, Trophy,
-  PanelRightOpen, PanelRightClose, ChevronDown, X, Loader2, Globe, Users, LayoutList, ChevronLeft, ChevronRight,
+  PanelLeft, PanelLeftClose, Globe, Users, LayoutList, ChevronLeft, ChevronRight,
   FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,8 +23,6 @@ import { exportResumeToPDF, exportResumeToDOCX } from '@/lib/pdfExport';
 import { toast } from 'sonner';
 import { nanoid } from 'nanoid';
 import { trpc } from '@/lib/trpc';
-import AISuggestionsPanel from './AISuggestionsPanel';
-import ExportPreview from './ExportPreview';
 
 const WIZARD_STEPS = [
   { id: 1, label: 'Header', key: 'header', icon: User },
@@ -42,13 +40,6 @@ const WIZARD_STEPS = [
   { id: 13, label: 'Review & Export', key: 'review', icon: CheckCircle2 },
   { id: 14, label: 'Live Preview', key: 'preview', icon: Eye },
 ];
-
-const TEMPLATES = [
-  { id: 'classic-ats-blue', name: 'Classic ATS Blue', color: 'bg-blue-500' },
-  { id: 'modern-clean', name: 'Modern Clean', color: 'bg-emerald-500' },
-  { id: 'technical-compact', name: 'Technical Compact', color: 'bg-slate-700' },
-  { id: 'creative-bold', name: 'Creative Bold', color: 'bg-violet-500' },
-] as const;
 
 const FORM_STEPS = WIZARD_STEPS.slice(0, 12);
 const EDITOR_FLOW_STEPS = WIZARD_STEPS.filter((step) => step.key !== 'preview');
@@ -81,9 +72,6 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   const [zoom, setZoom] = useState<number>(100);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
-  const [showExportView, setShowExportView] = useState(false);
   const exportPreviewRef = useRef<HTMLDivElement>(null);
 
   // Scrollbar and navigation state for horizontal stepper
@@ -307,17 +295,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     }
   };
 
-  const handleExportPDF = () => {
-    setShowExportView(true);
-  };
-
-  const handleSaveToDashboard = async (_resume?: Resume) => {
-    onUpdate(localResume);
-    toast.success('Resume saved to dashboard!');
-  };
-
-  const handleExportDone = () => {
-    setShowExportView(false);
+  const handleExportPDF = async () => {
+    const element = exportPreviewRef.current;
+    if (!element) {
+      toast.error('Failed to prepare resume preview. Please try again.');
+      return;
+    }
+    toast.info('Exporting resume to PDF...');
+    try {
+      await exportResumeToPDF(element, `${localResume.title || 'resume'}.pdf`);
+      toast.success('PDF downloaded successfully!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to export PDF.');
+    }
   };
 
   const handleExportDOCX = async () => {
@@ -779,342 +770,2070 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     || activeEditTab === EDITOR_FLOW_STEPS[EDITOR_FLOW_STEPS.length - 1].key;
 
   return (
-    <>
-      {showExportView ? (
-        <ExportPreview
-          resume={localResume}
-          onBack={handleExportDone}
-          onSaveToDashboard={handleSaveToDashboard}
-        />
-      ) : (
-      <div className="flex h-full flex-col bg-background text-foreground">
-      {/* ===== TOOLBAR ===== */}
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-1.5 sm:px-4 shrink-0">
-        {/* Left: Undo/Redo + Save status */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleUndo} disabled={historyIndex <= 0} title="Undo">
-            <Undo className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Redo">
-            <Redo className="h-4 w-4" />
-          </Button>
-          <span className="flex items-center gap-1.5 ml-1 text-[10px] font-medium text-muted-foreground">
-            <span className={cn('w-1.5 h-1.5 rounded-full', autoSaveStatus === 'saving' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400')} />
-            {autoSaveStatus === 'saving' ? 'Saving...' : 'All changes saved'}
-          </span>
+    <div className="w-full h-full font-sans text-slate-800 dark:text-slate-200 pb-[72px] lg:pb-0">
+      {/* Editor workspace */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(430px,560px)] gap-4 h-full min-h-0">
+        <div className="w-full flex flex-col gap-2 sm:gap-3 h-full min-h-0">
+        {/* Toggle Mode header on mobile, regular title + quick settings on desktop */}
+        <div className={cn(
+          "glass-panel border border-slate-200 dark:border-white/10 rounded-xl shadow-sm shrink-0 overflow-hidden",
+          activeEditTab === 'preview' && "lg:block"
+        )}>
+          {/* Row 1: Title + Action Buttons */}
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-slate-200 dark:border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
+                <Sparkles className="w-4.5 h-4.5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 group/title">
+                  <input 
+                    type="text" 
+                    value={localResume.title}
+                    onChange={(e) => updateResumeData({ ...localResume, title: e.target.value })}
+                    className="bg-transparent border-none p-0 m-0 font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight focus:ring-0 focus:outline-none focus:border-b focus:border-slate-350 dark:focus:border-slate-700 w-full max-w-[180px] sm:max-w-[260px] truncate"
+                    placeholder="Resume Title"
+                  />
+                  <Edit3 className="w-3.5 h-3.5 text-slate-400 opacity-50 group-hover/title:opacity-100 transition-opacity shrink-0" />
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Auto-saved
+                  </span>
+                  <span className="text-slate-550">·</span>
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-550 dark:text-slate-400">
+                    {activeEditTab === 'review' ? (
+                      "Review & Export"
+                    ) : activeEditTab === 'preview' ? (
+                      "Live Preview"
+                    ) : (
+                      `Step ${FORM_STEPS.findIndex(s => s.key === activeEditTab) + 1}/12`
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" onClick={handleUndo} disabled={historyIndex <= 0} title="Undo">
+                <Undo className="w-3.5 h-3.5 text-slate-600 dark:text-slate-350" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Redo">
+                <Redo className="w-3.5 h-3.5 text-slate-600 dark:text-slate-350" />
+              </Button>
+            </div>
+          </div>
+          {/* Row 2: Layout + Target Job */}
+          <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-slate-100/50 dark:bg-slate-950/20">
+            <div className="flex items-center gap-1.5 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1 px-2.5 shadow-xs">
+              <Settings className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
+              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">ATS Emerald</span>
+            </div>
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">Target:</span>
+              <Select value={selectedJob} onValueChange={(v) => {
+                setSelectedJob(v);
+                updateResumeData({ ...localResume, jobDescriptionId: v });
+              }}>
+                <SelectTrigger id="quick-job-select" className="h-8 text-[11px] font-semibold rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 min-w-0 w-full max-w-[210px] shadow-xs">
+                  <SelectValue placeholder="Select target job..." />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200">
+                  {PRESET_JOBS.map(j => (
+                    <SelectItem key={j.id} value={j.id} className="text-xs text-slate-800 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white">{j.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
-        {/* Center: Resume title (editable) */}
-        <input
-          type="text"
-          value={localResume.title}
-          onChange={(e) => updateResumeData({ ...localResume, title: e.target.value })}
-          className="hidden md:block bg-transparent border-none text-center text-sm font-semibold text-foreground focus:outline-none focus:ring-0 max-w-[240px] truncate"
-          placeholder="Untitled Resume"
-        />
+        {/* Editor Card with guided steps */}
+        <Card className="glass-panel border-slate-200 dark:border-white/10 overflow-hidden flex flex-col flex-1 min-h-0 bg-slate-50/80 dark:bg-slate-900/10 shadow-sm p-0 rounded-xl">
+          {/* Horizontal Stepper Progress Indicator (Visible only during editor steps 1-12) */}
+          {FORM_STEPS.some(s => s.key === activeEditTab) ? (
+            <div className="relative group/stepper shrink-0 w-full overflow-hidden">
+              {/* Left Scroll Button */}
+              <button
+                type="button"
+                onClick={scrollLeftDirection}
+                className={cn(
+                  "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                  canScrollLeft ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                )}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {/* Left Gradient Fade Overlay */}
+              <div
+                className={cn(
+                  "absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-slate-100 dark:from-[#0b1326] via-slate-100/70 dark:via-[#0b1326]/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                  canScrollLeft ? "opacity-100" : "opacity-0"
+                )}
+              />
 
-        {/* Right: AI Suggestions + Export */}
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAiPanelOpen(!aiPanelOpen)}
-            className={cn('h-8 rounded-lg gap-1.5 text-xs font-medium', aiPanelOpen && 'bg-primary/10 text-primary')}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">AI Suggestions</span>
-          </Button>
-          <Button size="sm" onClick={handleExportPDF} className="h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90">
-            <Download className="h-3.5 w-3.5 mr-1" />
-            <span className="hidden md:inline">Export PDF</span>
-            <span className="md:hidden">PDF</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* ===== MOBILE TAB SWITCHER ===== */}
-      <div className="flex border-b border-border md:hidden shrink-0">
-        <button
-          type="button"
-          onClick={() => setMobileTab('edit')}
-          className={cn('flex-1 py-2.5 text-xs font-semibold text-center transition-colors', mobileTab === 'edit' ? 'text-foreground border-b-2 border-primary' : 'text-muted-foreground')}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileTab('preview')}
-          className={cn('flex-1 py-2.5 text-xs font-semibold text-center transition-colors', mobileTab === 'preview' ? 'text-foreground border-b-2 border-primary' : 'text-muted-foreground')}
-        >
-          Preview
-        </button>
-      </div>
-
-      {/* ===== MAIN CONTENT ===== */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left Panel: Form-based section editor */}
-        <div className={cn('flex-1 min-w-0 overflow-y-auto', mobileTab === 'preview' && 'hidden md:block')}>
-          {/* Mobile section list / Desktop accordion */}
-          <div className="p-3 sm:p-4 space-y-2">
-            {formSections.map((section) => {
-              const Icon = section.icon;
-              const isActive = activeEditTab === section.id;
-              const isDone = isStepCompleted(section.id);
-
-              return (
-                <div key={section.id} className="rounded-xl border border-border bg-card overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setActiveEditTab(isActive ? '' : section.id)}
-                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={cn(
-                        'flex h-7 w-7 items-center justify-center rounded-lg',
-                        isDone ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground',
-                      )}>
-                        {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{section.label}</span>
+              {/* Scrollable Steps Wrapper */}
+              <div
+                ref={stepperRef}
+                className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth px-8 py-3 bg-slate-100/80 dark:bg-slate-950/40 backdrop-blur-sm border-b border-slate-200/50 dark:border-white/5 select-none"
+              >
+                {FORM_STEPS.map((step, idx) => {
+                  const Icon = step.icon;
+                  const isDone = isStepCompleted(step.key);
+                  const isActive = activeEditTab === step.key;
+                  
+                  return (
+                    <div key={step.id} className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        data-step-key={step.key}
+                        onClick={() => setActiveEditTab(step.key)}
+                        className={cn(
+                          "flex items-center gap-2 p-1.5 px-3 rounded-xl text-xs font-bold transition-all border outline-none cursor-pointer",
+                          isActive 
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]" 
+                            : isDone 
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/60 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-500/15 dark:hover:bg-emerald-900/15" 
+                              : "bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:text-slate-200"
+                        )}
+                      >
+                        <span className={cn(
+                          "w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black border",
+                          isActive 
+                            ? "bg-white/20 border-slate-300 dark:border-white/30 text-white" 
+                            : isDone 
+                              ? "bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-500/30 dark:text-emerald-300" 
+                              : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500"
+                        )}>
+                          {isDone ? '✓' : step.id}
+                        </span>
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span>{step.label}</span>
+                      </button>
+                      {idx < FORM_STEPS.length - 1 && (
+                        <div className={cn(
+                          "w-4 h-[2px] rounded-full shrink-0",
+                          isDone ? "bg-emerald-500" : "bg-slate-300 dark:bg-white/10"
+                        )} />
+                      )}
                     </div>
-                    <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isActive && 'rotate-180')} />
-                  </button>
+                  );
+                })}
+              </div>
 
-                  {isActive && (
-                    <div className="border-t border-border px-4 py-4 space-y-4">
-                      {/* Section editors */}
-                      {section.id === 'header' && (
-                        (() => {
-                          const h = headerContent;
-                          return (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs font-medium text-muted-foreground">Full Name *</Label>
-                                  <Input value={h.name || ''} onChange={(e) => { const hd = { ...headerContent, name: e.target.value }; updateSection('header', { header: hd }); }} placeholder="John Doe" className="h-9 text-sm rounded-lg" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs font-medium text-muted-foreground">Email *</Label>
-                                  <Input value={h.email || ''} onChange={(e) => { const hd = { ...headerContent, email: e.target.value }; updateSection('header', { header: hd }); }} placeholder="john@example.com" type="email" className="h-9 text-sm rounded-lg" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
-                                  <Input value={h.phone || ''} onChange={(e) => { const hd = { ...headerContent, phone: e.target.value }; updateSection('header', { header: hd }); }} placeholder="+1 (555) 123-4567" className="h-9 text-sm rounded-lg" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs font-medium text-muted-foreground">Location</Label>
-                                  <Input value={h.location || ''} onChange={(e) => { const hd = { ...headerContent, location: e.target.value }; updateSection('header', { header: hd }); }} placeholder="San Francisco, CA" className="h-9 text-sm rounded-lg" />
-                                </div>
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground">Job Title</Label>
-                                <Input value={h.jobTitle || ''} onChange={(e) => { const hd = { ...headerContent, jobTitle: e.target.value }; updateSection('header', { header: hd }); }} placeholder="Software Engineer" className="h-9 text-sm rounded-lg" />
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground">Links (one per line, format: label|url)</Label>
-                                <Textarea value={(h.links || []).map((l) => `${l.label}|${l.url}`).join('\n')} onChange={(e) => { const hd = { ...headerContent, links: e.target.value.split('\n').filter(Boolean).map(line => { const [label, url] = line.split('|'); return { label: label?.trim() || '', url: url?.trim() || '' }; }) }; updateSection('header', { header: hd }); }} rows={2} className="text-sm rounded-lg" placeholder="LinkedIn|https://linkedin.com/in/..." />
-                              </div>
-                            </div>
-                          );
-                        })()
+              {/* Right Gradient Fade Overlay */}
+              <div
+                className={cn(
+                  "absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-slate-100 dark:from-[#0b1326] via-slate-100/70 dark:via-[#0b1326]/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                  canScrollRight ? "opacity-100" : "opacity-0"
+                )}
+              />
+
+              {/* Right Scroll Button */}
+              <button
+                type="button"
+                onClick={scrollRightDirection}
+                className={cn(
+                  "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                  canScrollRight ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                )}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            /* Premium Phase Tracker for review and mobile preview */
+            <div className={cn(
+              "items-center justify-center gap-3 py-3 bg-slate-100/80 dark:bg-slate-950/40 border-b border-slate-200/50 dark:border-white/5 select-none text-[11px] font-bold shrink-0 overflow-x-auto px-3",
+              activeEditTab === 'preview' ? "hidden lg:flex" : "flex"
+            )}>
+              <button
+                type="button"
+                onClick={() => setActiveEditTab('header')}
+                className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 hover:opacity-85 transition-opacity"
+              >
+                <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 flex items-center justify-center text-[10px] font-black">✓</span>
+                <span>1. Resume Editor</span>
+              </button>
+              <div className="w-8 h-[2px] bg-emerald-500" />
+              
+              <button
+                type="button"
+                onClick={() => setActiveEditTab('review')}
+                className={cn(
+                  "flex items-center gap-2 transition-opacity hover:opacity-85",
+                  activeEditTab === 'review' 
+                    ? "text-blue-600 dark:text-blue-450" 
+                    : "text-emerald-600 dark:text-emerald-400"
+                )}
+              >
+                <span className={cn(
+                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border",
+                  activeEditTab === 'review'
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+                )}>
+                  {activeEditTab === 'review' ? '2' : '✓'}
+                </span>
+                <span>2. Review & Export</span>
+              </button>
+              <div className={cn(
+                "w-8 h-[2px] lg:hidden",
+                activeEditTab === 'preview' ? "bg-emerald-500" : "bg-slate-350 dark:bg-white/10"
+              )} />
+
+              <button
+                type="button"
+                onClick={() => setActiveEditTab('preview')}
+                className={cn(
+                  "flex items-center gap-2 transition-opacity hover:opacity-85 lg:hidden",
+                  activeEditTab === 'preview' 
+                    ? "text-blue-600 dark:text-blue-455" 
+                    : "text-slate-450 dark:text-slate-400"
+                )}
+              >
+                <span className={cn(
+                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border",
+                  activeEditTab === 'preview'
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500"
+                )}>
+                  3
+                </span>
+                <span>3. Live Preview</span>
+              </button>
+            </div>
+          )}
+          
+          <div className={cn(
+            "flex-1 overflow-y-auto h-full min-h-0",
+            activeEditTab === 'preview' ? "px-0 py-0 sm:px-5 sm:py-4" : "px-4 sm:px-5 py-4"
+          )}>
+            <Tabs value={activeEditTab} onValueChange={setActiveEditTab} className="w-full h-full">
+
+
+                {/* HEADER TAB */}
+                <TabsContent value="header" className="space-y-5">
+                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Contact Information</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Your name, title, and contact details that appear at the top of your resume.</p>
+                    </div>
+                  </div>
+                  <div className="grid resume-editor-grid-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Full Name <span className="text-red-400">*</span></Label>
+                      <Input
+                        id="edit-name"
+                        placeholder="e.g. John Doe"
+                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
+                        value={getSectionContent('header').header?.name || ''}
+                        onChange={(e) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, name: e.target.value }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-jobtitle" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Job Title</Label>
+                      <Input
+                        id="edit-jobtitle"
+                        placeholder="e.g. Full-Stack Developer"
+                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
+                        value={getSectionContent('header').header?.jobTitle || ''}
+                        onChange={(e) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, jobTitle: e.target.value }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-targetrole" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target Role</Label>
+                      <Input
+                        id="edit-targetrole"
+                        placeholder="e.g. Senior Software Engineer"
+                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
+                        value={getSectionContent('header').header?.targetRole || ''}
+                        onChange={(e) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, targetRole: e.target.value }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-email" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email Address <span className="text-red-400">*</span></Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        placeholder="you@email.com"
+                        className={cn("h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm", !isValidEmail(getSectionContent('header').header?.email) && "border-red-500 focus-visible:ring-red-500")}
+                        value={getSectionContent('header').header?.email || ''}
+                        onChange={(e) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, email: e.target.value }
+                        })}
+                      />
+                      {!isValidEmail(getSectionContent('header').header?.email) && (
+                        <span className="text-[10px] text-red-500 font-medium block">Please enter a valid email address.</span>
                       )}
+                    </div>
+                    <div className="col-span-2">
+                      <CountryLocationFields
+                        compact
+                        countryCode={getSectionContent('header').header?.countryCode || ''}
+                        locationFields={getSectionContent('header').header?.locationFields || {}}
+                        phone={getSectionContent('header').header?.phone || ''}
+                        targetCountryCode={getSectionContent('header').header?.targetCountryCode || ''}
+                        onCountryChange={(code) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, countryCode: code }
+                        })}
+                        onTargetCountryChange={(code) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, targetCountryCode: code }
+                        })}
+                        onLocationFieldChange={(fields) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, locationFields: fields }
+                        })}
+                        onPhoneChange={(phone) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, phone }
+                        })}
+                        onLocationStringChange={(location) => updateSection('header', {
+                          header: { ...getSectionContent('header').header, location }
+                        })}
+                      />
+                    </div>
+                  </div>
 
-                      {section.id === 'summary' && (
-                        <div className="space-y-2">
-                          <Textarea value={getSectionContent('summary').summary || ''} onChange={(e) => updateSection('summary', { summary: e.target.value })} rows={4} className="text-sm rounded-lg leading-relaxed" placeholder="Professional summary highlighting your key achievements and career goals..." />
-                          <Button variant="ghost" size="sm" onClick={handleRewriteSummary} disabled={isRewritingSummary} className="text-xs gap-1.5">
-                            {isRewritingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                            {isRewritingSummary ? 'Rewriting...' : 'Rewrite with AI'}
+                  <div className="border-t border-slate-200 dark:border-white/10 pt-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-indigo-400" />
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Social & Website Profiles</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-linkedin">LinkedIn URL</Label>
+                        <Input
+                          id="edit-linkedin"
+                          placeholder="linkedin.com/in/username"
+                          className={cn(!isValidUrl(getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'linkedin')?.url) && "border-red-500 focus-visible:ring-red-500")}
+                          value={getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'linkedin')?.url || ''}
+                          onChange={(e) => {
+                            const headerObj = getSectionContent('header').header || {};
+                            const linksObj = headerObj.links || [];
+                            let updatedLinks = [...linksObj];
+                            const linkIdx = updatedLinks.findIndex((l: any) => l.label.toLowerCase() === 'linkedin');
+                            if (linkIdx > -1) {
+                              if (e.target.value) {
+                                updatedLinks[linkIdx] = { ...updatedLinks[linkIdx], url: e.target.value };
+                              } else {
+                                updatedLinks.splice(linkIdx, 1);
+                              }
+                            } else if (e.target.value) {
+                              updatedLinks.push({ label: 'LinkedIn', url: e.target.value });
+                            }
+                            updateSection('header', {
+                              header: { ...headerObj, links: updatedLinks }
+                            });
+                          }}
+                        />
+                        {!isValidUrl(getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'linkedin')?.url) && (
+                          <span className="text-[10px] text-red-500 font-medium block">Please enter a valid URL.</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-github">GitHub URL</Label>
+                        <Input
+                          id="edit-github"
+                          placeholder="github.com/username"
+                          className={cn(!isValidUrl(getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'github')?.url) && "border-red-500 focus-visible:ring-red-500")}
+                          value={getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'github')?.url || ''}
+                          onChange={(e) => {
+                            const headerObj = getSectionContent('header').header || {};
+                            const linksObj = headerObj.links || [];
+                            let updatedLinks = [...linksObj];
+                            const linkIdx = updatedLinks.findIndex((l: any) => l.label.toLowerCase() === 'github');
+                            if (linkIdx > -1) {
+                              if (e.target.value) {
+                                updatedLinks[linkIdx] = { ...updatedLinks[linkIdx], url: e.target.value };
+                              } else {
+                                updatedLinks.splice(linkIdx, 1);
+                              }
+                            } else if (e.target.value) {
+                              updatedLinks.push({ label: 'GitHub', url: e.target.value });
+                            }
+                            updateSection('header', {
+                              header: { ...headerObj, links: updatedLinks }
+                            });
+                          }}
+                        />
+                        {!isValidUrl(getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'github')?.url) && (
+                          <span className="text-[10px] text-red-500 font-medium block">Please enter a valid URL.</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-portfolio">Portfolio Website URL</Label>
+                        <Input
+                          id="edit-portfolio"
+                          placeholder="yourportfolio.com"
+                          className={cn(!isValidUrl(getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'portfolio' || l.label.toLowerCase() === 'website')?.url) && "border-red-500 focus-visible:ring-red-500")}
+                          value={getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'portfolio' || l.label.toLowerCase() === 'website')?.url || ''}
+                          onChange={(e) => {
+                            const headerObj = getSectionContent('header').header || {};
+                            const linksObj = headerObj.links || [];
+                            let updatedLinks = [...linksObj];
+                            const linkIdx = updatedLinks.findIndex((l: any) => l.label.toLowerCase() === 'portfolio' || l.label.toLowerCase() === 'website');
+                            if (linkIdx > -1) {
+                              if (e.target.value) {
+                                updatedLinks[linkIdx] = { ...updatedLinks[linkIdx], url: e.target.value };
+                              } else {
+                                updatedLinks.splice(linkIdx, 1);
+                              }
+                            } else if (e.target.value) {
+                              updatedLinks.push({ label: 'Portfolio', url: e.target.value });
+                            }
+                            updateSection('header', {
+                              header: { ...headerObj, links: updatedLinks }
+                            });
+                          }}
+                        />
+                        {!isValidUrl(getSectionContent('header').header?.links?.find((l: any) => l.label.toLowerCase() === 'portfolio' || l.label.toLowerCase() === 'website')?.url) && (
+                          <span className="text-[10px] text-red-500 font-medium block">Please enter a valid URL.</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* SUMMARY TAB */}
+                <TabsContent value="summary" className="space-y-5">
+                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlignLeft className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Professional Summary</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">A brief paragraph highlighting your career goals, key skills, and achievements.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="edit-summary" className="text-xs font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400">Profile Description</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRewriteSummary}
+                        disabled={isRewritingSummary}
+                        className="bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200 gap-1.5 h-8 font-bold text-xs"
+                      >
+                        {isRewritingSummary ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                            Rewriting...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                            Rewrite with AI
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <Textarea
+                      id="edit-summary"
+                      placeholder="Write a brief professional summary highlighting your key skills, experience, and achievements..."
+                      value={getSectionContent('summary').summary || ''}
+                      onChange={(e) => updateSection('summary', { summary: e.target.value })}
+                      rows={8}
+                      className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm leading-relaxed"
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* SKILLS TAB */}
+                <TabsContent value="skills" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Code className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Skills & Technologies</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Group your skills by category for ATS scanners and hiring managers.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('skills').skills || [];
+                      updateSection('skills', { skills: [...cur, { category: '', skills: [] }] });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Category
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {(getSectionContent('skills').skills || []).map((group: any, idx: number) => (
+                      <div key={idx} className="border border-slate-200 dark:border-white/10 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <Input
+                            placeholder="e.g. Languages"
+                            value={group.category}
+                            className="max-w-xs font-semibold"
+                            onChange={(e) => {
+                              const list = [...getSectionContent('skills').skills];
+                              list[idx].category = e.target.value;
+                              updateSection('skills', { skills: list });
+                            }}
+                          />
+                          <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                            const list = (getSectionContent('skills').skills || []).filter((_: any, i: number) => i !== idx);
+                            updateSection('skills', { skills: list });
+                          }}>
+                            Remove
                           </Button>
                         </div>
-                      )}
+                        <Input
+                          placeholder="Skills comma separated: React, Vue"
+                          value={group.skills.join(', ')}
+                          onChange={(e) => {
+                            const list = [...getSectionContent('skills').skills];
+                            list[idx].skills = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean);
+                            updateSection('skills', { skills: list });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
 
-                      {section.id === 'skills' && (
-                        <div className="space-y-3">
-                          {(() => { const skills = getSectionContent('skills').skills || []; return skills.map((group: any, idx: number) => (
-                            <div key={idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <Input value={group.category || ''} onChange={(e) => { const s = [...skills]; s[idx] = { ...s[idx], category: e.target.value }; updateSection('skills', { skills: s }); }} placeholder="Category" className="h-8 text-xs rounded-lg max-w-[160px]" />
-                                <button type="button" onClick={() => { const s = skills.filter((_: any, i: number) => i !== idx); updateSection('skills', { skills: s }); }} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-                              </div>
-                              <Textarea value={group.skills.join(', ')} onChange={(e) => { const s = [...skills]; s[idx] = { ...s[idx], skills: e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean) }; updateSection('skills', { skills: s }); }} rows={2} className="text-xs rounded-lg" placeholder="React, TypeScript, Tailwind CSS" />
-                            </div>
-                          )); })()}
-                          <Button variant="outline" size="sm" onClick={() => { const s = getSectionContent('skills').skills || []; updateSection('skills', { skills: [...s, { category: '', skills: [] }] }); }} className="w-full gap-1.5 text-xs border-dashed">
-                            <Plus className="h-3.5 w-3.5" />
-                            Add skill category
-                          </Button>
-                        </div>
-                      )}
+                {/* EXPERIENCE TAB */}
+                <TabsContent value="experience" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Briefcase className="w-4.5 h-4.5 text-sky-600 dark:text-sky-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Work Experience</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">List your roles in reverse chronological order. Include measurable achievements.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('experience').experiences || [];
+                      updateSection('experience', {
+                        experiences: [...cur, { id: nanoid(), company: '', role: '', startDate: '', endDate: '', current: false, description: [] }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Position
+                    </Button>
+                  </div>
 
-                      {section.id === 'experience' && (
-                        <div className="space-y-3">
-                          {(() => { const exps = getSectionContent('experience').experiences || []; return exps.map((exp: any, idx: number) => (
-                            <div key={exp.id || idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-muted-foreground">Experience #{idx + 1}</span>
-                                <div className="flex items-center gap-1">
-                                  <button type="button" onClick={() => moveItem('experience', idx, 'up')} disabled={idx === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
-                                  <button type="button" onClick={() => moveItem('experience', idx, 'down')} disabled={idx === exps.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
-                                  <button type="button" onClick={() => { const e = exps.filter((_: any, i: number) => i !== idx); updateSection('experience', { experiences: e }); }} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <Input value={exp.company || ''} onChange={(e) => { const list = [...exps]; list[idx] = { ...list[idx], company: e.target.value }; updateSection('experience', { experiences: list }); }} placeholder="Company" className="h-8 text-xs rounded-lg" />
-                                <Input value={exp.role || ''} onChange={(e) => { const list = [...exps]; list[idx] = { ...list[idx], role: e.target.value }; updateSection('experience', { experiences: list }); }} placeholder="Role" className="h-8 text-xs rounded-lg" />
-                                <Input value={exp.startDate || ''} onChange={(e) => { const list = [...exps]; list[idx] = { ...list[idx], startDate: e.target.value }; updateSection('experience', { experiences: list }); }} placeholder="Start date" className="h-8 text-xs rounded-lg" />
-                                <Input value={exp.endDate || ''} onChange={(e) => { const list = [...exps]; list[idx] = { ...list[idx], endDate: e.target.value }; updateSection('experience', { experiences: list }); }} placeholder="End date" disabled={exp.current} className="h-8 text-xs rounded-lg" />
-                              </div>
-                              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <input type="checkbox" checked={exp.current || false} onChange={(e) => { const list = [...exps]; list[idx] = { ...list[idx], current: e.target.checked, endDate: e.target.checked ? 'Present' : list[idx].endDate }; updateSection('experience', { experiences: list }); }} className="rounded" />
-                                Currently work here
-                              </label>
-                              <Textarea value={exp.description?.join('\n') || ''} onChange={(e) => { const list = [...exps]; list[idx] = { ...list[idx], description: e.target.value.split('\n').filter(Boolean) }; updateSection('experience', { experiences: list }); }} rows={3} className="text-xs rounded-lg leading-relaxed" placeholder="One bullet point per line" />
-                              <Button variant="ghost" size="sm" onClick={() => handleRewriteExperienceBullets(idx)} disabled={rewritingExpId === (exp.id || String(idx))} className="text-xs gap-1.5">
-                                {rewritingExpId === (exp.id || String(idx)) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                Rewrite bullets
-                              </Button>
-                            </div>
-                          )); })()}
-                          <Button variant="outline" size="sm" onClick={() => { const e = getSectionContent('experience').experiences || []; updateSection('experience', { experiences: [...e, { id: nanoid(), company: '', role: '', startDate: '', endDate: '', current: false, description: [] }] }); }} className="w-full gap-1.5 text-xs border-dashed">
-                            <Plus className="h-3.5 w-3.5" />
-                            Add experience
-                          </Button>
-                        </div>
-                      )}
-
-                      {section.id === 'education' && (
-                        <div className="space-y-3">
-                          {(() => { const edus = getSectionContent('education').educations || []; return edus.map((edu: any, idx: number) => (
-                            <div key={edu.id || idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-muted-foreground">Education #{idx + 1}</span>
-                                <button type="button" onClick={() => { const e = edus.filter((_: any, i: number) => i !== idx); updateSection('education', { educations: e }); }} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <Input value={edu.institution || ''} onChange={(e) => { const list = [...edus]; list[idx] = { ...list[idx], institution: e.target.value }; updateSection('education', { educations: list }); }} placeholder="Institution" className="h-8 text-xs rounded-lg" />
-                                <Input value={edu.degree || ''} onChange={(e) => { const list = [...edus]; list[idx] = { ...list[idx], degree: e.target.value }; updateSection('education', { educations: list }); }} placeholder="Degree" className="h-8 text-xs rounded-lg" />
-                                <Input value={edu.field || ''} onChange={(e) => { const list = [...edus]; list[idx] = { ...list[idx], field: e.target.value }; updateSection('education', { educations: list }); }} placeholder="Field of study" className="h-8 text-xs rounded-lg" />
-                                <Input value={edu.graduationDate || ''} onChange={(e) => { const list = [...edus]; list[idx] = { ...list[idx], graduationDate: e.target.value }; updateSection('education', { educations: list }); }} placeholder="Graduation date" className="h-8 text-xs rounded-lg" />
-                              </div>
-                            </div>
-                          )); })()}
-                          <Button variant="outline" size="sm" onClick={() => { const e = getSectionContent('education').educations || []; updateSection('education', { educations: [...e, { id: nanoid(), institution: '', degree: '', field: '', graduationDate: '', gpa: '' }] }); }} className="w-full gap-1.5 text-xs border-dashed">
-                            <Plus className="h-3.5 w-3.5" />
-                            Add education
-                          </Button>
-                        </div>
-                      )}
-
-                      {section.id === 'certifications' && (
-                        <div className="space-y-3">
-                          {(() => { const certs = getSectionContent('certifications').certifications || []; return certs.map((cert: any, idx: number) => (
-                            <div key={cert.id || idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-muted-foreground">Certification #{idx + 1}</span>
-                                <button type="button" onClick={() => { const c = certs.filter((_: any, i: number) => i !== idx); updateSection('certifications', { certifications: c }); }} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <Input value={cert.name || ''} onChange={(e) => { const list = [...certs]; list[idx] = { ...list[idx], name: e.target.value }; updateSection('certifications', { certifications: list }); }} placeholder="Certification name" className="h-8 text-xs rounded-lg" />
-                                <Input value={cert.issuer || ''} onChange={(e) => { const list = [...certs]; list[idx] = { ...list[idx], issuer: e.target.value }; updateSection('certifications', { certifications: list }); }} placeholder="Issuer" className="h-8 text-xs rounded-lg" />
-                              </div>
-                            </div>
-                          )); })()}
-                          <Button variant="outline" size="sm" onClick={() => { const c = getSectionContent('certifications').certifications || []; updateSection('certifications', { certifications: [...c, { id: nanoid(), name: '', issuer: '', date: '', link: '' }] }); }} className="w-full gap-1.5 text-xs border-dashed">
-                            <Plus className="h-3.5 w-3.5" />
-                            Add certification
-                          </Button>
-                        </div>
-                      )}
-
-                      {section.id === 'achievements' && (
-                        <div className="space-y-2">
-                          {(() => { const ach = getSectionContent('achievements').achievements || []; return ach.length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-4">No achievements added yet.</p>
-                          ) : ach.map((a: string, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
-                              <span className="text-xs text-foreground">{a}</span>
-                              <button type="button" onClick={() => { const list = ach.filter((_: string, i: number) => i !== idx); updateSection('achievements', { achievements: list }); }} className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-3 w-3" /></button>
-                            </div>
-                          )); })()}
-                          <div className="flex gap-2">
-                            <Input id="ach-input" placeholder="Add an achievement..." className="h-9 text-xs rounded-lg flex-1" onKeyDown={(e) => { if (e.key === 'Enter') { const val = (e.target as HTMLInputElement).value.trim(); if (val) { const a = getSectionContent('achievements').achievements || []; updateSection('achievements', { achievements: [...a, val] }); (e.target as HTMLInputElement).value = ''; } } }} />
+                  <div className="space-y-4">
+                    {(getSectionContent('experience').experiences || []).map((exp: any, idx: number) => (
+                      <div key={exp.id || idx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Briefcase className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />Position {idx + 1}</span>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('experience', idx, 'up')}
+                              disabled={idx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('experience', idx, 'down')}
+                              disabled={idx === (getSectionContent('experience').experiences || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                              const list = (getSectionContent('experience').experiences || []).filter((e: any) => e.id !== exp.id);
+                              updateSection('experience', { experiences: list });
+                            }}>
+                              Delete
+                            </Button>
                           </div>
                         </div>
-                      )}
 
-                      {section.id === 'projects' && (
-                        <div className="space-y-3">
-                          {(() => { const projs = getSectionContent('projects').projects || []; return projs.length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-4">No projects added.</p>
-                          ) : projs.map((proj: any, idx: number) => (
-                            <div key={proj.id || idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-muted-foreground">Project #{idx + 1}</span>
-                                <button type="button" onClick={() => { const p = projs.filter((_: any, i: number) => i !== idx); updateSection('projects', { projects: p }); }} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                              </div>
-                              <Input value={proj.name || ''} onChange={(e) => { const list = [...projs]; list[idx] = { ...list[idx], name: e.target.value }; updateSection('projects', { projects: list }); }} placeholder="Project name" className="h-8 text-xs rounded-lg" />
-                              <Textarea value={proj.description || ''} onChange={(e) => { const list = [...projs]; list[idx] = { ...list[idx], description: e.target.value }; updateSection('projects', { projects: list }); }} rows={2} className="text-xs rounded-lg" placeholder="Brief description" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Company Name</Label>
+                            <Input
+                              value={exp.company}
+                              className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('experience').experiences];
+                                list[idx].company = e.target.value;
+                                updateSection('experience', { experiences: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Job Title</Label>
+                            <Input
+                              value={exp.role}
+                              className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('experience').experiences];
+                                list[idx].role = e.target.value;
+                                updateSection('experience', { experiences: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Start Date</Label>
+                            <Input
+                              value={exp.startDate}
+                              className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('experience').experiences];
+                                list[idx].startDate = e.target.value;
+                                updateSection('experience', { experiences: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">End Date</Label>
+                            <Input
+                              value={exp.endDate}
+                              disabled={exp.current}
+                              className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('experience').experiences];
+                                list[idx].endDate = e.target.value;
+                                updateSection('experience', { experiences: list });
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={exp.current}
+                            onChange={(e) => {
+                              const list = [...getSectionContent('experience').experiences];
+                              list[idx].current = e.target.checked;
+                              if (e.target.checked) list[idx].endDate = 'Present';
+                              updateSection('experience', { experiences: list });
+                            }}
+                            className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                          />
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Currently Work Here</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-xs">Description Bullets (one per line)</Label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={rewritingExpId === (exp.id || String(idx))}
+                              onClick={() => handleRewriteExperienceBullets(idx)}
+                              className="h-7 text-[10px] font-bold gap-1 bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200"
+                            >
+                              {rewritingExpId === (exp.id || String(idx)) ? (
+                                <>
+                                  <span className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                                  Rewriting...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-3 h-3" />
+                                  Rewrite Bullets
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={exp.description.join('\n')}
+                            onChange={(e) => {
+                              const list = [...getSectionContent('experience').experiences];
+                              list[idx].description = e.target.value.split('\n').filter(Boolean);
+                              updateSection('experience', { experiences: list });
+                            }}
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {/* PROJECTS TAB */}
+                <TabsContent value="projects" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Folder className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Projects</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Showcase personal, open-source, or freelance projects with technologies used.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('projects').projects || [];
+                      updateSection('projects', {
+                        projects: [...cur, { id: nanoid(), name: '', description: '', technologies: [], link: '', date: '' }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Project
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(getSectionContent('projects').projects || []).map((proj: any, idx: number) => (
+                      <div key={proj.id || idx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Folder className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />Project {idx + 1}</span>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('projects', idx, 'up')}
+                              disabled={idx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('projects', idx, 'down')}
+                              disabled={idx === (getSectionContent('projects').projects || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                              const list = (getSectionContent('projects').projects || []).filter((p: any) => p.id !== proj.id);
+                              updateSection('projects', { projects: list });
+                            }}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Project Name</Label>
+                            <Input
+                              value={proj.name}
+                              className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('projects').projects];
+                                list[idx].name = e.target.value;
+                                updateSection('projects', { projects: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Date</Label>
+                            <Input
+                              value={proj.date}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('projects').projects];
+                                list[idx].date = e.target.value;
+                                updateSection('projects', { projects: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Technologies (comma-separated)</Label>
+                            <Input
+                              value={proj.technologies.join(', ')}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('projects').projects];
+                                list[idx].technologies = e.target.value.split(',').map((t: string) => t.trim()).filter(Boolean);
+                                updateSection('projects', { projects: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Link URL</Label>
+                            <Input
+                              value={proj.link}
+                              className={cn(!isValidUrl(proj.link) && "border-red-500 focus-visible:ring-red-500")}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('projects').projects];
+                                list[idx].link = e.target.value;
+                                updateSection('projects', { projects: list });
+                              }}
+                            />
+                            {!isValidUrl(proj.link) && (
+                              <span className="text-[10px] text-red-500 font-medium block">Please enter a valid URL.</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Textarea
+                            value={proj.description}
+                            onChange={(e) => {
+                              const list = [...getSectionContent('projects').projects];
+                              list[idx].description = e.target.value;
+                              updateSection('projects', { projects: list });
+                            }}
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {/* EDUCATION TAB */}
+                <TabsContent value="education" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <GraduationCap className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Education</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Your academic background including degrees, institutions, and graduation dates.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('education').educations || [];
+                      updateSection('education', {
+                        educations: [...cur, { id: nanoid(), institution: '', degree: '', field: '', graduationDate: '', gpa: '' }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Education
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(getSectionContent('education').educations || []).map((edu: any, idx: number) => (
+                      <div key={edu.id || idx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><GraduationCap className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />Education {idx + 1}</span>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('education', idx, 'up')}
+                              disabled={idx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('education', idx, 'down')}
+                              disabled={idx === (getSectionContent('education').educations || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                              const list = (getSectionContent('education').educations || []).filter((e: any) => e.id !== edu.id);
+                              updateSection('education', { educations: list });
+                            }}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid resume-editor-grid-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Institution</Label>
+                            <Input
+                              value={edu.institution}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('education').educations];
+                                list[idx].institution = e.target.value;
+                                updateSection('education', { educations: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Degree</Label>
+                            <Input
+                              value={edu.degree}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('education').educations];
+                                list[idx].degree = e.target.value;
+                                updateSection('education', { educations: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Field of Study</Label>
+                            <Input
+                              value={edu.field}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('education').educations];
+                                list[idx].field = e.target.value;
+                                updateSection('education', { educations: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Graduation Date</Label>
+                            <Input
+                              value={edu.graduationDate}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('education').educations];
+                                list[idx].graduationDate = e.target.value;
+                                updateSection('education', { educations: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">GPA</Label>
+                            <Input
+                              value={edu.gpa}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('education').educations];
+                                list[idx].gpa = e.target.value;
+                                updateSection('education', { educations: list });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {/* CERTIFICATIONS TAB */}
+                <TabsContent value="certifications" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Award className="w-4.5 h-4.5 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Certifications & Credentials</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Professional certifications, licenses, or credentials you have earned.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('certifications').certifications || [];
+                      updateSection('certifications', {
+                        certifications: [...cur, { id: nanoid(), name: '', issuer: '', date: '', link: '' }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Certification
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(getSectionContent('certifications').certifications || []).map((cert: any, idx: number) => (
+                      <div key={cert.id || idx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Award className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />Certification {idx + 1}</span>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('certifications', idx, 'up')}
+                              disabled={idx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('certifications', idx, 'down')}
+                              disabled={idx === (getSectionContent('certifications').certifications || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                              const list = (getSectionContent('certifications').certifications || []).filter((c: any) => c.id !== cert.id);
+                              updateSection('certifications', { certifications: list });
+                            }}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Certification Name</Label>
+                            <Input
+                              value={cert.name}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('certifications').certifications];
+                                list[idx].name = e.target.value;
+                                updateSection('certifications', { certifications: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Issuer</Label>
+                            <Input
+                              value={cert.issuer}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('certifications').certifications];
+                                list[idx].issuer = e.target.value;
+                                updateSection('certifications', { certifications: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Issue Date</Label>
+                            <Input
+                              value={cert.date}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('certifications').certifications];
+                                list[idx].date = e.target.value;
+                                updateSection('certifications', { certifications: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Credential Link</Label>
+                            <Input
+                              value={cert.link}
+                              className={cn(!isValidUrl(cert.link) && "border-red-500 focus-visible:ring-red-500")}
+                              onChange={(e) => {
+                                const list = [...getSectionContent('certifications').certifications];
+                                list[idx].link = e.target.value;
+                                updateSection('certifications', { certifications: list });
+                              }}
+                            />
+                            {!isValidUrl(cert.link) && (
+                              <span className="text-[10px] text-red-500 font-medium block">Please enter a valid URL.</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {/* LANGUAGES TAB */}
+                <TabsContent value="languages" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Globe className="w-4.5 h-4.5 text-teal-650 dark:text-teal-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Languages</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Languages you speak and your proficiency level in each.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('languages').languages || [];
+                      updateSection('languages', {
+                        languages: [...cur, { language: '', proficiency: '' }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Language
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(getSectionContent('languages').languages || []).map((lang: any, idx: number) => (
+                      <div key={idx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Globe className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />Language {idx + 1}</span>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('languages', idx, 'up')}
+                              disabled={idx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('languages', idx, 'down')}
+                              disabled={idx === (getSectionContent('languages').languages || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                              const list = (getSectionContent('languages').languages || []).filter((_: any, i: number) => i !== idx);
+                              updateSection('languages', { languages: list });
+                            }}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Language *</Label>
+                            <Input
+                              value={lang.language}
+                              placeholder="e.g. French"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('languages').languages];
+                                list[idx].language = e.target.value;
+                                updateSection('languages', { languages: list });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Proficiency</Label>
+                            <Input
+                              value={lang.proficiency}
+                              placeholder="e.g. Professional Working, Native"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('languages').languages];
+                                list[idx].proficiency = e.target.value;
+                                updateSection('languages', { languages: list });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(getSectionContent('languages').languages || []).length === 0 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No languages added. Add languages to showcase bilingual or multilingual skills.</p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* REFERENCES TAB */}
+                <TabsContent value="references" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Users className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Professional References</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">People who can vouch for your work quality and character.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('references').references || [];
+                      updateSection('references', {
+                        references: [...cur, { id: nanoid(), name: '', company: '', title: '', email: '', phone: '', availableOnRequest: false }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Reference
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(getSectionContent('references').references || []).map((ref: any, idx: number) => (
+                      <div key={ref.id || idx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5"><Users className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />Reference {idx + 1}</span>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('references', idx, 'up')}
+                              disabled={idx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('references', idx, 'down')}
+                              disabled={idx === (getSectionContent('references').references || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8" onClick={() => {
+                              const list = (getSectionContent('references').references || []).filter((r: any) => r.id !== ref.id);
+                              updateSection('references', { references: list });
+                            }}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 pb-1">
+                          <input
+                            type="checkbox"
+                            id={`ref-available-${ref.id}`}
+                            checked={ref.availableOnRequest}
+                            onChange={(e) => {
+                              const list = [...getSectionContent('references').references];
+                              list[idx].availableOnRequest = e.target.checked;
+                              updateSection('references', { references: list });
+                            }}
+                            className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                          />
+                          <Label htmlFor={`ref-available-${ref.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                            Available upon request
+                          </Label>
+                        </div>
+
+                        {!ref.availableOnRequest && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Name *</Label>
+                              <Input
+                                value={ref.name}
+                                placeholder="e.g. Jane Doe"
+                                onChange={(e) => {
+                                  const list = [...getSectionContent('references').references];
+                                  list[idx].name = e.target.value;
+                                  updateSection('references', { references: list });
+                                }}
+                              />
                             </div>
-                          )); })()}
-                          <Button variant="outline" size="sm" onClick={() => { const p = getSectionContent('projects').projects || []; updateSection('projects', { projects: [...p, { id: nanoid(), name: '', description: '', technologies: [], link: '', date: '' }] }); }} className="w-full gap-1.5 text-xs border-dashed">
-                            <Plus className="h-3.5 w-3.5" />
-                            Add project
+                            <div className="space-y-1">
+                              <Label className="text-xs">Company</Label>
+                              <Input
+                                value={ref.company}
+                                placeholder="e.g. Google"
+                                onChange={(e) => {
+                                  const list = [...getSectionContent('references').references];
+                                  list[idx].company = e.target.value;
+                                  updateSection('references', { references: list });
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Title</Label>
+                              <Input
+                                value={ref.title}
+                                placeholder="e.g. Director of Engineering"
+                                onChange={(e) => {
+                                  const list = [...getSectionContent('references').references];
+                                  list[idx].title = e.target.value;
+                                  updateSection('references', { references: list });
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Email</Label>
+                              <Input
+                                type="email"
+                                value={ref.email}
+                                placeholder="jane.doe@example.com"
+                                className={cn(!isValidEmail(ref.email) && "border-red-500 focus-visible:ring-red-500")}
+                                onChange={(e) => {
+                                  const list = [...getSectionContent('references').references];
+                                  list[idx].email = e.target.value;
+                                  updateSection('references', { references: list });
+                                }}
+                              />
+                              {!isValidEmail(ref.email) && (
+                                <span className="text-[9px] text-red-500 font-semibold block">Invalid email format.</span>
+                              )}
+                            </div>
+                            <div className="space-y-1 col-span-2">
+                              <Label className="text-xs">Phone</Label>
+                              <Input
+                                value={ref.phone}
+                                placeholder="e.g. +1 (555) 019-2834"
+                                className={cn(!isValidPhone(ref.phone) && "border-red-500 focus-visible:ring-red-500")}
+                                onChange={(e) => {
+                                  const list = [...getSectionContent('references').references];
+                                  list[idx].phone = e.target.value;
+                                  updateSection('references', { references: list });
+                                }}
+                              />
+                              {!isValidPhone(ref.phone) && (
+                                <span className="text-[9px] text-red-500 font-semibold block">Invalid phone number.</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {(getSectionContent('references').references || []).length === 0 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No references added. Add references or select "Available upon request".</p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* CUSTOM SECTIONS TAB */}
+                <TabsContent value="custom" className="space-y-5">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <LayoutList className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Custom Sections</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Add volunteer work, patents, publications, or any other section.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                      const cur = getSectionContent('custom').customSections || [];
+                      updateSection('custom', {
+                        customSections: [...cur, { id: nanoid(), title: '', items: [] }]
+                      });
+                    }}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Custom Section
+                    </Button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {(getSectionContent('custom').customSections || []).map((sect: any, sectIdx: number) => (
+                      <div key={sect.id || sectIdx} className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors">
+                        <div className="flex justify-between items-center gap-3">
+                          <div className="flex-1 max-w-sm">
+                            <Label className="text-xs font-bold text-slate-500">Section Title *</Label>
+                            <Input
+                              value={sect.title}
+                              placeholder="e.g. Volunteer Work, Patents"
+                              className="font-bold h-9 mt-1"
+                              onChange={(e) => {
+                                const list = [...getSectionContent('custom').customSections];
+                                list[sectIdx].title = e.target.value;
+                                updateSection('custom', { customSections: list });
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mt-5">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('custom', sectIdx, 'up')}
+                              disabled={sectIdx === 0}
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-slate-500 hover:text-slate-700" 
+                              onClick={() => moveItem('custom', sectIdx, 'down')}
+                              disabled={sectIdx === (getSectionContent('custom').customSections || []).length - 1}
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 h-8 font-bold" onClick={() => {
+                              const list = (getSectionContent('custom').customSections || []).filter((s: any) => s.id !== sect.id);
+                              updateSection('custom', { customSections: list });
+                            }}>
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Items in custom section */}
+                        <div className="space-y-3 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-wider">Section Items</span>
+                            <Button variant="outline" size="sm" className="h-7 text-xs border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5" onClick={() => {
+                              const list = [...getSectionContent('custom').customSections];
+                              list[sectIdx].items = [...(list[sectIdx].items || []), { id: nanoid(), title: '', subtitle: '', description: '' }];
+                              updateSection('custom', { customSections: list });
+                            }}>
+                              Add Item
+                            </Button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {(sect.items || []).map((item: any, itemIdx: number) => (
+                              <div key={item.id || itemIdx} className="border border-slate-200/50 dark:border-white/5 p-3 rounded-md bg-slate-50/50 dark:bg-white/5 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400">Item #{itemIdx + 1}</span>
+                                  <div className="flex items-center gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-600" 
+                                      onClick={() => {
+                                        const list = [...getSectionContent('custom').customSections];
+                                        const items = [...list[sectIdx].items];
+                                        if (itemIdx > 0) {
+                                          const tmp = items[itemIdx];
+                                          items[itemIdx] = items[itemIdx - 1];
+                                          items[itemIdx - 1] = tmp;
+                                          list[sectIdx].items = items;
+                                          updateSection('custom', { customSections: list });
+                                        }
+                                      }}
+                                      disabled={itemIdx === 0}
+                                    >
+                                      <ArrowUp className="w-3 h-3" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-600" 
+                                      onClick={() => {
+                                        const list = [...getSectionContent('custom').customSections];
+                                        const items = [...list[sectIdx].items];
+                                        if (itemIdx < items.length - 1) {
+                                          const tmp = items[itemIdx];
+                                          items[itemIdx] = items[itemIdx + 1];
+                                          items[itemIdx + 1] = tmp;
+                                          list[sectIdx].items = items;
+                                          updateSection('custom', { customSections: list });
+                                        }
+                                      }}
+                                      disabled={itemIdx === (sect.items || []).length - 1}
+                                    >
+                                      <ArrowDown className="w-3 h-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => {
+                                      const list = [...getSectionContent('custom').customSections];
+                                      list[sectIdx].items = list[sectIdx].items.filter((i: any) => i.id !== item.id);
+                                      updateSection('custom', { customSections: list });
+                                    }}>
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px]">Item Title *</Label>
+                                    <Input
+                                      value={item.title}
+                                      placeholder="e.g. Volunteer"
+                                      className="h-8 text-xs"
+                                      onChange={(e) => {
+                                        const list = [...getSectionContent('custom').customSections];
+                                        list[sectIdx].items[itemIdx].title = e.target.value;
+                                        updateSection('custom', { customSections: list });
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px]">Subtitle / Organization</Label>
+                                    <Input
+                                      value={item.subtitle}
+                                      placeholder="e.g. Red Cross"
+                                      className="h-8 text-xs"
+                                      onChange={(e) => {
+                                        const list = [...getSectionContent('custom').customSections];
+                                        list[sectIdx].items[itemIdx].subtitle = e.target.value;
+                                        updateSection('custom', { customSections: list });
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[10px]">Description</Label>
+                                  <Textarea
+                                    value={item.description || ''}
+                                    placeholder="e.g. Managed team of 15 volunteers..."
+                                    className="text-xs"
+                                    rows={2}
+                                    onChange={(e) => {
+                                      const list = [...getSectionContent('custom').customSections];
+                                      list[sectIdx].items[itemIdx].description = e.target.value;
+                                      updateSection('custom', { customSections: list });
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(getSectionContent('custom').customSections || []).length === 0 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No custom sections added. Add volunteer work, certifications, patents, or publications.</p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* LAYOUT TAB */}
+                <TabsContent value="layout" className="space-y-5">
+                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="w-9 h-9 rounded-xl bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Settings className="w-4.5 h-4.5 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Section Order & Visibility</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Drag to reorder sections and toggle visibility on your resume.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-xl p-4 bg-slate-50/50 dark:bg-white/5">
+                    {[...localResume.sections].sort((a, b) => a.order - b.order).map((sec, idx, sortedList) => (
+                      <div key={sec.id} className="flex items-center justify-between bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-white/10 p-3 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 w-5">#{idx + 1}</span>
+                          <span className="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200">
+                            {sec.type === 'custom' ? `Custom Sections` : sec.type === 'certifications' ? 'Certifications (Credentials)' : sec.type}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {/* Toggle visibility */}
+                          <div className="flex items-center gap-1.5 mr-2">
+                            <input
+                              type="checkbox"
+                              id={`vis-${sec.id}`}
+                              checked={sec.visible}
+                              onChange={() => toggleSectionVisibility(sec.id)}
+                              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                            />
+                            <label htmlFor={`vis-${sec.id}`} className="text-xs font-medium text-slate-500 cursor-pointer select-none">
+                              {sec.visible ? 'Visible' : 'Hidden'}
+                            </label>
+                          </div>
+                          {/* Move up / down */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                            onClick={() => moveSection(idx, 'up')}
+                            disabled={idx === 0 || sec.type === 'header'} // header is usually locked at top
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                            onClick={() => moveSection(idx, 'down')}
+                            disabled={idx === sortedList.length - 1 || sec.type === 'header'}
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
                           </Button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {/* ACHIEVEMENTS TAB */}
+                <TabsContent value="achievements" className="space-y-6">
+                  {/* Achievements Editor */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Achievements Highlights</h3>
+                      <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5" onClick={() => {
+                        const cur = getSectionContent('achievements').achievements || [];
+                        updateSection('achievements', {
+                          achievements: [...cur, '']
+                        });
+                      }}>
+                        Add Achievement
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {(getSectionContent('achievements').achievements || []).map((ach: string, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <Input
+                            placeholder="e.g. Winner of national hackathon out of 500+ teams"
+                            value={ach}
+                            onChange={(e) => {
+                              const list = [...getSectionContent('achievements').achievements];
+                              list[idx] = e.target.value;
+                              updateSection('achievements', { achievements: list });
+                            }}
+                            className="h-10 rounded-xl border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500"
+                          />
+                          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 h-9" onClick={() => {
+                            const list = (getSectionContent('achievements').achievements || []).filter((_: any, i: number) => i !== idx);
+                            updateSection('achievements', { achievements: list });
+                          }}>
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                      {(getSectionContent('achievements').achievements || []).length === 0 && (
+                        <p className="text-xs text-slate-550 dark:text-slate-400 italic">No achievements added. Add key milestones to stand out.</p>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* LIVE PREVIEW TAB */}
+                <TabsContent value="preview" className="h-full min-h-0 flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 rounded-t-xl border-b border-slate-200 bg-white/85 px-3 py-2.5 dark:border-white/10 dark:bg-slate-950/40 sm:rounded-xl sm:border">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
+                        <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">Live Preview</h3>
+                        <p className="hidden sm:block text-xs text-slate-550 dark:text-slate-455 mt-0.5 font-semibold">Inspect your resume before export.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 items-center rounded-xl bg-slate-50 p-1 dark:bg-white/5">
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5" onClick={() => setZoom(Math.max(35, zoom - 10))}>
+                        <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+                      </Button>
+                      <span className="text-[11px] text-slate-700 dark:text-slate-300 font-extrabold px-1 min-w-[34px] text-center">{zoom}%</span>
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5" onClick={() => setZoom(Math.min(150, zoom + 10))}>
+                        <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-hidden flex border-y border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-[#131b2e] sm:rounded-xl sm:border">
+                    <ResumePreview resume={localResume} templateId={selectedTemplate} zoom={zoom} contentId="resume-preview-mobile" />
+                  </div>
+                </TabsContent>
+
+                {/* REVIEW & EXPORT TAB */}
+                <TabsContent value="review" className="space-y-6">
+                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Final Review & Export</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-semibold">Review your ATS optimization checklist and export your final resume.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Detailed ATS Score Widget */}
+                    <Card className="border border-slate-200 dark:border-white/10 shadow-sm p-5 space-y-4 bg-slate-50/50 dark:bg-white/5 rounded-xl">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 border-b border-slate-200 dark:border-white/10 pb-2">
+                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        ATS Optimization Details
+                      </h4>
+                      
+                      <div className="flex items-center gap-4">
+                        {/* Radial Gauge */}
+                        <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
+                          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                            <circle className="text-slate-200 dark:text-white/5 stroke-current" cx="50" cy="50" fill="transparent" r="40" strokeWidth="8"></circle>
+                            <circle className="text-emerald-600 dark:text-emerald-400 stroke-current transition-all duration-1000" cx="50" cy="50" fill="transparent" r="40" 
+                              strokeDasharray="251.2" 
+                              strokeDashoffset={251.2 * (1 - atsSummary.score / 100)} 
+                              strokeLinecap="round" 
+                              strokeWidth="8">
+                            </circle>
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center flex-col">
+                            <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">{atsSummary.score}%</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {atsSummary.score >= 70 ? 'Ready for Applications!' : atsSummary.score >= 40 ? 'Needs Improvement' : 'Urgent Actions Required'}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Keywords: {atsSummary.matchedKeywords.length} matched</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Sections: {atsSummary.completenessScore}% filled</p>
+                        </div>
+                      </div>
+
+                      {/* Keyword list details */}
+                      <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/10 text-xs">
+                        <div>
+                          <span className="font-bold text-slate-700 dark:text-slate-400 block mb-1">Matched Keywords ({atsSummary.matchedKeywords.length}):</span>
+                          {atsSummary.matchedKeywords.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {atsSummary.matchedKeywords.slice(0, 5).map((kw, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded font-semibold text-[9px]">{kw}</span>
+                              ))}
+                              {atsSummary.matchedKeywords.length > 5 && (
+                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-455 border border-slate-200 dark:border-white/10 rounded font-semibold text-[9px]">+{atsSummary.matchedKeywords.length - 5} more</span>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 dark:text-slate-550 italic">None matched yet. Tailor skills and experience sections.</p>
+                          )}
+                        </div>
+                        
+                        {atsSummary.missingKeywords.length > 0 && (
+                          <div>
+                            <span className="font-bold text-slate-700 dark:text-slate-400 block mb-1">Missing Keywords ({atsSummary.missingKeywords.length}):</span>
+                            <div className="flex flex-wrap gap-1">
+                              {atsSummary.missingKeywords.slice(0, 5).map((kw, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-rose-500/10 text-rose-700 dark:text-rose-455 border border-rose-500/20 rounded font-semibold text-[9px]">{kw}</span>
+                              ))}
+                              {atsSummary.missingKeywords.length > 5 && (
+                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-455 border border-slate-200 dark:border-white/10 rounded font-semibold text-[9px]">+{atsSummary.missingKeywords.length - 5} more</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {atsSummary.suggestions.length > 0 && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 space-y-1">
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-300 block">Suggestions:</span>
+                          <ul className="text-[10px] text-amber-700 dark:text-amber-200 list-disc pl-4 space-y-1 font-semibold max-h-24 overflow-y-auto">
+                            {atsSummary.suggestions.map((s, i) => (
+                              <li key={i}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* Completion Panel */}
+                    <Card className="border border-slate-200 dark:border-white/10 shadow-sm p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 dark:bg-white/5 rounded-xl space-y-4 min-h-[220px]">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 animate-pulse">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">All Sections Completed!</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[240px] font-semibold">
+                          You have filled in all the core information. Click "Finish & Export" to download your ATS-ready resume.
+                        </p>
+                      </div>
+                      
+                      <Button 
+                        onClick={() => setShowDownloadModal(true)} 
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 h-10 px-6 rounded-xl shadow-md hover:shadow-lg transition-all"
+                      >
+                        <Sparkles className="w-4 h-4 text-blue-200" />
+                        Finish & Export
+                      </Button>
+                    </Card>
+                  </div>
+                </TabsContent>
+            </Tabs>
+          </div>
+          
+          {/* Wizard Navigation Footer */}
+          <div className="hidden sm:block shrink-0 border-t border-slate-200/50 dark:border-white/5">
+            {/* Mini progress bar */}
+            <div className="h-0.5 bg-slate-50/50 dark:bg-white/5">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 ease-out rounded-r-full" 
+                style={{ width: `${((activeFlowIndex + 1) / EDITOR_FLOW_STEPS.length) * 100}%` }} 
+              />
+            </div>
+            <div className="bg-slate-100/80 dark:bg-slate-950/40 backdrop-blur-sm px-5 py-3 flex justify-between items-center">
+              <Button
+                variant="outline"
+                disabled={activeEditTab === 'header'}
+                onClick={() => {
+                  if (activeEditTab === 'preview') {
+                    setActiveEditTab('review');
+                    return;
+                  }
+                  if (activeFlowIndex > 0) {
+                    setActiveEditTab(EDITOR_FLOW_STEPS[activeFlowIndex - 1].key);
+                  }
+                }}
+                className="border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-350 bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-white font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Back
+              </Button>
+              
+              <div className="flex items-center gap-1.5">
+                {activeEditTab !== 'review' && activeEditTab !== 'preview' ? (
+                  FORM_STEPS.map((step) => (
+                    <div 
+                      key={step.id}
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        activeEditTab === step.key 
+                          ? "w-4 bg-blue-500" 
+                          : isStepCompleted(step.key) 
+                            ? "bg-blue-300/60" 
+                            : "bg-white/10"
+                      )}
+                    />
+                  ))
+                ) : (
+                  ['review', 'preview'].map((key) => (
+                    <div 
+                      key={key}
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                        key === 'preview' && "lg:hidden",
+                        activeEditTab === key 
+                          ? "w-4 bg-blue-500" 
+                          : "bg-blue-300/60"
+                      )}
+                    />
+                  ))
+                )}
+              </div>
+
+              <Button
+                onClick={() => {
+                  if (isFinalFlowStep) {
+                    setShowDownloadModal(true);
+                  } else if (activeFlowIndex < EDITOR_FLOW_STEPS.length - 1) {
+                    setActiveEditTab(EDITOR_FLOW_STEPS[activeFlowIndex + 1].key);
+                  } else {
+                    setShowDownloadModal(true);
+                  }
+                }}
+                className={cn(
+                  "font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs shadow-sm transition-all",
+                  isFinalFlowStep 
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-755 text-white shadow-blue-500/20" 
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                )}
+              >
+                {isFinalFlowStep ? (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Finish & Export
+                  </>
+                ) : (
+                  <>
+                    Next Step
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </Card>
+        </div>
+
+        <aside className="hidden lg:flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-950/30 shadow-sm">
+          <div className="shrink-0 flex items-start justify-between gap-3 border-b border-slate-200 dark:border-white/10 px-4 py-3 bg-white/55 dark:bg-white/[0.03] backdrop-blur-sm">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
+                <Eye className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">Live Preview</h3>
+                <p className="text-xs text-slate-550 dark:text-slate-455 mt-0.5 font-semibold">Updates instantly while you edit.</p>
+              </div>
+            </div>
+            <div className="flex gap-1.5 items-center shrink-0">
+              <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" onClick={() => setZoom(Math.max(50, zoom - 10))}>
+                <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+              </Button>
+              <span className="text-[11px] text-slate-700 dark:text-slate-300 font-extrabold px-1 min-w-[36px] text-center">{zoom}%</span>
+              <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" onClick={() => setZoom(Math.min(150, zoom + 10))}>
+                <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ResumePreview resume={localResume} templateId={selectedTemplate} zoom={zoom} contentId="resume-preview-desktop" />
+          </div>
+        </aside>
+      </div>
+
+      <div
+        aria-hidden="true"
+        className="fixed left-[-10000px] top-0 h-[1200px] w-[900px] overflow-visible bg-white pointer-events-none"
+      >
+        <ResumePreview
+          resume={localResume}
+          templateId={selectedTemplate}
+          zoom={100}
+          contentRef={exportPreviewRef}
+          contentId="resume-pdf-content"
+        />
+      </div>
+
+      {showDownloadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
+          <Card className="w-full max-w-2xl border border-slate-200 dark:border-white/10 shadow-2xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden animate-scale-up">
+            {/* Header Section */}
+            <div className="p-6 md:p-8 flex flex-col items-center text-center relative border-b border-slate-200 dark:border-white/10">
+              <button 
+                onClick={() => setShowDownloadModal(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-655 dark:hover:text-white text-lg font-bold outline-none"
+              >
+                ✕
+              </button>
+              
+              <div className="w-20 h-20 mb-4 relative flex items-center justify-center">
+                <svg className="w-16 h-16 mx-auto text-emerald-600 dark:text-emerald-400 relative z-10" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" fill="none" r="45" stroke="currentColor" strokeWidth="8" strokeDasharray="283" strokeDashoffset="0" strokeLinecap="round" />
+                  <path d="M30 50 L45 65 L70 35" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="100" strokeDashoffset="0" />
+                </svg>
+                <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full -z-0 scale-110 blur-xs"></div>
+              </div>
+              
+              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Resume Completed!</h3>
+              <p className="text-sm text-slate-550 dark:text-slate-400 mt-1 max-w-md font-semibold">
+                Your ATS-optimized resume has been generated and is ready to share.
+              </p>
+            </div>
+            
+            {/* Match Summary Card */}
+            <CardContent className="p-6 md:p-8 space-y-6">
+              <div className="bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+                {/* Circular Progress Dial */}
+                <div className="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle className="text-slate-200 dark:text-white/5 stroke-current" cx="50" cy="50" fill="transparent" r="40" strokeWidth="8"></circle>
+                    <circle className="text-emerald-600 dark:text-emerald-400 stroke-current transition-all duration-1000 ease-out" cx="50" cy="50" fill="transparent" r="40" 
+                      strokeDasharray="251.2" 
+                      strokeDashoffset={251.2 * (1 - atsSummary.score / 100)} 
+                      strokeLinecap="round" 
+                      strokeWidth="8">
+                    </circle>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center flex-col">
+                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{atsSummary.score}%</span>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Match</span>
+                  </div>
+                </div>
+                
+                {/* Metadata text */}
+                <div className="flex-1 text-center sm:text-left space-y-3">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center sm:justify-start gap-1.5">
+                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ATS Optimization Score: {atsSummary.score >= 70 ? 'High' : atsSummary.score >= 40 ? 'Medium' : 'Low'}
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <li className="flex items-center justify-center sm:justify-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span>{atsSummary.matchedKeywords.length} matching keywords found.</span>
+                    </li>
+                    <li className="flex items-center justify-center sm:justify-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span>All key sections populated accurately.</span>
+                    </li>
+                  </ul>
+                  
+                  {atsSummary.matchedKeywords.length > 0 && (
+                    <div className="pt-1 flex flex-wrap justify-center sm:justify-start gap-1.5">
+                      {atsSummary.matchedKeywords.slice(0, 4).map((kw, i) => (
+                        <span key={i} className="px-2.5 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded-md font-semibold text-[10px]">
+                          {kw}
+                        </span>
+                      ))}
+                      {atsSummary.matchedKeywords.length > 4 && (
+                        <span className="px-2.5 py-1 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-400 border border-slate-200 dark:border-white/10 rounded-md font-semibold text-[10px]">
+                          +{atsSummary.matchedKeywords.length - 4} more
+                        </span>
                       )}
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Panel: Live Preview with template switcher + zoom */}
-        <div className={cn('hidden md:flex flex-col border-l border-border', mobileTab === 'edit' && 'hidden md:flex')}>
-          {/* Template switcher */}
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2 overflow-x-auto shrink-0">
-            {TEMPLATES.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setSelectedTemplate(t.id as TemplateId)}
-                className={cn(
-                  'flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-medium transition-all',
-                  selectedTemplate === t.id ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                )}
+              </div>
+              
+              {/* Actions Section */}
+              <div className="flex flex-col gap-3">
+                <Button 
+                  onClick={handleExportPDF} 
+                  className="w-full bg-primary hover:bg-primary/95 text-white font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF Format
+                </Button>
+                <Button 
+                  onClick={handleExportDOCX} 
+                  variant="outline"
+                  className="w-full border border-slate-200 dark:border-white/10 hover:border-primary text-slate-800 dark:text-slate-200 bg-white/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/8 font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
+                >
+                  <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  Download MS Word (.docx) Format
+                </Button>
+              </div>
+            </CardContent>
+            
+            {/* Footer */}
+            <div className="bg-slate-50/50 dark:bg-slate-950/20 border-t border-slate-200 dark:border-white/10 px-6 py-4 flex justify-between items-center">
+              <button 
+                onClick={() => setShowDownloadModal(false)}
+                className="text-xs font-bold text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-1 bg-transparent border-none outline-none"
               >
-                <span className={cn('h-3 w-3 rounded', t.color)} />
-                {t.name}
+                ← Go back to editor
               </button>
-            ))}
-          </div>
-
-          {/* Preview content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div ref={exportPreviewRef}>
-              <ResumePreview resume={{ ...localResume, templateId: selectedTemplate }} zoom={zoom} />
+              <button 
+                onClick={() => {
+                  setShowDownloadModal(false);
+                  window.location.search = '?mode=upload';
+                }}
+                className="text-xs font-bold text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-1 bg-transparent border-none outline-none"
+              >
+                Start a new CV +
+              </button>
             </div>
-          </div>
-
-          {/* Zoom control */}
-          <div className="flex items-center justify-center gap-2 border-t border-border px-3 py-2 shrink-0">
-            <button type="button" onClick={() => setZoom(Math.max(50, zoom - 10))} className="text-muted-foreground hover:text-foreground transition-colors" disabled={zoom <= 50}>
-              <ZoomOut className="h-3.5 w-3.5" />
-            </button>
-            <span className="text-[10px] font-medium text-muted-foreground min-w-[32px] text-center tabular-nums">{zoom}%</span>
-            <button type="button" onClick={() => setZoom(Math.min(150, zoom + 10))} className="text-muted-foreground hover:text-foreground transition-colors" disabled={zoom >= 150}>
-              <ZoomIn className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          </Card>
         </div>
-
-        {/* AI Suggestions Slide-over Panel */}
-        <AISuggestionsPanel open={aiPanelOpen} onClose={() => setAiPanelOpen(false)} />
-      </div>
-      </div>
       )}
-    </>
+      {/* Mobile Bottom Navigation Bar (Stitch Light theme compliant mockup mapped actions) */}
+      <nav className="fixed bottom-0 left-0 w-full z-50 bg-white/95 text-slate-500 backdrop-blur-xl border-t border-slate-200 shadow-lg flex justify-around items-center px-3 pt-2 pb-3 dark:bg-[#0f172a]/95 dark:text-slate-400 dark:border-white/10 lg:hidden">
+        {/* Layout/Templates button */}
+        <button 
+          type="button"
+          onClick={() => {
+            setActiveEditTab('layout');
+          }}
+          className={cn(
+            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            activeEditTab === 'layout' 
+              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30" 
+              : "hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-[10px] font-semibold mt-0.5">Layout</span>
+        </button>
+
+        {/* Editor Button */}
+        <button 
+          type="button"
+          onClick={() => {
+            if (activeEditTab === 'layout' || activeEditTab === 'preview' || activeEditTab === 'review') {
+              setActiveEditTab('header');
+            }
+          }}
+          className={cn(
+            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            activeEditTab !== 'layout' && activeEditTab !== 'preview' && activeEditTab !== 'review'
+              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30" 
+              : "hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          <Edit3 className="w-5 h-5" />
+          <span className="text-[10px] font-semibold mt-0.5">Editor</span>
+        </button>
+
+        {/* Preview Button */}
+        <button 
+          type="button"
+          onClick={() => setActiveEditTab('preview')}
+          className={cn(
+            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            activeEditTab === 'preview'
+              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30" 
+              : "hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          <Eye className="w-5 h-5" />
+          <span className="text-[10px] font-semibold mt-0.5">Preview</span>
+        </button>
+
+        {/* Export Button */}
+        <button 
+          type="button"
+          onClick={() => setActiveEditTab('review')}
+          className={cn(
+            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            activeEditTab === 'review'
+              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30" 
+              : "hover:text-slate-800 dark:hover:text-slate-200"
+          )}
+        >
+          <Download className="w-5 h-5" />
+          <span className="text-[10px] font-semibold mt-0.5">Export</span>
+        </button>
+      </nav>
+    </div>
   );
 }

@@ -550,16 +550,6 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
           role: input.role
         });
       }),
-    updateMemberRole: protectedProcedure
-      .input(z.object({ orgId: z.string(), memberId: z.string(), role: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const members = await db.getOrganizationMembers(input.orgId);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to change member roles");
-        }
-        return db.updateOrganizationMemberRole(input.orgId, input.memberId, input.role);
-      }),
     removeMember: protectedProcedure
       .input(z.object({ orgId: z.string(), memberId: z.string() }))
       .mutation(async ({ input, ctx }) => {
