@@ -611,26 +611,16 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
           role: "system",
           content:
             "You are an expert resume parsing and structuring system. Parse the following resume raw text into a clean, structured JSON object matching the schema. Follow these strict rules:\n" +
-            "1. GENUINE CONTENT ONLY: Extract and structure only information genuinely present in the original document. Do NOT invent, embellish, or write AI-created achievements, metrics, projects, duties, or sentences. Every single bullet point, achievement, description, or phrase MUST be derived directly from the input text.\n" +
-            "2. NO DUPLICATES: Ensure no duplicate experience entries, project descriptions, skills, or bullet points. Check names, companies, bullet content, and dates to ensure they do not repeat.\n" +
-            "3. NO MISMATCHES: Align all company names, dates, and titles exactly as stated in the raw text. Do not swap roles or mix education/projects details.\n" +
-            "4. JOB TITLE & TARGET ROLE: Automatically identify the candidate's current/most recent job title and their target professional role from the document (objective, summary, headline, or most recent experience). Populate 'header.jobTitle' with the current/recent title and 'header.targetRole' with the role they are targeting or seeking.\n" +
-            "5. NO HALLUCINATIONS: If a field (e.g. GPA, link, description, phone, email, etc.) is not present in the source text, leave it as an empty string. Do not generate fake URLs, placeholder companies, or invented bullet points.\n" +
-            "6. UNIQUE IDs: For each experience, project, education, reference, and certification, generate a unique random ID (e.g. using a simple string or hash) to ensure no collisions.\n" +
-            "7. EMPTY OVER INVENTED: Prefer empty arrays and empty strings over fabricated content. Never add skills, experiences, or education entries that are not in the source.\n" +
-            "8. TEN SECTIONS — map document content into exactly these sections in order:\n" +
-            "   (1) header: name, email, phone, location, links, jobTitle, targetRole\n" +
-            "   (2) summary: professional summary, profile, or objective text\n" +
-            "   (3) skills: grouped skill categories from skills/competencies sections\n" +
-            "   (4) experiences: work history with company, role, dates, bullet descriptions\n" +
-            "   (5) projects: project names, descriptions, technologies, links\n" +
-            "   (6) educations: degrees, institutions, fields, graduation dates\n" +
-            "   (7) certifications: credentials, licenses, courses with issuer and date\n" +
-            "   (8) achievements: awards, honors, accomplishments as string array\n" +
-            "   (9) languages: language name and proficiency level\n" +
-            "   (10) references: reference contacts with name, title, company, email, phone\n" +
-            "9. Section headers may appear as numbered titles (e.g. '#3 Skills', '4. Experience') — use them to assign content to the correct section.\n" +
-            "10. Output strictly the JSON matching the schema, with no additional explanation or wrapping text.",
+            "1. GENUINE CONTENT ONLY — never invent achievements, metrics, or duties.\n" +
+            "2. NO DUPLICATES — dedupe experience, projects, skills, bullets.\n" +
+            "3. NO MISMATCHES — keep names/dates/titles exactly as stated.\n" +
+            "4. Identify header.jobTitle (current/most recent) and header.targetRole (from objective/summary/headline) automatically.\n" +
+            "5. NO HALLUCINATIONS — empty string/array beats a fabricated field.\n" +
+            "6. Generate a unique ID per experience/project/education/reference/cert.\n" +
+            "7. EMPTY OVER INVENTED.\n" +
+            "8. Map content into exactly these 10 sections, in order: header, summary, skills, experiences, projects, educations, certifications, achievements, languages, references.\n" +
+            "9. Numbered section headers in the source (e.g. \"#3 Skills\") are a hint — use them to route content correctly.\n" +
+            "10. Output strictly the JSON, no wrapping prose.",
         },
         {
           role: "user",
@@ -795,6 +785,7 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
           },
         },
       },
+      model: "gpt-4o",
       temperature: 0.1,
     });
 

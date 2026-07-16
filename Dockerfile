@@ -2,7 +2,7 @@
 FROM node:20-alpine AS client-builder
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile || npm install
+RUN npm install -g pnpm && pnpm install --no-frozen-lockfile || npm install --legacy-peer-deps
 COPY . .
 RUN npm run build
 
@@ -10,7 +10,7 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile || npm install --prod
+RUN npm install -g pnpm && pnpm install --prod --no-frozen-lockfile || npm install --prod --legacy-peer-deps
 COPY --from=client-builder /app/dist ./dist
 COPY --from=client-builder /app/server ./server
 COPY --from=client-builder /app/shared ./shared

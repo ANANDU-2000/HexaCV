@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
-import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary } from "./aiSuggestions";
+import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
 import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
 import { extractText, parseResumeWithLLM } from "./fileParser";
@@ -179,7 +179,16 @@ export const appRouter = router({
             messages: [
               {
                 role: "system",
-                content: "You are an expert resume writer. Generate a fully completed professional resume JSON structure matching the schema. Fill in all fields with plausible, highly tailored professional bullets based on the user's prompt. Return only the JSON object.",
+                content:
+            "CRITICAL RULES — you MUST follow all of these:\n" +
+            "1. ONLY use facts from the user's 'Background/Highlights' input. Do NOT invent achievements, metrics, companies, degrees, tools, or responsibilities.\n" +
+            "2. Preserve all company names, dates, technologies, and numbers exactly as stated by the user.\n" +
+            "3. Do NOT use generic AI filler phrases (e.g. 'results-driven', 'synergy', 'leveraged', 'spearheaded').\n" +
+            "4. Tailor wording to the job title and job description, but never fabricate experience.\n" +
+            "5. If the user provides no background details for a section, leave it as an empty array or empty string.\n" +
+            "6. NEVER add skills, experiences, education, or sentences not grounded in the user's input.\n" +
+            "7. Return empty strings or empty arrays rather than inventing placeholder content.\n" +
+            "Generate a fully completed professional resume JSON structure matching the schema. Return only the JSON object.",
               },
               {
                 role: "user",
@@ -321,8 +330,10 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
                   ],
                 },
               },
-            },
-          });
+          },
+          model: "gpt-4o",
+          temperature: 0.6,
+        });
 
           const content = response.choices[0]?.message.content;
           if (!content || typeof content !== "string") throw new Error("Failed to generate content from AI");
@@ -467,6 +478,50 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
         );
       }),
 
+    improveProjectBullets: publicProcedure
+      .input(z.object({
+        projectName: z.string(),
+        stack: z.array(z.string()),
+        currentBullets: z.array(z.string()),
+        jobDescription: z.string(),
+        targetRole: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return improveProjectBullets(
+          input.projectName,
+          input.stack,
+          input.currentBullets,
+          input.jobDescription,
+          input.targetRole
+        );
+      }),
+
+    generateCoverLetter: publicProcedure
+      .input(z.object({
+        name: z.string(),
+        targetRole: z.string(),
+        companyName: z.string(),
+        hiringManagerName: z.string().optional(),
+        summary: z.string(),
+        experienceBullets: z.string(),
+        skills: z.string(),
+        jobDescription: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        return generateCoverLetter(input);
+      }),
+
+    generateLinkedInAbout: publicProcedure
+      .input(z.object({
+        summary: z.string(),
+        jobTitle: z.string(),
+        skills: z.string(),
+        experienceHighlights: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        return generateLinkedInAbout(input);
+      }),
+
     calculateScore: publicProcedure
       .input(z.object({
         resumeContent: z.string(),
@@ -475,6 +530,36 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
       .mutation(async ({ input }) => {
         const resumeObj = JSON.parse(input.resumeContent);
         return calculateKeywordAlignment(resumeObj, input.jobDescription);
+      }),
+
+    atsAudit: publicProcedure
+      .input(z.object({
+        resumeText: z.string(),
+        jobDescription: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        return atsAudit(input.resumeText, input.jobDescription);
+      }),
+
+    generateInterviewQuestions: publicProcedure
+      .input(z.object({
+        resumeText: z.string(),
+        jobDescription: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        return generateInterviewQuestions(input.resumeText, input.jobDescription);
+      }),
+
+    generateRecruiterOutreach: publicProcedure
+      .input(z.object({
+        topSkills: z.string(),
+        mostRecentRole: z.string(),
+        jobTitle: z.string(),
+        companyName: z.string(),
+        roleSummary: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        return generateRecruiterOutreach(input);
       }),
   }),
 
