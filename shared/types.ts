@@ -116,7 +116,7 @@ export interface Resume {
 }
 
 // Template Types
-export type TemplateId = 'classic-ats-blue' | 'minimal-executive' | 'modern-sidebar-lite' | 'technical-compact';
+export type TemplateId = 'classic-ats-blue' | 'minimal-executive' | 'modern-sidebar-lite' | 'technical-compact' | 'crystalline-professional';
 
 export interface TemplateStyles {
   colors: {
@@ -133,6 +133,7 @@ export interface TemplateStyles {
   };
   layout: 'single-column' | 'two-column' | 'sidebar';
   spacing: 'compact' | 'normal' | 'spacious';
+  cornerRadius: number;
 }
 
 export interface ResumeTemplate {

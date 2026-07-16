@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Route, Switch, Link, useLocation, Redirect } from "wouter";
+import { Route, Switch, Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,12 @@ import BillingPortal from "@/components/BillingPortal";
 import AdminCRM from "@/components/AdminCRM";
 import StripeCheckoutSimulation from "@/components/StripeCheckoutSimulation";
 import UserSettings from "@/components/UserSettings";
+import ResumeBuilderHub from "@/pages/ResumeBuilderHub";
+import ResumeUpload from "@/pages/ResumeUpload";
+import ResumeScratch from "@/pages/ResumeScratch";
+import ResumeAI from "@/pages/ResumeAI";
+import ResumeEditorWorkspace from "@/pages/ResumeEditorWorkspace";
+import DashboardHome from "@/pages/DashboardHome";
 import { FileText, Plus, Zap, Award, Sparkles, Building, Store, CreditCard, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -53,9 +59,25 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <Switch>
-        {/* Default dashboard tab: Redirect to builder */}
+        {/* Dashboard home / overview */}
         <Route path="/dashboard">
-          <Redirect to="/builder" />
+          <DashboardHome />
+        </Route>
+
+        <Route path="/dashboard/builder/upload">
+          <ResumeUpload />
+        </Route>
+        <Route path="/dashboard/builder/scratch">
+          <ResumeScratch />
+        </Route>
+        <Route path="/dashboard/builder/ai">
+          <ResumeAI />
+        </Route>
+        <Route path="/dashboard/builder/edit">
+          <ResumeEditorWorkspace />
+        </Route>
+        <Route path="/dashboard/builder">
+          <ResumeBuilderHub />
         </Route>
 
         {/* ATS Resume compliance scanner */}

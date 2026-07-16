@@ -27,10 +27,11 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { BottomNav } from './BottomNav';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: FileText, label: "Resume Builder", path: "/builder" },
+  { icon: FileText, label: "Resume Builder", path: "/dashboard/builder" },
   { icon: Zap, label: "ATS Scanner", path: "/dashboard/ats" },
   { icon: Store, label: "Marketplace", path: "/dashboard/marketplace" },
   { icon: Briefcase, label: "Job Board", path: "/dashboard/jobs" },
@@ -272,8 +273,10 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className={`flex-1 p-4 ${isMobile && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') ? "pb-20" : ""}`}>{children}</main>
       </SidebarInset>
+
+      {isMobile && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') && <BottomNav />}
     </>
   );
 }
