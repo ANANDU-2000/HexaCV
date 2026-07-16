@@ -1,14 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Chrome, Github, Linkedin, Mail, ArrowRight, ArrowLeft, Shield, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Chrome, Layers, Mail, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useResumeStorage } from "@/_core/hooks/useResumeStorage";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+
+const T = {
+  bg: '#0b1326',
+  surface: '#171f33',
+  elevated: '#222a3d',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#dae2fd',
+  muted: '#c4c5d5',
+  border: '#444653',
+  success: '#16a34a',
+  radius: 8,
+};
 
 export default function Login() {
   const { isAuthenticated, refresh } = useAuth();
@@ -51,7 +64,6 @@ export default function Login() {
     const name = provider.charAt(0).toUpperCase() + provider.slice(1) + " Candidate";
     const userEmail = `${provider}.candidate@gmail.com`;
     const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
-    
     window.location.href = `/api/mock/login?provider=${provider}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(userEmail)}&redirect=${encodeURIComponent(finalRedirect)}`;
   };
 
@@ -64,153 +76,170 @@ export default function Login() {
     const isOwner = email.includes("admin");
     const name = isOwner ? "Surag (Admin)" : "Email Candidate";
     const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
-    
     window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(finalRedirect)}`;
   };
 
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center relative overflow-hidden font-sans">
-      {/* Decorative Background Shapes */}
-      <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-blue-100/60 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-indigo-100/50 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-[40%] right-[5%] w-[20%] h-[20%] bg-emerald-100/40 rounded-full blur-[80px] pointer-events-none" />
+  const form = (
+    <div style={{ width: '100%', maxWidth: 400 }}>
+      {/* Logo */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        <Layers style={{ color: T.primaryText }} className="w-7 h-7" />
+        <span className="text-xl font-bold" style={{ color: T.text }}>HexaCv</span>
+      </div>
 
-      <div className="w-full max-w-md p-4 relative z-10">
-        {/* Back to Landing */}
-        <Link href="/">
-          <Button variant="ghost" className="text-slate-500 hover:text-slate-900 mb-4 gap-2 hover:bg-white/60 transition">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Landing
-          </Button>
+      <h1 className="text-2xl font-bold text-center mb-8" style={{ color: T.text }}>
+        {convertParam ? 'Secure Your Guest Resume' : 'Welcome back'}
+      </h1>
+
+      <form onSubmit={handleEmailSubmit} className="flex flex-col gap-5">
+        <div className="space-y-1.5">
+          <Label htmlFor="email" style={{ color: T.muted, fontSize: 13, fontWeight: 600 }}>Email Address</Label>
+          <div className="relative">
+            <Mail className="absolute left-3.5" style={{ top: 16, color: T.muted, width: 16, height: 16 }} />
+            <Input
+              id="email"
+              type="email"
+              placeholder="name@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{
+                width: '100%', height: 48, borderRadius: T.radius, paddingLeft: 40,
+                backgroundColor: T.surface, border: `1px solid ${T.border}`,
+                color: T.text, fontSize: 14, outline: 'none',
+              }}
+              className="focus:outline-none focus-visible:ring-2"
+              onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
+              onBlur={e => e.currentTarget.style.borderColor = T.border}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="password" style={{ color: T.muted, fontSize: 13, fontWeight: 600 }}>Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5" style={{ top: 16, color: T.muted, width: 16, height: 16 }} />
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{
+                width: '100%', height: 48, borderRadius: T.radius, paddingLeft: 40, paddingRight: 40,
+                backgroundColor: T.surface, border: `1px solid ${T.border}`,
+                color: T.text, fontSize: 14, outline: 'none',
+              }}
+              className="focus:outline-none focus-visible:ring-2"
+              onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
+              onBlur={e => e.currentTarget.style.borderColor = T.border}
+            />
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              style={{ position: 'absolute', right: 12, top: 16, color: T.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="flex justify-end mt-1">
+            <button type="button" style={{ color: T.primaryText, fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}
+              className="hover:underline font-medium">
+              Forgot password?
+            </button>
+          </div>
+        </div>
+
+        <Button type="submit" style={{
+          width: '100%', height: 48, borderRadius: T.radius,
+          backgroundColor: T.accent, color: '#fff', fontSize: 15, fontWeight: 600,
+          border: 'none', cursor: 'pointer', marginTop: 4,
+        }} className="hover:opacity-90 transition-opacity">
+          Log In
+        </Button>
+      </form>
+
+      <div className="flex items-center gap-3 my-6">
+        <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
+        <span style={{ color: T.muted, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>or continue with</span>
+        <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
+      </div>
+
+      <Button variant="outline" onClick={() => handleMockLogin('google')} style={{
+        width: '100%', height: 48, borderRadius: T.radius,
+        backgroundColor: 'transparent', border: `1px solid ${T.border}`,
+        color: T.text, fontSize: 14, fontWeight: 500, gap: 8, cursor: 'pointer',
+      }} className="hover:opacity-80 transition-opacity">
+        <Chrome className="w-4 h-4" /> Continue with Google
+      </Button>
+
+      <p className="text-center mt-8" style={{ color: T.muted, fontSize: 13 }}>
+        Don't have an account?{' '}
+        <Link href="/register">
+          <span style={{ color: T.primaryText, fontWeight: 600, cursor: 'pointer' }} className="hover:underline">Sign up</span>
         </Link>
+      </p>
 
-        <Card className="border border-slate-200 bg-white/80 backdrop-blur-xl shadow-xl rounded-2xl overflow-hidden">
-          <CardHeader className="text-center pt-8 pb-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200/50">
-              <Shield className="w-7 h-7 text-white" />
-            </div>
-            <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
-              {convertParam ? "Secure Your Guest Resume" : "Welcome Back"}
-            </CardTitle>
-            <CardDescription className="text-slate-500 text-sm mt-2">
-              {convertParam 
-                ? "Sign in or create an account to back up your guest work to the cloud."
-                : "Sign in to sync resumes, access AI tools, and manage your career profile."}
-            </CardDescription>
-          </CardHeader>
+      <div className="text-center mt-4">
+        <Link href={redirectParam}>
+          <span style={{ color: T.muted, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            className="hover:opacity-80 transition-opacity">
+            <Sparkles className="w-3 h-3" /> Continue as Guest
+          </span>
+        </Link>
+      </div>
 
-          <CardContent className="space-y-5 px-6">
-            {/* Email Form */}
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="login-email" className="text-xs font-semibold text-slate-600">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
-                    required
-                  />
-                </div>
+      <p className="text-center mt-6" style={{ color: T.border, fontSize: 10, lineHeight: 1.4 }}>
+        By continuing, you agree to HexaCv's Terms of Service and Privacy Policy. Secured by HexaStack Solutions.
+      </p>
+    </div>
+  );
+
+  return (
+    <div style={{
+      minHeight: '100vh', width: '100%', backgroundColor: T.bg,
+      fontFamily: 'Inter, sans-serif', display: 'flex',
+    }}>
+      {/* Mobile: single column */}
+      <div className="flex sm:hidden items-center justify-center w-full px-6 py-12">
+        {form}
+      </div>
+
+      {/* Desktop: two-column */}
+      <div className="hidden sm:flex w-full">
+        {/* Left: form */}
+        <div className="flex items-center justify-center" style={{ width: '40%', padding: 32 }}>
+          {form}
+        </div>
+
+        {/* Right: brand panel */}
+        <div style={{
+          width: '60%', position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(135deg, #0f1b3d 0%, #1e40af 40%, #ea580c 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: 64,
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          <div className="flex items-center gap-3 mb-12 relative" style={{ zIndex: 1 }}>
+            <Layers style={{ color: '#fff', opacity: 0.9 }} className="w-8 h-8" />
+            <span className="text-2xl font-bold text-white">HexaCv</span>
+          </div>
+          <div className="relative" style={{ zIndex: 1, maxWidth: 440, textAlign: 'center' }}>
+            <div style={{
+              backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)',
+              borderRadius: 16, padding: 40, border: '1px solid rgba(255,255,255,0.15)',
+            }}>
+              <Sparkles className="w-8 h-8 mx-auto mb-4" style={{ color: '#b8c4ff' }} />
+              <blockquote style={{ color: '#fff', fontSize: 18, lineHeight: 1.6, fontWeight: 500, fontStyle: 'italic' }}>
+                "HexaCv helped me tailor my resume for a senior role at Google. The ATS score jumped from 65 to 94 — I got the interview."
+              </blockquote>
+              <div style={{ marginTop: 20, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
+                — Sarah K., Software Engineer
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="login-password" className="text-xs font-semibold text-slate-600">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <div className="flex justify-end">
-                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700 font-medium transition">
-                    Forgot password?
-                  </button>
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg h-11 flex items-center justify-center gap-2 transition duration-200 font-semibold shadow-md shadow-blue-200/40">
-                Sign In
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-4 text-slate-400 text-xs font-medium uppercase tracking-widest">Or continue with</span>
-              <div className="flex-grow border-t border-slate-200"></div>
             </div>
-
-            {/* Social Logins */}
-            <div className="grid grid-cols-3 gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockLogin("google")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Chrome className="w-4 h-4 mr-2 text-red-500" />
-                Google
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockLogin("github")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Github className="w-4 h-4 mr-2 text-slate-800" />
-                GitHub
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockLogin("linkedin")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Linkedin className="w-4 h-4 mr-2 text-blue-600 fill-current" />
-                LinkedIn
-              </Button>
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-4 bg-slate-50/50 border-t border-slate-100 px-6 py-5 text-center">
-            {/* Registration CTA */}
-            <p className="text-sm text-slate-600">
-              Don't have an account?{" "}
-              <Link href="/register">
-                <span className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition">
-                  Create Free Account
-                </span>
-              </Link>
-            </p>
-
-            {/* Guest Mode Link */}
-            <Link href={redirectParam}>
-              <span className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer transition flex items-center justify-center gap-1.5 font-medium">
-                <Sparkles className="w-3.5 h-3.5" />
-                Continue as Guest (No account needed)
-              </span>
-            </Link>
-
-            <p className="text-[10px] text-slate-400 leading-normal max-w-[280px] mx-auto">
-              By continuing, you agree to HexaCv's Terms of Service and Privacy Policy. Secured by HexaStack Solutions.
-            </p>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

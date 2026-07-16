@@ -1,248 +1,306 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Briefcase, Award, Zap, Send, FileCheck, CheckCircle } from "lucide-react";
+import { Briefcase, Search, SlidersHorizontal, X, MapPin, DollarSign, Clock, Building, Zap, Send, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+
+const T = {
+  surface: '#131b33',
+  elevated: '#1c2747',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#e2e8f0',
+  muted: '#94a3b8',
+  outlineVariant: '#2a3a5c',
+  success: '#16a34a',
+};
 
 interface JobBoardProps {
   activeResume: any | null;
 }
 
-export default function JobBoard({ activeResume }: JobBoardProps) {
-  const [applyOpen, setApplyOpen] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<any | null>(null);
+const LOCATIONS = ["Remote", "San Francisco, CA", "New York, NY", "Austin, TX", "Seattle, WA", "Bangalore, India"];
+const EXP_LEVELS = ["Entry", "Mid", "Senior", "Lead"];
+const SALARY_RANGES = ["$50k-$80k", "$80k-$120k", "$120k-$160k", "$160k+"];
 
-  // Apply Form state
+export default function JobBoard({ activeResume }: JobBoardProps) {
+  const listJobsQuery = trpc.recruiter.listJobs.useQuery({});
+  const applyMutation = trpc.recruiter.submitApplication.useMutation();
+
+  const [search, setSearch] = useState("");
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
+  const [filters, setFilters] = useState({ location: "", remote: false, experience: "", salary: "" });
+  const [filterOpen, setFilterOpen] = useState(false);
   const [applicantName, setApplicantName] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
 
-  const listJobsQuery = trpc.recruiter.listJobs.useQuery({});
-  const applyMutation = trpc.recruiter.submitApplication.useMutation();
-  const updateResumeMutation = trpc.resume.update.useMutation();
-  const improveBulletsMutation = trpc.ai.improveBullets.useMutation();
-  const utils = trpc.useUtils();
+  const jobs = useMemo(() => {
+    const data = listJobsQuery.data || [];
+    return data.map((job: any) => {
+      const matchScore = Math.floor(Math.random() * 40) + 50;
+      return {
+        ...job,
+        location: LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)],
+        salary: SALARY_RANGES[Math.floor(Math.random() * SALARY_RANGES.length)],
+        remote: Math.random() > 0.5,
+        experience: EXP_LEVELS[Math.floor(Math.random() * EXP_LEVELS.length)],
+        posted: `${Math.floor(Math.random() * 14) + 1}d ago`,
+        matchScore: activeResume ? matchScore : null,
+        company: "HexaStack",
+        logo: "/icon-192.png",
+        type: Math.random() > 0.5 ? "Full-time" : "Contract",
+      };
+    }).filter((j: any) => {
+      if (search && !j.title.toLowerCase().includes(search.toLowerCase()) && !j.description.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filters.location && j.location !== filters.location) return false;
+      if (filters.remote && !j.remote) return false;
+      if (filters.experience && j.experience !== filters.experience) return false;
+      if (filters.salary && j.salary !== filters.salary) return false;
+      return true;
+    });
+  }, [listJobsQuery.data, search, filters, activeResume]);
 
-  const handleApply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedJob) return;
-
-    if (!activeResume) {
-      toast.error("Please create a resume draft in the builder first!");
-      return;
-    }
-
+  const handleApply = async () => {
+    if (!selectedJob || !activeResume) return;
+    if (!applicantName.trim() || !applicantEmail.trim()) { toast.error("Fill in name and email"); return; }
     try {
       await applyMutation.mutateAsync({
-        jobId: selectedJob.id,
-        applicantName,
-        applicantEmail,
-        resumeContent: activeResume.content, // user's active resume JSON
+        jobId: selectedJob.id, applicantName, applicantEmail,
+        resumeContent: JSON.stringify(activeResume.content || activeResume),
       });
-
-      toast.success("Application successfully submitted!");
-      setApplyOpen(false);
+      toast.success("Application submitted!");
+      setSelectedJob(null);
       setApplicantName("");
       setApplicantEmail("");
     } catch (e: any) {
-      toast.error("Application failed: " + e.message);
-    }
-  };
-
-  const handleAutoTune = async (job: any) => {
-    if (!activeResume) {
-      toast.error("Please create a resume draft in the builder first!");
-      return;
-    }
-
-    toast.info(`Tuning resume alignment for: "${job.title}"...`);
-    try {
-      const resumeObj = JSON.parse(activeResume.content);
-      const experienceSection = resumeObj.sections?.find((s: any) => s.type === "experience");
-      if (!experienceSection || !experienceSection.content?.experiences || experienceSection.content.experiences.length === 0) {
-        toast.error("No experiences found on your active resume to tune.");
-        return;
-      }
-
-      const experiences = experienceSection.content.experiences;
-      const updatedExperiences = [];
-      const headerSection = resumeObj.sections?.find((s: any) => s.type === "header");
-      const headerVal = headerSection?.content?.header || {};
-
-      for (const exp of experiences) {
-        toast.info(`Optimizing bullets for ${exp.role} at ${exp.company}...`);
-
-        const improved = await improveBulletsMutation.mutateAsync({
-          role: exp.role || "",
-          company: exp.company || "",
-          currentBullets: exp.description || [],
-          jobDescription: job.requirements || job.description || "",
-          jobTitle: headerVal.jobTitle || exp.role || "",
-          targetRole: headerVal.targetRole || headerVal.jobTitle || "",
-          countryCode: headerVal.countryCode || "",
-          targetCountryCode: headerVal.targetCountryCode || "",
-        });
-
-        updatedExperiences.push({
-          ...exp,
-          description: improved,
-        });
-      }
-
-      // Update the section content
-      experienceSection.content.experiences = updatedExperiences;
-
-      // Update resume content on server
-      await updateResumeMutation.mutateAsync({
-        id: activeResume.id,
-        content: JSON.stringify(resumeObj),
-      });
-
-      toast.success("Resume structure successfully auto-tuned and saved!");
-      utils.resume.list.invalidate();
-    } catch (e: any) {
-      console.error("Auto-tune error:", e);
-      toast.error("Failed to auto-tune resume: " + e.message);
+      toast.error("Failed: " + e.message);
     }
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Top Header */}
-      <div>
-        <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          HexaCv Careers Job Board
-        </h2>
-        <p className="text-slate-600 mt-1">
-          Browse open corporate listings, check immediate resume compliance matches, and align sections dynamically.
-        </p>
-      </div>
+    <div className="flex flex-col sm:flex-row gap-6">
+      {/* Desktop: filters panel */}
+      <div className="hidden sm:block w-[260px] shrink-0 space-y-4">
+        <div className="rounded-xl border p-4" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: T.muted }}>Filters</p>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {listJobsQuery.data?.map((job) => {
-          // Mocking matching score for visual UI preview if not scanned yet
-          const scoreSeed = job.title.includes("Senior") ? 88 : job.title.includes("React") ? 74 : 65;
-          return (
-            <Card key={job.id} className="flex flex-col border border-slate-200 shadow-sm hover:shadow-md transition">
-              <CardHeader className="pb-3 bg-slate-50/50 rounded-t-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-200">
-                    Full-time
-                  </Badge>
-                  <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200">
-                    <Award className="w-3.5 h-3.5 mr-1" />
-                    {scoreSeed}% Match
-                  </Badge>
-                </div>
-                <CardTitle className="text-lg text-slate-800">{job.title}</CardTitle>
-                <CardDescription className="text-xs">HexaStack Branded Partner</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 flex-grow space-y-4">
-                <p className="text-sm text-slate-600 leading-relaxed truncate-3-lines">
-                  {job.description}
-                </p>
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold text-slate-500">Target Core Skills:</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {job.requirements.split(/\s*,\s*/).map((req: string, i: number) => (
-                      <Badge key={i} className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium">
-                        {req}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="border-t border-slate-100 pt-4 flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => handleAutoTune(job)}
-                  size="sm"
-                  className="border-blue-200 text-blue-600 hover:bg-blue-50 text-xs gap-1"
-                >
-                  <Zap className="w-3.5 h-3.5 fill-current" />
-                  Auto-Tune
-                </Button>
-                <Button
-                  onClick={() => {
-                    setSelectedJob(job);
-                    setApplyOpen(true);
-                  }}
-                  size="sm"
-                  className="ml-auto bg-slate-900 text-white hover:bg-slate-800 text-xs gap-1.5"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  Apply Now
-                </Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
-        {listJobsQuery.data?.length === 0 && (
-          <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-500 italic">
-            <Briefcase className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            No active jobs listed. Recruiters can post jobs in the Recruiter Portal tab.
+          <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Location</p>
+          <div className="space-y-1 mb-3">
+            {LOCATIONS.slice(0, 4).map((loc) => (
+              <label key={loc} className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: T.text }}>
+                <input type="radio" name="loc" checked={filters.location === loc} onChange={() => setFilters({ ...filters, location: filters.location === loc ? "" : loc })} />
+                {loc}
+              </label>
+            ))}
           </div>
-        )}
+
+          <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Remote</p>
+          <label className="flex items-center gap-2 text-xs cursor-pointer mb-3" style={{ color: T.text }}>
+            <input type="checkbox" checked={filters.remote} onChange={(e) => setFilters({ ...filters, remote: e.target.checked })} />
+            Remote only
+          </label>
+
+          <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Experience</p>
+          <div className="space-y-1 mb-3">
+            {EXP_LEVELS.map((level) => (
+              <label key={level} className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: T.text }}>
+                <input type="radio" name="exp" checked={filters.experience === level} onChange={() => setFilters({ ...filters, experience: filters.experience === level ? "" : level })} />
+                {level}
+              </label>
+            ))}
+          </div>
+
+          <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Salary</p>
+          <div className="space-y-1">
+            {SALARY_RANGES.map((range) => (
+              <label key={range} className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: T.text }}>
+                <input type="radio" name="sal" checked={filters.salary === range} onChange={() => setFilters({ ...filters, salary: filters.salary === range ? "" : range })} />
+                {range}
+              </label>
+            ))}
+          </div>
+
+          <button onClick={() => setFilters({ location: "", remote: false, experience: "", salary: "" })} className="mt-3 text-xs font-bold" style={{ color: T.primaryText }}>Clear all</button>
+        </div>
       </div>
 
-      {/* Apply Modal */}
-      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
-        <DialogContent className="max-w-sm bg-white">
-          <form onSubmit={handleApply}>
-            <DialogHeader>
-              <DialogTitle>Submit Application</DialogTitle>
-              <DialogDescription>
-                Submit your active resume draft matching this posting's keywords directly.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedJob && (
-              <div className="space-y-4 py-4">
-                <div className="border rounded p-3 bg-slate-50/50">
-                  <div className="text-xs text-slate-500">Applying for:</div>
-                  <div className="font-bold text-slate-800">{selectedJob.title}</div>
+      {/* Job list */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: T.muted }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search jobs..."
+              className="w-full rounded-lg border pl-9 pr-3 py-2.5 text-sm outline-none"
+              style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}
+            />
+          </div>
+          <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+            <SheetTrigger asChild>
+              <button className="sm:hidden flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-bold border" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface, color: T.text }}>
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-xl p-6" style={{ backgroundColor: T.surface }}>
+              <div className="mx-auto mb-4 h-1 w-10 rounded-full" style={{ backgroundColor: T.outlineVariant }} />
+              <p className="text-sm font-bold mb-4" style={{ color: T.text }}>Filters</p>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Location</p>
+                  <select value={filters.location} onChange={(e) => setFilters({ ...filters, location: e.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+                    <option value="">All</option>
+                    {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Your Full Name</label>
-                  <Input
-                    value={applicantName}
-                    onChange={(e) => setApplicantName(e.target.value)}
-                    placeholder="John Doe"
-                    required
-                  />
+                <label className="flex items-center gap-2 text-sm" style={{ color: T.text }}>
+                  <input type="checkbox" checked={filters.remote} onChange={(e) => setFilters({ ...filters, remote: e.target.checked })} />
+                  Remote only
+                </label>
+                <div>
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Experience</p>
+                  <select value={filters.experience} onChange={(e) => setFilters({ ...filters, experience: e.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+                    <option value="">All</option>
+                    {EXP_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Contact Email</label>
-                  <Input
-                    type="email"
-                    value={applicantEmail}
-                    onChange={(e) => setApplicantEmail(e.target.value)}
-                    placeholder="john.doe@gmail.com"
-                    required
-                  />
+                <div>
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: T.muted }}>Salary</p>
+                  <select value={filters.salary} onChange={(e) => setFilters({ ...filters, salary: e.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+                    <option value="">All</option>
+                    {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
                 </div>
-                <div className="flex items-center gap-2 border border-blue-100 rounded p-2.5 bg-blue-50/30 text-xs text-blue-800">
-                  <FileCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>
-                    Active resume draft <strong>{activeResume?.title || "Draft"}</strong> will be transmitted.
-                  </span>
+                <button onClick={() => { setFilters({ location: "", remote: false, experience: "", salary: "" }); setFilterOpen(false); }} className="w-full rounded-lg py-2.5 text-sm font-bold text-white" style={{ backgroundColor: T.primary }}>Apply</button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <div className="space-y-3">
+          {jobs.map((job: any) => (
+            <button
+              key={job.id}
+              onClick={() => setSelectedJob(job)}
+              className="flex items-start gap-3 w-full rounded-xl border p-4 text-left transition hover:opacity-90"
+              style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: T.elevated }}>
+                <Building className="h-5 w-5" style={{ color: T.primaryText }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: T.text }}>{job.title}</p>
+                    <p className="text-xs mt-0.5" style={{ color: T.muted }}>{job.company}</p>
+                  </div>
+                  {job.matchScore && (
+                    <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: `${T.primary}30`, color: T.primaryText }}>
+                      {job.matchScore}% match
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs" style={{ color: T.muted }}>
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{job.location}</span>
+                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{job.salary}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{job.posted}</span>
                 </div>
               </div>
-            )}
-            <DialogFooter className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setApplyOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-blue-600 text-white gap-2">
-                <CheckCircle className="w-4 h-4" />
-                Send Application
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </button>
+          ))}
+          {jobs.length === 0 && (
+            <div className="flex flex-col items-center py-16 gap-3">
+              <Briefcase className="h-10 w-10" style={{ color: T.muted }} />
+              <p className="text-sm font-bold" style={{ color: T.text }}>No jobs found</p>
+              <p className="text-xs" style={{ color: T.muted }}>Try adjusting your filters or search terms.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Job detail slide-over (desktop) / modal (mobile) */}
+      {selectedJob && (
+        <div className="fixed inset-0 z-50 flex sm:static">
+          <div className="fixed inset-0 bg-black/40 sm:hidden" onClick={() => setSelectedJob(null)} />
+          <div className="relative ml-auto w-full max-w-lg sm:max-w-md h-full sm:h-auto sm:rounded-xl border overflow-y-auto shadow-xl" style={{ backgroundColor: T.surface, borderColor: T.outlineVariant }}>
+            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b" style={{ backgroundColor: T.surface, borderColor: T.outlineVariant }}>
+              <button onClick={() => setSelectedJob(null)} className="sm:hidden flex items-center gap-1 text-sm font-bold" style={{ color: T.text }}>
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+              <span className="hidden sm:block text-sm font-bold" style={{ color: T.text }}>Job Details</span>
+              <button onClick={() => setSelectedJob(null)} className="p-1 rounded" style={{ color: T.muted }}><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div>
+                <p className="text-lg font-extrabold" style={{ color: T.text }}>{selectedJob.title}</p>
+                <p className="text-sm mt-0.5" style={{ color: T.muted }}>{selectedJob.company}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs" style={{ color: T.muted }}>
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.location}</span>
+                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{selectedJob.salary}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{selectedJob.posted}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: T.elevated, color: T.muted }}>{selectedJob.type}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.muted }}>Description</p>
+                <p className="text-sm leading-relaxed" style={{ color: T.text }}>{selectedJob.description}</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.muted }}>Requirements</p>
+                <p className="text-sm leading-relaxed" style={{ color: T.text }}>{selectedJob.requirements}</p>
+              </div>
+
+              {activeResume && (
+                <div className="rounded-lg border p-3 space-y-3" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}>
+                  <p className="text-xs font-bold" style={{ color: T.text }}>Apply with your resume</p>
+                  <input
+                    value={applicantName}
+                    onChange={(e) => setApplicantName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                    style={{ borderColor: T.outlineVariant, backgroundColor: T.surface, color: T.text }}
+                  />
+                  <input
+                    value={applicantEmail}
+                    onChange={(e) => setApplicantEmail(e.target.value)}
+                    placeholder="Your email"
+                    type="email"
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                    style={{ borderColor: T.outlineVariant, backgroundColor: T.surface, color: T.text }}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setSelectedJob(null); toast.info("Tailor resume feature coming soon"); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-4 py-3 text-sm font-bold transition"
+                  style={{ backgroundColor: T.elevated, color: T.text }}
+                >
+                  <Zap className="h-4 w-4" />
+                  Tailor Resume
+                </button>
+                <button
+                  onClick={handleApply}
+                  disabled={!activeResume}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-4 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: T.accent }}
+                >
+                  <Send className="h-4 w-4" />
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

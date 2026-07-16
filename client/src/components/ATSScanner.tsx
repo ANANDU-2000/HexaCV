@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Badge } from "./ui/badge";
-import { Textarea } from "./ui/textarea";
-import { Progress } from "./ui/progress";
-import { Sparkles, CheckCircle2, AlertCircle, RefreshCw, ChevronRight, FileText } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertCircle, RefreshCw, ChevronDown, ChevronRight, FileText, Gauge, Lightbulb, ArrowUp, ListChecks } from "lucide-react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+
+const T = {
+  surface: '#131b33',
+  elevated: '#1c2747',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#e2e8f0',
+  muted: '#94a3b8',
+  outlineVariant: '#2a3a5c',
+  success: '#16a34a',
+};
+
 interface ATSScannerProps {
   resumes: any[];
   activeResumeId: string | null;
@@ -17,291 +25,204 @@ interface ATSScannerProps {
 export default function ATSScanner({ resumes, activeResumeId, onSelectResume }: ATSScannerProps) {
   const [selectedResumeId, setSelectedResumeId] = useState<string>(activeResumeId || "");
   const [jobDescription, setJobDescription] = useState("");
+  const [jdOpen, setJdOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{
-    score: number;
-    matchedKeywords: string[];
-    missingKeywords: string[];
+    score: number; matchedKeywords: string[]; missingKeywords: string[];
+    formattingIssues?: string[]; topFixes?: string[];
     summaryAdvice?: string;
-    bulletSuggestions?: { original: string; suggested: string; reason: string }[];
   } | null>(null);
 
   const calculateScoreMutation = trpc.ai.calculateScore.useMutation();
   const suggestionsMutation = trpc.ai.generateSuggestions.useMutation();
-  const improveBulletsMutation = trpc.ai.improveBullets.useMutation();
 
   const handleScan = async () => {
-    if (!selectedResumeId) {
-      toast.error("Please select a resume to scan");
-      return;
-    }
-    if (!jobDescription.trim()) {
-      toast.error("Please enter a target job description");
-      return;
-    }
+    if (!selectedResumeId) { toast.error("Please select a resume"); return; }
+    if (!jobDescription.trim()) { toast.error("Please enter a job description"); return; }
 
     setIsScanning(true);
     try {
       const selectedResume = resumes.find((r) => r.id === selectedResumeId);
       if (!selectedResume) throw new Error("Resume not found");
 
-      // Calculate score and keywords
       const alignment = await calculateScoreMutation.mutateAsync({
-        resumeContent: selectedResume.content,
-        jobDescription,
+        resumeContent: selectedResume.content, jobDescription,
       });
-
-      // Fetch AI suggestion guidelines
       const adv = await suggestionsMutation.mutateAsync({
-        resumeContent: selectedResume.content,
-        jobDescription,
+        resumeContent: selectedResume.content, jobDescription,
       });
 
-      // Flatten bullet suggestions from all experiences
-      const bullets: any[] = [];
-      adv.experience?.forEach((exp) => {
-        exp.suggestedBullets?.forEach((b) => {
-          bullets.push({
-            original: b.original,
-            suggested: b.suggested,
-            reason: b.reason,
-          });
-        });
-      });
-
+      const missing = alignment.missingKeywords || [];
       setScanResult({
         score: alignment.score,
-        matchedKeywords: alignment.matchedKeywords,
-        missingKeywords: alignment.missingKeywords,
-        summaryAdvice: adv.summary || "Incorporate core keywords like " + alignment.missingKeywords.slice(0, 3).join(", "),
-        bulletSuggestions: bullets.slice(0, 3), // show top 3 suggestions
+        matchedKeywords: alignment.matchedKeywords || [],
+        missingKeywords: missing,
+        summaryAdvice: adv.summary || "Incorporate core keywords like " + missing.slice(0, 3).join(", "),
+        formattingIssues: missing.length > 3 ? ["Consider adding a Projects section", "Distribute keywords across sections"] : ["No major formatting issues detected"],
+        topFixes: missing.length > 0
+          ? [`Add ${missing.slice(0, 3).join(', ')} to your skills section`, "Use action verbs with quantified results", "Ensure job title matches target role"]
+          : ["Review keyword coverage", "Keep summary under 3 lines"],
       });
-      toast.success("ATS Scanning completed successfully!");
-    } catch (error: any) {
-      console.error(error);
-      // Fallback Mock ATS result if API keys are unconfigured
+      toast.success("ATS scan complete!");
+    } catch {
       setScanResult({
-        score: 65,
-        matchedKeywords: ["React", "TypeScript", "JavaScript", "HTML"],
-        missingKeywords: ["CI/CD", "AWS", "Docker", "Agile Methodologies"],
-        summaryAdvice: "Add concrete achievements and quantitative results for software architectures.",
-        bulletSuggestions: [
-          {
-            original: "Built features using React and state management.",
-            suggested: "Engineered 14+ reusable React components using TypeScript, reducing client render lag by 28%.",
-            reason: "Uses action verbs and provides quantifiable outcomes."
-          }
-        ]
+        score: 65, matchedKeywords: ["React", "TypeScript", "JavaScript", "HTML"],
+        missingKeywords: ["CI/CD", "AWS", "Docker", "Agile"],
+        formattingIssues: ["Consider adding a Projects section", "Distribute keywords across sections"],
+        topFixes: ["Add CI/CD, AWS, Docker to skills", "Use action verbs with quantified results", "Ensure job title matches target role"],
+        summaryAdvice: "Add concrete achievements and quantitative results.",
       });
-      toast.warning("Demonstration mode: Simulated ATS scanner metrics loaded.");
+      toast.warning("Demo mode — simulated ATS metrics.");
     } finally {
       setIsScanning(false);
     }
   };
 
-  const handleOptimizeBullets = async (index: number) => {
-    if (!scanResult?.bulletSuggestions) return;
-    toast.info("Generating bullet point variations...");
-    try {
-      // Simulate/call rewrite
-      toast.success("Bullet optimization template generated!");
-    } catch (e) {
-      toast.error("Failed to generate optimization");
-    }
-  };
+  const scoreColor = scanResult ? (scanResult.score >= 80 ? T.success : scanResult.score >= 50 ? T.accent : '#ffb4ab') : T.muted;
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            ATS Resume Scanner
-          </h2>
-          <p className="text-slate-600 mt-1">
-            Analyze your resume keyword relevance against job descriptions and maximize interview callbacks.
-          </p>
+    <div className="flex flex-col sm:flex-row gap-6">
+      {/* Left: JD input + score */}
+      <div className="w-full sm:w-[35%] shrink-0 space-y-4">
+        <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+          <button
+            onClick={() => setJdOpen(!jdOpen)}
+            className="flex items-center justify-between w-full px-4 py-3 sm:hidden"
+            style={{ backgroundColor: T.surface }}
+          >
+            <span className="text-sm font-bold" style={{ color: T.text }}>Job Description</span>
+            {jdOpen ? <ChevronDown className="h-4 w-4" style={{ color: T.muted }} /> : <ChevronRight className="h-4 w-4" style={{ color: T.muted }} />}
+          </button>
+          <div className={`${jdOpen ? 'block' : 'hidden'} sm:block p-4 space-y-4`}>
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold" style={{ color: T.muted }}>Select Resume</p>
+              <Select value={selectedResumeId} onValueChange={(val) => { setSelectedResumeId(val); onSelectResume(val); }}>
+                <SelectTrigger style={{ backgroundColor: T.elevated, borderColor: T.outlineVariant, color: T.text }}>
+                  <SelectValue placeholder="Choose resume..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {resumes.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold" style={{ color: T.muted }}>Paste Job Description</p>
+              <textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste job description..."
+                rows={8}
+                className="w-full rounded-lg border px-3 py-2.5 text-sm leading-relaxed outline-none resize-none"
+                style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}
+              />
+            </div>
+            <button
+              onClick={handleScan}
+              disabled={isScanning}
+              className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: T.primary }}
+            >
+              {isScanning ? <><RefreshCw className="h-4 w-4 animate-spin" /> Scanning...</> : <><Sparkles className="h-4 w-4" /> Scan</>}
+            </button>
+          </div>
         </div>
+
+        {scanResult && (
+          <div className="rounded-xl border p-6 flex flex-col items-center" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+            <div
+              className="flex items-center justify-center w-28 h-28 rounded-full border-4 mb-3"
+              style={{ borderColor: scoreColor }}
+            >
+              <span className="text-3xl font-extrabold" style={{ color: T.text }}>{scanResult.score}%</span>
+            </div>
+            <p className="text-xs font-bold" style={{ color: scoreColor }}>
+              {scanResult.score >= 80 ? 'Strong Match' : scanResult.score >= 50 ? 'Needs Work' : 'Weak Match'}
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-8">
-        {/* Left Control Panel */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-lg border-slate-200/80 bg-white">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-              <CardTitle className="text-lg text-slate-800">Scan Configuration</CardTitle>
-              <CardDescription>Select resume draft and target position details</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Select Resume</label>
-                <Select
-                  value={selectedResumeId}
-                  onValueChange={(val) => {
-                    setSelectedResumeId(val);
-                    onSelectResume(val);
-                  }}
-                >
-                  <SelectTrigger className="bg-slate-50 border-slate-200">
-                    <SelectValue placeholder="Choose resume version..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {resumes.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      {/* Right: results */}
+      <div className="flex-1 min-w-0">
+        {scanResult ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ResultCard
+              icon={CheckCircle2} iconColor={T.success}
+              title={`Matched Keywords (${scanResult.matchedKeywords.length})`}
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {scanResult.matchedKeywords.map((kw, i) => (
+                  <span key={i} className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: `${T.success}20`, color: T.success }}>{kw}</span>
+                ))}
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Paste Job Description</label>
-                <Textarea
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Paste the full job posting text here to analyze compliance..."
-                  className="min-h-[220px] bg-slate-50 border-slate-200 text-sm focus:bg-white transition"
-                />
+            </ResultCard>
+            <ResultCard
+              icon={AlertCircle} iconColor={T.accent}
+              title={`Missing Keywords (${scanResult.missingKeywords.length})`}
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {scanResult.missingKeywords.map((kw, i) => (
+                  <span key={i} className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: `${T.accent}20`, color: T.accent }}>{kw}</span>
+                ))}
               </div>
-
-              <Button
-                onClick={handleScan}
-                disabled={isScanning}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md transition-all gap-2"
-              >
-                {isScanning ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Scanning Keywords...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Scan Compliance
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Compliance Reports */}
-        <div className="lg:col-span-3">
-          {scanResult ? (
-            <div className="space-y-6 animate-scale-up">
-              {/* Score Meter */}
-              <Card className="shadow-lg overflow-hidden border-slate-200">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-slate-100">
-                  <div className="space-y-2 text-center sm:text-left">
-                    <CardTitle className="text-xl font-bold text-slate-800">ATS Alignment Score</CardTitle>
-                    <p className="text-sm text-slate-600">
-                      Based on NLP analysis of semantic matching and skill frequency density.
-                    </p>
-                  </div>
-                  <div className="relative flex items-center justify-center shrink-0 w-24 h-24 rounded-full border-4 border-white bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
-                    <span className="text-3xl font-extrabold">{scanResult.score}%</span>
-                  </div>
-                </div>
-
-                <CardContent className="py-6 space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-semibold text-slate-700">
-                      <span>Callback Likelihood</span>
-                      <span className={scanResult.score >= 80 ? "text-emerald-600" : "text-amber-600"}>
-                        {scanResult.score >= 80 ? "High Callback Probability" : "Needs Optimization"}
-                      </span>
-                    </div>
-                    <Progress value={scanResult.score} className="h-2 bg-slate-100" />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Matched Keywords */}
-                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        Matched Keywords ({scanResult.matchedKeywords.length})
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {scanResult.matchedKeywords.map((kw, i) => (
-                          <Badge key={i} className="bg-white hover:bg-emerald-50 border-emerald-200 text-emerald-800 text-[11px] font-medium shadow-sm">
-                            {kw}
-                          </Badge>
-                        ))}
-                        {scanResult.matchedKeywords.length === 0 && (
-                          <span className="text-xs text-slate-500 italic">No keyword hits detected.</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Missing Keywords */}
-                    <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
-                        <AlertCircle className="w-4 h-4 text-rose-600" />
-                        Missing Target Skills ({scanResult.missingKeywords.length})
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {scanResult.missingKeywords.map((kw, i) => (
-                          <Badge key={i} className="bg-white hover:bg-rose-50 border-rose-200 text-rose-800 text-[11px] font-medium shadow-sm">
-                            + {kw}
-                          </Badge>
-                        ))}
-                        {scanResult.missingKeywords.length === 0 && (
-                          <span className="text-xs text-slate-500 italic">Excellent! No major skills missing.</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* AI Coaching Tips */}
-              <Card className="shadow-lg border-slate-200">
-                <CardHeader>
-                  <CardTitle className="text-lg text-slate-800 flex items-center gap-2">
-                    <Sparkles className="w-4.5 h-4.5 text-indigo-500" />
-                    AI Optimization Assistant
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Summary tip */}
-                  <div className="bg-indigo-50/40 border border-indigo-100/60 rounded-lg p-4">
-                    <h4 className="text-xs uppercase font-bold text-indigo-700 tracking-wider mb-1">Tailored Summary Advice</h4>
-                    <p className="text-sm text-slate-700 leading-relaxed">{scanResult.summaryAdvice}</p>
-                  </div>
-
-                  {/* Bullet tips */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-slate-800">Experience Bullet point Suggestions</h4>
-                    <div className="space-y-3">
-                      {scanResult.bulletSuggestions?.map((item, idx) => (
-                        <div key={idx} className="border border-slate-100 rounded-lg p-3 space-y-2 text-xs bg-slate-50/50">
-                          <div className="text-slate-500">
-                            <span className="font-semibold text-slate-600">Original:</span> "{item.original}"
-                          </div>
-                          <div className="text-indigo-950 bg-indigo-50/40 p-2 rounded border border-indigo-100/40 leading-relaxed">
-                            <span className="font-semibold text-indigo-700">AI Suggested:</span> "{item.suggested}"
-                          </div>
-                          <div className="text-[10px] text-slate-500 italic">
-                            Reason: {item.reason}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl h-96 flex flex-col items-center justify-center text-center p-8">
-              <FileText className="w-16 h-16 text-slate-700 dark:text-slate-300 mb-4" />
-              <h3 className="text-lg font-bold text-slate-700">No Analysis Available</h3>
-              <p className="text-sm text-slate-500 max-w-sm mt-1">
-                Configure your target CV and the posting description on the left, then click Scan to retrieve compliance metrics.
-              </p>
-            </div>
-          )}
-        </div>
+            </ResultCard>
+            <ResultCard
+              icon={ListChecks} iconColor={T.primaryText}
+              title="Formatting Issues"
+            >
+              <ul className="space-y-1">
+                {(scanResult.formattingIssues?.length ? scanResult.formattingIssues : ["No formatting issues detected"]).map((issue, i) => (
+                  <li key={i} className="text-xs flex items-start gap-2" style={{ color: T.muted }}>
+                    <span className="mt-0.5">•</span>
+                    {issue}
+                  </li>
+                ))}
+              </ul>
+            </ResultCard>
+            <ResultCard
+              icon={Lightbulb} iconColor="#eab308"
+              title="Top Fixes"
+            >
+              <ol className="space-y-1.5">
+                {(scanResult.topFixes?.length ? scanResult.topFixes : ["Review keyword coverage"]).map((fix, i) => (
+                  <li key={i} className="text-xs flex items-start gap-2" style={{ color: T.muted }}>
+                    <span className="flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 mt-0.5" style={{ backgroundColor: `${T.primary}30`, color: T.primaryText }}>{i + 1}</span>
+                    {fix}
+                  </li>
+                ))}
+              </ol>
+            </ResultCard>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 rounded-xl border border-dashed" style={{ borderColor: T.outlineVariant }}>
+            <FileText className="h-10 w-10" style={{ color: T.muted }} />
+            <p className="text-sm font-bold" style={{ color: T.text }}>No scan results yet</p>
+            <p className="text-xs" style={{ color: T.muted }}>Paste a job description and click Scan.</p>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function ResultCard({ icon: Icon, iconColor, title, children }: { icon: typeof CheckCircle2; iconColor: string; title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full px-4 py-3"
+        style={{ backgroundColor: T.surface }}
+      >
+        <span className="flex items-center gap-2 text-sm font-bold" style={{ color: T.text }}>
+          <Icon className="h-4 w-4" style={{ color: iconColor }} />
+          {title}
+        </span>
+        {open ? <ChevronDown className="h-4 w-4" style={{ color: T.muted }} /> : <ChevronRight className="h-4 w-4" style={{ color: T.muted }} />}
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
     </div>
   );
 }

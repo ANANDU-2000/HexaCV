@@ -1,359 +1,328 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Badge } from "./ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "./ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Briefcase, Users, Plus, Award, CheckCircle, XCircle, Search, Eye } from "lucide-react";
+import { Briefcase, Users, Plus, Award, Search, Eye, Send, User, Clock, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+
+const T = {
+  surface: '#131b33',
+  elevated: '#1c2747',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#e2e8f0',
+  muted: '#94a3b8',
+  outlineVariant: '#2a3a5c',
+  success: '#16a34a',
+};
 
 export default function RecruiterPortal() {
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedJobId, setSelectedJobId] = useState("");
-  const [createJobOpen, setCreateJobOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // New Job Form State
   const [jobTitle, setJobTitle] = useState("");
   const [jobDesc, setJobDesc] = useState("");
   const [jobReqs, setJobReqs] = useState("");
 
-  // View Resume State
-  const [viewResumeOpen, setViewResumeOpen] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
+  const [messageText, setMessageText] = useState("");
 
   const listOrgsQuery = trpc.organization.list.useQuery();
-  const listJobsQuery = trpc.recruiter.listJobs.useQuery(
-    { orgId: selectedOrgId },
-    { enabled: !!selectedOrgId }
-  );
-  const listAppsQuery = trpc.recruiter.listApplications.useQuery(
-    { jobId: selectedJobId },
-    { enabled: !!selectedJobId }
-  );
-
+  const listJobsQuery = trpc.recruiter.listJobs.useQuery({ orgId: selectedOrgId }, { enabled: !!selectedOrgId });
+  const listAppsQuery = trpc.recruiter.listApplications.useQuery({ jobId: selectedJobId }, { enabled: !!selectedJobId });
   const createJobMutation = trpc.recruiter.createJob.useMutation();
   const updateStatusMutation = trpc.recruiter.updateStatus.useMutation();
 
   useEffect(() => {
-    if (listOrgsQuery.data && listOrgsQuery.data.length > 0 && !selectedOrgId) {
-      setSelectedOrgId(listOrgsQuery.data[0]?.id || "");
-    }
+    if (listOrgsQuery.data?.length && !selectedOrgId) setSelectedOrgId(listOrgsQuery.data[0].id);
   }, [listOrgsQuery.data]);
-
   useEffect(() => {
-    if (listJobsQuery.data && listJobsQuery.data.length > 0) {
-      setSelectedJobId(listJobsQuery.data[0].id);
-    } else {
-      setSelectedJobId("");
-    }
+    if (listJobsQuery.data?.length) setSelectedJobId(listJobsQuery.data[0].id);
   }, [listJobsQuery.data]);
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jobTitle.trim() || !jobDesc.trim() || !jobReqs.trim()) {
-      toast.error("Please fill in all job listing details");
-      return;
-    }
-
+    if (!jobTitle.trim() || !jobDesc.trim() || !jobReqs.trim()) { toast.error("Fill all fields"); return; }
     try {
-      await createJobMutation.mutateAsync({
-        orgId: selectedOrgId,
-        title: jobTitle,
-        description: jobDesc,
-        requirements: jobReqs,
-      });
-
-      toast.success(`Job posting "${jobTitle}" successfully published!`);
+      await createJobMutation.mutateAsync({ orgId: selectedOrgId, title: jobTitle, description: jobDesc, requirements: jobReqs });
+      toast.success(`"${jobTitle}" published`);
       listJobsQuery.refetch();
-      setCreateJobOpen(false);
-      setJobTitle("");
-      setJobDesc("");
-      setJobReqs("");
-    } catch (e: any) {
-      toast.error("Failed to create job posting: " + e.message);
-    }
+      setCreateOpen(false);
+      setJobTitle(""); setJobDesc(""); setJobReqs("");
+    } catch (e: any) { toast.error(e.message); }
   };
 
-  const handleUpdateStatus = async (appId: string, newStatus: string) => {
+  const handleStatus = async (id: string, status: string) => {
     try {
-      await updateStatusMutation.mutateAsync({
-        id: appId,
-        status: newStatus,
-      });
-      toast.success("Applicant status updated");
+      await updateStatusMutation.mutateAsync({ id, status });
       listAppsQuery.refetch();
-    } catch (e) {
-      toast.error("Could not update status");
-    }
+      toast.success(`Status → ${status}`);
+    } catch { toast.error("Failed"); }
   };
 
-  const currentJob = listJobsQuery.data?.find(j => j.id === selectedJobId);
+  const candidates = listAppsQuery.data || [];
+  const filtered = candidates.filter((c: any) =>
+    c.applicantName?.toLowerCase().includes(search.toLowerCase())
+  );
+  const stats = {
+    candidates: candidates.length,
+    openRoles: listJobsQuery.data?.length || 0,
+    newMatches: candidates.filter((c: any) => c.matchScore >= 75).length,
+  };
+
+  const currentJob = listJobsQuery.data?.find((j: any) => j.id === selectedJobId);
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Recruiter Pipeline Portal
-          </h2>
-          <p className="text-slate-600 mt-1">
-            Publish internal vacancies, receive resumes, and screen applicants using automated ATS matching metrics.
-          </p>
+    <div>
+      {/* Mobile: org/job selector bar */}
+      <div className="flex items-center gap-2 mb-4 sm:hidden">
+        <select value={selectedJobId} onChange={(e) => setSelectedJobId(e.target.value)}
+          className="flex-1 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+          {(listJobsQuery.data || []).map((j: any) => <option key={j.id} value={j.id}>{j.title}</option>)}
+        </select>
+        <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+          <SheetTrigger asChild>
+            <button className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-white" style={{ backgroundColor: T.accent }}><Plus className="h-4 w-4" />Post</button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="rounded-t-xl p-6" style={{ backgroundColor: T.surface }}>
+            <CreateJobForm jobTitle={jobTitle} setJobTitle={setJobTitle} jobDesc={jobDesc} setJobDesc={setJobDesc} jobReqs={jobReqs} setJobReqs={setJobReqs} onSubmit={handleCreateJob} onClose={() => setCreateOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-6">
+        {/* Desktop: left panel (jobs + table) */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Desktop: org/job controls */}
+          <div className="hidden sm:flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {listOrgsQuery.data && (
+                <select value={selectedOrgId} onChange={(e) => { setSelectedOrgId(e.target.value); setSelectedJobId(""); }}
+                  className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+                  {listOrgsQuery.data.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              )}
+              <select value={selectedJobId} onChange={(e) => setSelectedJobId(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+                {(listJobsQuery.data || []).map((j: any) => <option key={j.id} value={j.id}>{j.title}</option>)}
+              </select>
+            </div>
+            <button onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
+              style={{ backgroundColor: T.accent }}>
+              <Plus className="h-4 w-4" /> Post Role
+            </button>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-3 gap-3">
+            {[{ icon: Users, label: 'Candidates', value: stats.candidates },
+              { icon: Briefcase, label: 'Open Roles', value: stats.openRoles },
+              { icon: Award, label: 'Top Matches', value: stats.newMatches },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl border p-3" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+                <div className="flex items-center gap-2">
+                  <s.icon className="h-4 w-4" style={{ color: T.primaryText }} />
+                  <span className="text-xs" style={{ color: T.muted }}>{s.label}</span>
+                </div>
+                <p className="text-xl font-extrabold mt-1" style={{ color: T.text }}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: T.muted }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search candidates..."
+              className="w-full rounded-lg border pl-9 pr-3 py-2.5 text-sm outline-none"
+              style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+          </div>
+
+          {/* Mobile: candidate list */}
+          <div className="sm:hidden space-y-2">
+            {filtered.map((app: any) => (
+              <button key={app.id} onClick={() => setSelectedCandidate(selectedCandidate?.id === app.id ? null : app)}
+                className="flex items-center gap-3 w-full rounded-xl border p-3 text-left"
+                style={{ borderColor: selectedCandidate?.id === app.id ? T.primary : T.outlineVariant, backgroundColor: T.surface }}>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: T.elevated }}>
+                  <User className="h-5 w-5" style={{ color: T.primaryText }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: T.text }}>{app.applicantName}</p>
+                  <p className="text-xs mt-0.5" style={{ color: T.muted }}>{currentJob?.title || 'Candidate'}</p>
+                </div>
+                <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                  style={{ backgroundColor: app.matchScore >= 75 ? `${T.success}20` : `${T.accent}20`, color: app.matchScore >= 75 ? T.success : T.accent }}>
+                  {app.matchScore}%
+                </span>
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="text-center text-xs py-8" style={{ color: T.muted }}>No candidates yet</p>}
+          </div>
+
+          {/* Desktop: candidate table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <div className="rounded-xl border" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${T.outlineVariant}` }}>
+                    {['Name', 'Match %', 'Role', 'Status', ''].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: T.muted }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((app: any) => (
+                    <tr key={app.id}
+                      onClick={() => setSelectedCandidate(selectedCandidate?.id === app.id ? null : app)}
+                      className="cursor-pointer transition"
+                      style={{ backgroundColor: selectedCandidate?.id === app.id ? `${T.primary}15` : 'transparent', borderBottom: `1px solid ${T.outlineVariant}` }}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: T.elevated }}>
+                            <User className="h-4 w-4" style={{ color: T.primaryText }} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold" style={{ color: T.text }}>{app.applicantName}</p>
+                            <p className="text-xs" style={{ color: T.muted }}>{app.applicantEmail}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                          style={{ backgroundColor: app.matchScore >= 75 ? `${T.success}20` : `${T.accent}20`, color: app.matchScore >= 75 ? T.success : T.accent }}>
+                          {app.matchScore}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm" style={{ color: T.text }}>{currentJob?.title || '-'}</td>
+                      <td className="px-4 py-3">
+                        <select value={app.status} onChange={(e) => handleStatus(app.id, e.target.value)}
+                          className="rounded-lg border px-2 py-1 text-xs outline-none"
+                          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+                          <option value="pending">Pending</option>
+                          <option value="reviewed">Reviewed</option>
+                          <option value="shortlisted">Shortlisted</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedCandidate(app); }} className="p-1 rounded" style={{ color: T.muted }}>
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-xs" style={{ color: T.muted }}>No applications yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        {/* Action controllers */}
-        <div className="flex items-center gap-3">
-          {listOrgsQuery.data && listOrgsQuery.data.length > 0 && (
-            <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
-              <SelectTrigger className="w-56 bg-white border-slate-200">
-                <SelectValue placeholder="Select team..." />
-              </SelectTrigger>
-              <SelectContent>
-                {listOrgsQuery.data.map((org: any) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    🏢 {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+        {/* Desktop: candidate detail panel */}
+        <div className="hidden sm:block w-[360px] shrink-0">
+          {selectedCandidate ? (
+            <div className="rounded-xl border p-4 space-y-4 sticky top-4" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: T.elevated }}>
+                  <User className="h-6 w-6" style={{ color: T.primaryText }} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: T.text }}>{selectedCandidate.applicantName}</p>
+                  <p className="text-xs" style={{ color: T.muted }}>{selectedCandidate.applicantEmail}</p>
+                </div>
+                <span className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold"
+                  style={{ backgroundColor: `${T.primary}30`, color: T.primaryText }}>
+                  {selectedCandidate.matchScore}% match
+                </span>
+              </div>
 
-          {selectedOrgId && (
-            <Dialog open={createJobOpen} onOpenChange={setCreateJobOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md transition-all gap-2">
-                  <Plus className="w-4 h-4" />
-                  Post A Job
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md bg-white">
-                <form onSubmit={handleCreateJob}>
-                  <DialogHeader>
-                    <DialogTitle>Post Vacancy</DialogTitle>
-                    <DialogDescription>
-                      Define a job position and outline keywords for ATS candidate comparisons.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-700">Job Title</label>
-                      <Input
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        placeholder="e.g. Senior Full-Stack Engineer"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-700">Description</label>
-                      <Textarea
-                        value={jobDesc}
-                        onChange={(e) => setJobDesc(e.target.value)}
-                        placeholder="Detailed responsibilities, expectations, and role environment."
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Required Core Keywords (ATS Targets)
-                      </label>
-                      <Input
-                        value={jobReqs}
-                        onChange={(e) => setJobReqs(e.target.value)}
-                        placeholder="e.g. React, Node.js, SQL, TypeScript, Docker"
-                        required
-                      />
-                      <span className="text-[10px] text-slate-500">
-                        Separate skills with commas. The ATS scanner will weight matching metrics against these skills.
-                      </span>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setCreateJobOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-blue-600 text-white">Create Job Listing</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+              <div className="rounded-lg border p-3" style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}>
+                <p className="text-xs font-bold mb-1" style={{ color: T.muted }}>Resume Preview</p>
+                <p className="text-xs leading-relaxed font-mono" style={{ color: T.text, maxHeight: '120px', overflowY: 'auto' }}>
+                  {selectedCandidate.resumeContent || 'No resume content'}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold" style={{ color: T.muted }}>Send Message</p>
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Write an outreach message..."
+                  rows={3}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                  style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}
+                />
+                <button
+                  onClick={() => { if (!messageText.trim()) return; toast.success(`Message sent to ${selectedCandidate.applicantName}`); setMessageText(""); }}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-white transition hover:opacity-90"
+                  style={{ backgroundColor: T.primary }}
+                >
+                  <Send className="h-4 w-4" /> Send Message
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 rounded-xl border border-dashed" style={{ borderColor: T.outlineVariant }}>
+              <Users className="h-8 w-8" style={{ color: T.muted }} />
+              <p className="text-xs" style={{ color: T.muted }}>Select a candidate</p>
+            </div>
           )}
         </div>
       </div>
 
-      {selectedOrgId ? (
-        <div className="grid lg:grid-cols-5 gap-8">
-          {/* Jobs List Panel */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card className="shadow-sm border-slate-200 bg-white">
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-                <CardTitle className="text-base text-slate-800 flex items-center gap-2">
-                  <Briefcase className="w-4.5 h-4.5 text-blue-600" />
-                  Active Positions ({listJobsQuery.data?.length || 0})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-slate-100">
-                  {listJobsQuery.data?.map((job) => {
-                    const isSelected = job.id === selectedJobId;
-                    return (
-                      <button
-                        key={job.id}
-                        onClick={() => setSelectedJobId(job.id)}
-                        className={`w-full text-left p-4 hover:bg-slate-50 transition ${
-                          isSelected ? "bg-blue-50/70 border-l-4 border-blue-600" : ""
-                        }`}
-                      >
-                        <div className="font-bold text-slate-800 text-sm">{job.title}</div>
-                        <div className="text-xs text-slate-500 truncate mt-1">{job.description}</div>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {job.requirements.split(/\s*,\s*/).slice(0, 3).map((r: string, idx: number) => (
-                            <Badge key={idx} variant="outline" className="text-[9px] px-1 py-0 bg-white">
-                              {r}
-                            </Badge>
-                          ))}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {listJobsQuery.data?.length === 0 && (
-                    <div className="p-8 text-center text-xs text-slate-500 italic">
-                      No jobs posted yet. Click 'Post A Job' to start screening candidates.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Job Applications Leaderboard */}
-          <div className="lg:col-span-3">
-            {selectedJobId && currentJob ? (
-              <Card className="shadow-sm border-slate-200">
-                <CardHeader className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4">
-                  <div>
-                    <CardTitle className="text-lg text-slate-800">{currentJob.title} Applicants</CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                      Candidates ordered by ATS match alignment check compliance
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Candidate</TableHead>
-                        <TableHead>Match Score</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {listAppsQuery.data?.map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell>
-                            <div className="font-semibold text-slate-800 text-sm">{app.applicantName}</div>
-                            <div className="text-slate-500 text-xs">{app.applicantEmail}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge className={
-                                app.matchScore >= 80 ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
-                                app.matchScore >= 60 ? "bg-amber-50 border-amber-200 text-amber-800" :
-                                "bg-rose-50 border-rose-200 text-rose-800"
-                              }>
-                                <Award className="w-3 h-3 mr-1" />
-                                {app.matchScore}% Match
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={app.status}
-                              onValueChange={(val) => handleUpdateStatus(app.id, val)}
-                            >
-                              <SelectTrigger className="h-8 w-28 bg-white border-slate-200 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="reviewed">Reviewed</SelectItem>
-                                <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                                <SelectItem value="rejected">Rejected</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedApplication(app);
-                                setViewResumeOpen(true);
-                              }}
-                              className="text-slate-600 hover:text-slate-900"
-                            >
-                              <Eye className="w-4.5 h-4.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {listAppsQuery.data?.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-xs text-slate-500 italic">
-                            No applications submitted yet for this role.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl h-80 flex flex-col items-center justify-center text-center p-8">
-                <Users className="w-16 h-16 text-slate-300 mb-4" />
-                <h3 className="text-lg font-bold text-slate-700">Select a Job Vacancy</h3>
-                <p className="text-sm text-slate-500 max-w-sm mt-1">
-                  Click on an active position on the left to display candidate application summaries.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl h-80 flex flex-col items-center justify-center text-center p-8">
-          <Briefcase className="w-16 h-16 text-slate-300 mb-4" />
-          <h3 className="text-lg font-bold text-slate-700">Setup Organization</h3>
-          <p className="text-sm text-slate-500 max-w-sm mt-1">
-            You must select an organization space or create a new team inside the 'Organization Portal' to post job openings.
-          </p>
-        </div>
-      )}
-
-      {/* View Resume Dialog */}
-      <Dialog open={viewResumeOpen} onOpenChange={setViewResumeOpen}>
-        {selectedApplication && (
-          <DialogContent className="max-w-lg bg-white">
-            <DialogHeader>
-              <DialogTitle>Resume: {selectedApplication.applicantName}</DialogTitle>
-              <DialogDescription>Submitted Email: {selectedApplication.applicantEmail}</DialogDescription>
-            </DialogHeader>
-            <div className="bg-slate-50 border rounded-lg p-4 max-h-[400px] overflow-y-auto mt-2 text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
-              {selectedApplication.resumeContent}
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button onClick={() => setViewResumeOpen(false)} className="bg-slate-900 text-white">
-                Close Preview
-              </Button>
-            </div>
-          </DialogContent>
-        )}
-      </Dialog>
+      {/* Desktop: Create Job Dialog */}
+      <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+        <SheetContent side="right" className="w-[400px] p-6" style={{ backgroundColor: T.surface }}>
+          <CreateJobForm jobTitle={jobTitle} setJobTitle={setJobTitle} jobDesc={jobDesc} setJobDesc={setJobDesc} jobReqs={jobReqs} setJobReqs={setJobReqs} onSubmit={handleCreateJob} onClose={() => setCreateOpen(false)} />
+        </SheetContent>
+      </Sheet>
     </div>
+  );
+}
+
+function CreateJobForm({ jobTitle, setJobTitle, jobDesc, setJobDesc, jobReqs, setJobReqs, onSubmit, onClose }: {
+  jobTitle: string; setJobTitle: (v: string) => void;
+  jobDesc: string; setJobDesc: (v: string) => void;
+  jobReqs: string; setJobReqs: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void; onClose: () => void;
+}) {
+  const T2 = { surface: '#131b33', elevated: '#1c2747', primary: '#1e40af', text: '#e2e8f0', muted: '#94a3b8', outlineVariant: '#2a3a5c' };
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <p className="text-lg font-extrabold" style={{ color: T2.text }}>Post a Role</p>
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold" style={{ color: T2.muted }}>Job Title</p>
+        <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Senior Full-Stack Engineer"
+          className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+          style={{ borderColor: T2.outlineVariant, backgroundColor: T2.elevated, color: T2.text }} />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold" style={{ color: T2.muted }}>Description</p>
+        <textarea value={jobDesc} onChange={(e) => setJobDesc(e.target.value)} placeholder="Detailed responsibilities..."
+          rows={4} className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-none"
+          style={{ borderColor: T2.outlineVariant, backgroundColor: T2.elevated, color: T2.text }} />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold" style={{ color: T2.muted }}>Requirements (comma-separated)</p>
+        <input value={jobReqs} onChange={(e) => setJobReqs(e.target.value)} placeholder="React, Node.js, SQL"
+          className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+          style={{ borderColor: T2.outlineVariant, backgroundColor: T2.elevated, color: T2.text }} />
+      </div>
+      <div className="flex gap-2 pt-2">
+        <button type="button" onClick={onClose}
+          className="flex-1 rounded-lg px-4 py-2.5 text-sm font-bold"
+          style={{ backgroundColor: T2.elevated, color: T2.muted }}>Cancel</button>
+        <button type="submit"
+          className="flex-1 rounded-lg px-4 py-2.5 text-sm font-bold text-white"
+          style={{ backgroundColor: T2.primary }}>Publish</button>
+      </div>
+    </form>
   );
 }

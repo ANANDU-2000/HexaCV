@@ -1,345 +1,292 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Chrome, Github, Linkedin, Mail, ArrowRight, ArrowLeft, UserPlus, Lock, Eye, EyeOff, User, Check, X, Sparkles } from "lucide-react";
+import { Chrome, Layers, Mail, Lock, Eye, EyeOff, User, Check, X, Sparkles } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
-interface PasswordStrength {
-  score: number;
-  label: string;
-  color: string;
-  bgColor: string;
-}
+const T = {
+  bg: '#0b1326',
+  surface: '#171f33',
+  elevated: '#222a3d',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#dae2fd',
+  muted: '#c4c5d5',
+  border: '#444653',
+  success: '#16a34a',
+  error: '#ffb4ab',
+  radius: 8,
+};
 
-function getPasswordStrength(password: string): PasswordStrength {
+const strengthConfig = [
+  { min: 0, label: 'Weak', color: '#ffb4ab', fill: 1 },
+  { min: 2, label: 'Fair', color: '#fb923c', fill: 2 },
+  { min: 3, label: 'Good', color: '#fbbf24', fill: 3 },
+  { min: 4, label: 'Strong', color: '#4ade80', fill: 4 },
+  { min: 5, label: 'Very Strong', color: '#22d3ee', fill: 5 },
+];
+
+function getStrength(password: string) {
   let score = 0;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
-
-  if (score <= 1) return { score, label: "Weak", color: "text-red-500", bgColor: "bg-red-500" };
-  if (score <= 2) return { score, label: "Fair", color: "text-orange-500", bgColor: "bg-orange-500" };
-  if (score <= 3) return { score, label: "Good", color: "text-yellow-500", bgColor: "bg-yellow-500" };
-  if (score <= 4) return { score, label: "Strong", color: "text-emerald-500", bgColor: "bg-emerald-500" };
-  return { score, label: "Very Strong", color: "text-blue-600", bgColor: "bg-blue-600" };
+  return strengthConfig.find(s => score >= s.min) ?? strengthConfig[0];
 }
 
 export default function Register() {
   const [, setLocation] = useLocation();
-
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
-  const redirectParam = params.get("redirect") || "/builder";
+  const redirectParam = params.get('redirect') || '/builder';
 
-  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
-
-  const passwordChecks = useMemo(() => [
-    { label: "At least 8 characters", met: password.length >= 8 },
-    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
-    { label: "One lowercase letter", met: /[a-z]/.test(password) },
-    { label: "One number", met: /[0-9]/.test(password) },
-    { label: "One special character", met: /[^A-Za-z0-9]/.test(password) },
-  ], [password]);
-
+  const strength = useMemo(() => getStrength(password), [password]);
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
-
   const isFormValid = fullName.trim() && email.trim() && password.length >= 8 && passwordsMatch && agreedToTerms;
 
-  const handleMockRegister = (provider: string) => {
-    const name = provider.charAt(0).toUpperCase() + provider.slice(1) + " Candidate";
-    const userEmail = `${provider}.candidate@gmail.com`;
-    window.location.href = `/api/mock/login?provider=${provider}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(userEmail)}&redirect=${encodeURIComponent(redirectParam)}`;
-  };
+  const checks = [
+    { label: 'At least 8 characters', met: password.length >= 8 },
+    { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', met: /[a-z]/.test(password) },
+    { label: 'One number', met: /[0-9]/.test(password) },
+    { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+  ];
 
   const handleEmailRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      toast.error("Please enter your full name.");
-      return;
-    }
-    if (!email.trim()) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
-    }
-    if (!agreedToTerms) {
-      toast.error("Please agree to the Terms of Service.");
-      return;
-    }
-
-    // For local dev, simulate a registration via mock login
-    const isOwner = email.includes("admin");
-    const name = isOwner ? "Surag (Admin)" : fullName;
+    if (!fullName.trim()) { toast.error('Please enter your full name.'); return; }
+    if (!email.trim()) { toast.error('Please enter a valid email address.'); return; }
+    if (password.length < 8) { toast.error('Password must be at least 8 characters.'); return; }
+    if (password !== confirmPassword) { toast.error('Passwords do not match.'); return; }
+    if (!agreedToTerms) { toast.error('Please agree to the Terms of Service.'); return; }
+    const name = email.includes('admin') ? 'Surag (Admin)' : fullName;
     window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}`;
   };
 
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center relative overflow-hidden font-sans py-8">
-      {/* Decorative Background Shapes */}
-      <div className="absolute top-[-15%] right-[-10%] w-[50%] h-[50%] bg-blue-100/60 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] left-[-10%] w-[50%] h-[50%] bg-indigo-100/50 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-[30%] left-[5%] w-[20%] h-[20%] bg-emerald-100/40 rounded-full blur-[80px] pointer-events-none" />
+  const inputStyle = {
+    width: '100%', height: 48, borderRadius: T.radius, paddingLeft: 40,
+    backgroundColor: T.surface, border: `1px solid ${T.border}`,
+    color: T.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const,
+  };
 
-      <div className="w-full max-w-md p-4 relative z-10">
-        {/* Back to Landing */}
-        <Link href="/">
-          <Button variant="ghost" className="text-slate-500 hover:text-slate-900 mb-4 gap-2 hover:bg-white/60 transition">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Landing
-          </Button>
-        </Link>
+  const form = (
+    <div style={{ width: '100%', maxWidth: 440 }}>
+      <div className="flex items-center justify-center gap-2 mb-8">
+        <Layers style={{ color: T.primaryText }} className="w-7 h-7" />
+        <span className="text-xl font-bold" style={{ color: T.text }}>HexaCv</span>
+      </div>
 
-        <Card className="border border-slate-200 bg-white/80 backdrop-blur-xl shadow-xl rounded-2xl overflow-hidden">
-          <CardHeader className="text-center pt-8 pb-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200/50">
-              <UserPlus className="w-7 h-7 text-white" />
+      <h1 className="text-2xl font-bold text-center mb-8" style={{ color: T.text }}>Create your account</h1>
+
+      <form onSubmit={handleEmailRegister} className="flex flex-col gap-4">
+        <div className="sm:grid sm:grid-cols-2 sm:gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="name" style={{ color: T.muted, fontSize: 13, fontWeight: 600 }}>Full Name</Label>
+            <div className="relative">
+              <User className="absolute left-3.5" style={{ top: 16, color: T.muted, width: 16, height: 16 }} />
+              <Input id="name" type="text" placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} required
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
+                onBlur={e => e.currentTarget.style.borderColor = T.border}
+              />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
-              Create Your Account
-            </CardTitle>
-            <CardDescription className="text-slate-500 text-sm mt-2">
-              Start building professional resumes with AI-powered tools, cloud sync, and more.
-            </CardDescription>
-          </CardHeader>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="reg-email" style={{ color: T.muted, fontSize: 13, fontWeight: 600 }}>Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3.5" style={{ top: 16, color: T.muted, width: 16, height: 16 }} />
+              <Input id="reg-email" type="email" placeholder="name@company.com" value={email} onChange={e => setEmail(e.target.value)} required
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
+                onBlur={e => e.currentTarget.style.borderColor = T.border}
+              />
+            </div>
+          </div>
+        </div>
 
-          <CardContent className="space-y-5 px-6">
-            <form onSubmit={handleEmailRegister} className="space-y-4">
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="register-name" className="text-xs font-semibold text-slate-600">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="register-name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
-                    required
-                  />
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-password" style={{ color: T.muted, fontSize: 13, fontWeight: 600 }}>Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5" style={{ top: 16, color: T.muted, width: 16, height: 16 }} />
+            <Input id="reg-password" type={showPassword ? 'text' : 'password'} placeholder="Create a strong password"
+              value={password} onChange={e => setPassword(e.target.value)} required
+              style={{ ...inputStyle, paddingRight: 40 }}
+              onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
+              onBlur={e => e.currentTarget.style.borderColor = T.border}
+            />
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              style={{ position: 'absolute', right: 12, top: 16, color: T.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Strength bar */}
+          {password.length > 0 && (
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex gap-0.5" style={{ height: 6 }}>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} style={{
+                      flex: 1, borderRadius: 3,
+                      backgroundColor: i <= strength.fill ? strength.color : T.border,
+                      transition: 'background-color 0.3s',
+                    }} />
+                  ))}
                 </div>
+                <span style={{ color: strength.color, fontSize: 11, fontWeight: 600 }}>{strength.label}</span>
               </div>
-
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="register-email" className="text-xs font-semibold text-slate-600">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="register-password" className="text-xs font-semibold text-slate-600">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="register-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-
-                {/* Password Strength Meter */}
-                {password.length > 0 && (
-                  <div className="space-y-2 mt-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <div
-                            key={i}
-                            className={`flex-1 rounded-full transition-all duration-300 ${
-                              i <= passwordStrength.score ? passwordStrength.bgColor : "bg-slate-200"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className={`text-xs font-medium ${passwordStrength.color}`}>
-                        {passwordStrength.label}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      {passwordChecks.map((check) => (
-                        <div key={check.label} className="flex items-center gap-1.5">
-                          {check.met ? (
-                            <Check className="w-3 h-3 text-emerald-500" />
-                          ) : (
-                            <X className="w-3 h-3 text-slate-300" />
-                          )}
-                          <span className={`text-[10px] ${check.met ? "text-emerald-600" : "text-slate-400"}`}>
-                            {check.label}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                {checks.map(c => (
+                  <div key={c.label} className="flex items-center gap-1.5">
+                    {c.met
+                      ? <Check className="w-3 h-3" style={{ color: T.success }} />
+                      : <X className="w-3 h-3" style={{ color: T.border }} />
+                    }
+                    <span style={{ color: c.met ? T.success : T.muted, fontSize: 10 }}>{c.label}</span>
                   </div>
-                )}
+                ))}
               </div>
-
-              {/* Confirm Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="register-confirm-password" className="text-xs font-semibold text-slate-600">Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="register-confirm-password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Re-enter your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`pl-10 pr-10 bg-slate-50 text-slate-900 placeholder-slate-400 focus-visible:ring-blue-500 h-10 ${
-                      passwordsMismatch ? "border-red-300 focus-visible:ring-red-400" : "border-slate-200"
-                    } ${passwordsMatch ? "border-emerald-300 focus-visible:ring-emerald-400" : ""}`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {passwordsMismatch && (
-                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                    <X className="w-3 h-3" /> Passwords do not match
-                  </p>
-                )}
-                {passwordsMatch && (
-                  <p className="text-xs text-emerald-500 flex items-center gap-1 mt-1">
-                    <Check className="w-3 h-3" /> Passwords match
-                  </p>
-                )}
-              </div>
-
-              {/* Terms Checkbox */}
-              <div className="flex items-start gap-2.5 pt-1">
-                <input
-                  id="terms"
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
-                />
-                <label htmlFor="terms" className="text-xs text-slate-500 leading-relaxed cursor-pointer">
-                  I agree to HexaCv's{" "}
-                  <span className="text-blue-600 hover:underline font-medium">Terms of Service</span> and{" "}
-                  <span className="text-blue-600 hover:underline font-medium">Privacy Policy</span>
-                </label>
-              </div>
-
-              <Button 
-                type="submit" 
-                disabled={!isFormValid}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white rounded-lg h-11 flex items-center justify-center gap-2 transition duration-200 font-semibold shadow-md shadow-blue-200/40 disabled:shadow-none"
-              >
-                Create Account
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-4 text-slate-400 text-xs font-medium uppercase tracking-widest">Or sign up with</span>
-              <div className="flex-grow border-t border-slate-200"></div>
             </div>
+          )}
+        </div>
 
-            {/* Social Sign-ups */}
-            <div className="grid grid-cols-3 gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockRegister("google")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Chrome className="w-4 h-4 mr-2 text-red-500" />
-                Google
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockRegister("github")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Github className="w-4 h-4 mr-2 text-slate-800" />
-                GitHub
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleMockRegister("linkedin")}
-                className="border-slate-200 bg-white hover:bg-slate-50 text-slate-700 h-10 transition duration-200 shadow-sm"
-              >
-                <Linkedin className="w-4 h-4 mr-2 text-blue-600 fill-current" />
-                LinkedIn
-              </Button>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirm-password" style={{ color: T.muted, fontSize: 13, fontWeight: 600 }}>Confirm Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3.5" style={{ top: 16, color: T.muted, width: 16, height: 16 }} />
+            <Input id="confirm-password" type={showConfirmPassword ? 'text' : 'password'} placeholder="Re-enter your password"
+              value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
+              style={{
+                ...inputStyle, paddingRight: 40,
+                borderColor: passwordsMismatch ? T.error : passwordsMatch ? T.success : T.border,
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
+              onBlur={e => { if (!passwordsMismatch && !passwordsMatch) e.currentTarget.style.borderColor = T.border; }}
+            />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={{ position: 'absolute', right: 12, top: 16, color: T.muted, background: 'none', border: 'none', cursor: 'pointer' }}>
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {passwordsMismatch && <p className="text-xs flex items-center gap-1 mt-1" style={{ color: T.error }}><X className="w-3 h-3" /> Passwords do not match</p>}
+          {passwordsMatch && <p className="text-xs flex items-center gap-1 mt-1" style={{ color: T.success }}><Check className="w-3 h-3" /> Passwords match</p>}
+        </div>
+
+        {/* Terms checkbox */}
+        <div className="flex items-start gap-2.5 pt-1">
+          <input id="terms" type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)}
+            style={{ marginTop: 2, width: 16, height: 16, accentColor: T.accent, cursor: 'pointer' }} />
+          <label htmlFor="terms" style={{ color: T.muted, fontSize: 12, lineHeight: 1.4, cursor: 'pointer' }}>
+            I agree to HexaCv's{' '}
+            <span style={{ color: T.primaryText }} className="hover:underline font-medium">Terms of Service</span> and{' '}
+            <span style={{ color: T.primaryText }} className="hover:underline font-medium">Privacy Policy</span>
+          </label>
+        </div>
+
+        <Button type="submit" disabled={!isFormValid} style={{
+          width: '100%', height: 48, borderRadius: T.radius,
+          backgroundColor: isFormValid ? T.accent : T.border,
+          color: isFormValid ? '#fff' : T.muted, fontSize: 15, fontWeight: 600,
+          border: 'none', cursor: isFormValid ? 'pointer' : 'not-allowed', marginTop: 4,
+        }} className="transition-opacity">
+          Create Account
+        </Button>
+      </form>
+
+      {/* OAuth */}
+      <div className="flex items-center gap-3 my-6">
+        <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
+        <span style={{ color: T.muted, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>or sign up with</span>
+        <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
+      </div>
+
+      <Button variant="outline" onClick={() => {
+        const name = 'Google Candidate';
+        window.location.href = `/api/mock/login?provider=google&name=${encodeURIComponent(name)}&email=${encodeURIComponent('google.candidate@gmail.com')}&redirect=${encodeURIComponent(redirectParam)}`;
+      }} style={{
+        width: '100%', height: 48, borderRadius: T.radius,
+        backgroundColor: 'transparent', border: `1px solid ${T.border}`,
+        color: T.text, fontSize: 14, fontWeight: 500, gap: 8, cursor: 'pointer',
+      }} className="hover:opacity-80 transition-opacity">
+        <Chrome className="w-4 h-4" /> Continue with Google
+      </Button>
+
+      <p className="text-center mt-8" style={{ color: T.muted, fontSize: 13 }}>
+        Already have an account?{' '}
+        <Link href="/login">
+          <span style={{ color: T.primaryText, fontWeight: 600, cursor: 'pointer' }} className="hover:underline">Log in</span>
+        </Link>
+      </p>
+
+      <div className="text-center mt-4">
+        <Link href={redirectParam}>
+          <span style={{ color: T.muted, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            className="hover:opacity-80 transition-opacity">
+            <Sparkles className="w-3 h-3" /> Continue as Guest
+          </span>
+        </Link>
+      </div>
+
+      <p className="text-center mt-6" style={{ color: T.border, fontSize: 10, lineHeight: 1.4 }}>
+        Secured by HexaStack Solutions. Your data is protected with enterprise-grade encryption.
+      </p>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: '100vh', width: '100%', backgroundColor: T.bg, fontFamily: 'Inter, sans-serif', display: 'flex' }}>
+      {/* Mobile */}
+      <div className="flex sm:hidden items-center justify-center w-full px-6 py-12">
+        {form}
+      </div>
+
+      {/* Desktop two-column */}
+      <div className="hidden sm:flex w-full">
+        <div className="flex items-center justify-center" style={{ width: '40%', padding: 32 }}>
+          {form}
+        </div>
+        <div style={{
+          width: '60%', position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(135deg, #0f1b3d 0%, #1e40af 40%, #ea580c 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 64,
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          <div className="flex items-center gap-3 mb-12 relative" style={{ zIndex: 1 }}>
+            <Layers style={{ color: '#fff', opacity: 0.9 }} className="w-8 h-8" />
+            <span className="text-2xl font-bold text-white">HexaCv</span>
+          </div>
+          <div className="relative" style={{ zIndex: 1, maxWidth: 440, textAlign: 'center' }}>
+            <div style={{
+              backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)',
+              borderRadius: 16, padding: 40, border: '1px solid rgba(255,255,255,0.15)',
+            }}>
+              <User className="w-8 h-8 mx-auto mb-4" style={{ color: '#b8c4ff' }} />
+              <blockquote style={{ color: '#fff', fontSize: 18, lineHeight: 1.6, fontWeight: 500, fontStyle: 'italic' }}>
+                "Creating an account took less than a minute. I was able to import my old resume and tailor it for a new role right away."
+              </blockquote>
+              <div style={{ marginTop: 20, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
+                — Alex M., Product Designer
+              </div>
             </div>
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-4 bg-slate-50/50 border-t border-slate-100 px-6 py-5 text-center">
-            {/* Login CTA */}
-            <p className="text-sm text-slate-600">
-              Already have an account?{" "}
-              <Link href="/login">
-                <span className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer transition">
-                  Sign In
-                </span>
-              </Link>
-            </p>
-
-            {/* Guest Mode */}
-            <Link href={redirectParam}>
-              <span className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer transition flex items-center justify-center gap-1.5 font-medium">
-                <Sparkles className="w-3.5 h-3.5" />
-                Continue as Guest (No account needed)
-              </span>
-            </Link>
-
-            <p className="text-[10px] text-slate-400 leading-normal max-w-[280px] mx-auto">
-              Secured by HexaStack Solutions. Your data is protected with enterprise-grade encryption.
-            </p>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
