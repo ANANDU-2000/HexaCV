@@ -238,9 +238,9 @@ export async function calculateKeywordAlignment(
       {
         role: "user",
         content: `Resume:\n${resumeText}\n\nJob Description:\n${jobDescription}\n\nProvide a JSON response with:
-1. alignment_score (0-100): How well the resume matches the job description
-2. matched_keywords: Array of keywords from the job that appear in the resume
-3. missing_keywords: Array of important keywords from the job that are missing from the resume`,
+1. alignment_score (0-100)
+2. matched_keywords: array
+3. missing_keywords: array`,
       },
     ],
     response_format: {
@@ -322,7 +322,7 @@ REGIONAL OPTIMIZATION INSTRUCTIONS (${countryCode || "IN"} -> ${targetCountryCod
         content:
           STRICT_REWRITE_RULES +
           "You are an expert resume writer. Rephrase bullet points to be clearer and better aligned with the target job — without adding new facts." +
-          (regionalInstructions ? ` Adhere strictly to these regional constraints:\n${regionalInstructions}` : ""),
+          (regionalInstructions ? `\n${regionalInstructions}` : ""),
       },
       {
         role: "user",
@@ -337,12 +337,12 @@ ${jobDescription}
 
 Rephrase each bullet to:
 1. Use stronger action verbs while keeping the same facts
-2. Incorporate relevant keywords from the job description where they match existing experience
+2. Incorporate relevant JD keywords only where they match existing experience
 3. Stay concise and impactful
 4. NEVER add metrics, tools, or achievements not in the original bullets
 5. Return exactly ${currentBullets.length} bullets in the same order
 
-Return as a JSON object with a "bullets" array of strings.`,
+Return JSON: { "bullets": string[] }`,
       },
     ],
     response_format: {
@@ -415,7 +415,7 @@ REGIONAL OPTIMIZATION INSTRUCTIONS (${countryCode || "IN"} -> ${targetCountryCod
         content:
           STRICT_REWRITE_RULES +
           "You are an expert resume writer. Rewrite the professional summary to be compelling and aligned with the target job — using only facts from the current summary." +
-          (regionalInstructions ? ` Adhere strictly to these regional constraints:\n${regionalInstructions}` : ""),
+          (regionalInstructions ? `\n${regionalInstructions}` : ""),
       },
       {
         role: "user",
@@ -425,15 +425,15 @@ Target Role: ${targetRole || jobTitle || "(Not specified)"}
 Target Job Description:
 ${jobDescription}
 
-Rewrite the professional summary to:
-1. Highlight skills and experience already stated in the current summary
-2. Incorporate relevant keywords from the job description only where they match existing experience
-3. Align tone with the target role and job title
-4. Be concise (2-4 sentences, ~50-80 words max)
-5. Do NOT invent credentials, degrees, years of experience, or company names
-6. If the current summary is empty, return an empty string — do not fabricate content
+Rewrite to:
+1. Highlight skills/experience already stated
+2. Incorporate JD keywords only where they match existing experience
+3. Align tone with target role/job title
+4. Be concise (2-4 sentences, ~50-80 words)
+5. Do NOT invent credentials, degrees, years of experience, or companies
+6. Empty input → empty output, never fabricate
 
-Return as a JSON object with a single field "summary".`,
+Return JSON: { "summary": string }`,
       },
     ],
     response_format: {
@@ -469,6 +469,325 @@ Return as a JSON object with a single field "summary".`,
   }
 
   return filterGroundedRewrite(currentSummary, rewritten, 0.15);
+}
+
+export async function improveProjectBullets(
+  projectName: string,
+  stack: string[],
+  currentBullets: string[],
+  jobDescription: string,
+  targetRole?: string
+): Promise<string[]> {
+  if (!currentBullets.length) return [];
+
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          STRICT_REWRITE_RULES +
+          "You are an expert resume writer. Rephrase project description bullets to better highlight technical impact and relevance to the target role — without adding new facts, tools, or metrics.",
+      },
+      {
+        role: "user",
+        content: `Project: ${projectName}
+Tech Stack: ${stack.join(", ")}
+Target Role: ${targetRole || "(Not specified)"}
+Current Bullets (${currentBullets.length} total — return exactly ${currentBullets.length}):
+${currentBullets.map((b) => `- ${b}`).join("\n")}
+
+Target Job Description:
+${jobDescription}
+
+Rephrase each bullet to:
+1. Lead with the technical action taken, not the tool name alone
+2. Surface JD-relevant keywords only where the underlying work already covers them
+3. Keep every tool/library/number exactly as stated
+4. Return exactly ${currentBullets.length} bullets, same order
+
+Return JSON: { "bullets": string[] }`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "improved_project_bullets",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            bullets: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+          required: ["bullets"],
+        },
+      },
+    },
+    temperature: 0.2,
+  });
+
+  const content = response.choices[0]?.message.content;
+  if (!content || typeof content !== "string") {
+    throw new Error("No response from LLM");
+  }
+
+  const result = JSON.parse(content);
+  const rawBullets: string[] = Array.isArray(result.bullets) ? result.bullets : [];
+  return filterGroundedBullets(currentBullets, rawBullets);
+}
+
+export async function generateCoverLetter(input: {
+  name: string;
+  targetRole: string;
+  companyName: string;
+  hiringManagerName?: string;
+  summary: string;
+  experienceBullets: string;
+  skills: string;
+  jobDescription: string;
+}): Promise<string> {
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an expert cover letter writer. Write a concise, professional cover letter using ONLY the candidate details, employer/role details, and achievements provided below. Do NOT invent any company history, metrics, or experience not present in the resume data. Do NOT use generic filler like 'I am writing to express my interest' as the opening line — open with a specific, concrete hook drawn from the candidate's actual background.",
+      },
+      {
+        role: "user",
+        content: `Candidate Name: ${input.name}
+Target Role: ${input.targetRole}
+Company: ${input.companyName}
+Hiring Manager (if known): ${input.hiringManagerName || "Not provided"}
+
+Resume Summary: ${input.summary}
+Key Experience:
+${input.experienceBullets}
+Key Skills: ${input.skills}
+
+Job Description:
+${input.jobDescription}
+
+Write a 3-paragraph cover letter (opening hook, relevant experience mapped to the JD, confident close with a call to action). Max 250 words. Return JSON: { "coverLetter": string }`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "cover_letter",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            coverLetter: { type: "string" },
+          },
+          required: ["coverLetter"],
+        },
+      },
+    },
+    temperature: 0.6,
+  });
+
+  const content = response.choices[0]?.message.content;
+  if (!content || typeof content !== "string") throw new Error("No response from LLM");
+  const result = JSON.parse(content);
+  return (result.coverLetter || "").trim();
+}
+
+export async function generateLinkedInAbout(input: {
+  summary: string;
+  jobTitle: string;
+  skills: string;
+  experienceHighlights: string;
+}): Promise<string> {
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          STRICT_REWRITE_RULES +
+          "You are rewriting resume content into a LinkedIn 'About' section: first-person, conversational, still 100% grounded in the facts provided. No resume-style bullet fragments — full sentences.",
+      },
+      {
+        role: "user",
+        content: `Professional Summary: ${input.summary}
+Job Title: ${input.jobTitle}
+Top Skills: ${input.skills}
+Notable Experience: ${input.experienceHighlights}
+
+Write a first-person LinkedIn About section, 3-5 short paragraphs, ending with what the candidate is currently looking for. Do not invent employers, metrics, or credentials not listed above. Return JSON: { "about": string }`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "linkedin_about",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            about: { type: "string" },
+          },
+          required: ["about"],
+        },
+      },
+    },
+    temperature: 0.6,
+  });
+
+  const content = response.choices[0]?.message.content;
+  if (!content || typeof content !== "string") throw new Error("No response from LLM");
+  const result = JSON.parse(content);
+  return (result.about || "").trim();
+}
+
+export async function atsAudit(resumeText: string, jobDescription: string): Promise<{
+  overallScore: number;
+  formattingIssues: string[];
+  missingKeywords: string[];
+  weakBullets: { original: string; why: string }[];
+  topFixes: string[];
+}> {
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an ATS (Applicant Tracking System) compliance auditor. Evaluate the resume's machine-readability and keyword alignment against the job description. Be specific and cite the exact resume text you're flagging — do not give generic advice that could apply to any resume.",
+      },
+      {
+        role: "user",
+        content: `Resume:\n${resumeText}\n\nJob Description:\n${jobDescription}\n\nReturn JSON:\n{\n  "overallScore": number (0-100),\n  "formattingIssues": string[],\n  "missingKeywords": string[],\n  "weakBullets": { "original": string, "why": string }[],\n  "topFixes": string[]\n}`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "ats_audit",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            overallScore: { type: "integer", minimum: 0, maximum: 100 },
+            formattingIssues: { type: "array", items: { type: "string" } },
+            missingKeywords: { type: "array", items: { type: "string" } },
+            weakBullets: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  original: { type: "string" },
+                  why: { type: "string" },
+                },
+                required: ["original", "why"],
+              },
+            },
+            topFixes: { type: "array", items: { type: "string" } },
+          },
+          required: ["overallScore", "formattingIssues", "missingKeywords", "weakBullets", "topFixes"],
+        },
+      },
+    },
+    temperature: 0.2,
+  });
+
+  const content = response.choices[0]?.message.content;
+  if (!content || typeof content !== "string") throw new Error("No response from LLM");
+  return JSON.parse(content);
+}
+
+export async function generateInterviewQuestions(
+  resumeText: string,
+  jobDescription: string
+): Promise<{
+  behavioralQuestions: string[];
+  technicalQuestions: string[];
+  gapQuestions: string[];
+  suggestedTalkingPoints: string[];
+}> {
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a hiring manager preparing to interview this candidate for the target role. Generate likely interview questions based specifically on the overlap and gaps between their resume and the job description — not generic interview questions.",
+      },
+      {
+        role: "user",
+        content: `Resume:\n${resumeText}\n\nJob Description:\n${jobDescription}\n\nReturn JSON:\n{\n  "behavioralQuestions": string[],\n  "technicalQuestions": string[],\n  "gapQuestions": string[],\n  "suggestedTalkingPoints": string[]\n}`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "interview_questions",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            behavioralQuestions: { type: "array", items: { type: "string" } },
+            technicalQuestions: { type: "array", items: { type: "string" } },
+            gapQuestions: { type: "array", items: { type: "string" } },
+            suggestedTalkingPoints: { type: "array", items: { type: "string" } },
+          },
+          required: ["behavioralQuestions", "technicalQuestions", "gapQuestions", "suggestedTalkingPoints"],
+        },
+      },
+    },
+    temperature: 0.3,
+  });
+
+  const content = response.choices[0]?.message.content;
+  if (!content || typeof content !== "string") throw new Error("No response from LLM");
+  return JSON.parse(content);
+}
+
+export async function generateRecruiterOutreach(input: {
+  topSkills: string;
+  mostRecentRole: string;
+  jobTitle: string;
+  companyName: string;
+  roleSummary: string;
+}): Promise<string> {
+  const response = await invokeLLM({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are helping a recruiter draft a personalized outreach message to a candidate. Use only the candidate's actual resume highlights and the actual role details provided — no generic templated flattery.",
+      },
+      {
+        role: "user",
+        content: `Candidate Highlights: ${input.topSkills}, ${input.mostRecentRole}
+Role: ${input.jobTitle} at ${input.companyName}
+Role Highlights: ${input.roleSummary}
+
+Write a short (under 120 words), specific outreach message referencing one concrete thing from the candidate's background and one concrete thing about the role. Return JSON: { "message": string }`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "recruiter_outreach",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            message: { type: "string" },
+          },
+          required: ["message"],
+        },
+      },
+    },
+    temperature: 0.6,
+  });
+
+  const content = response.choices[0]?.message.content;
+  if (!content || typeof content !== "string") throw new Error("No response from LLM");
+  const result = JSON.parse(content);
+  return (result.message || "").trim();
 }
 
 /**
