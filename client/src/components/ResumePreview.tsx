@@ -30,7 +30,7 @@ function formatDateForResume(dateStr: string, dateFormat: string): string {
 function SectionHeading({ children, color, borderColor }: { children: React.ReactNode; color: string; borderColor: string }) {
   return (
     <h2 
-      className="text-[14.5px] font-bold tracking-wider uppercase pb-1 mb-2 mt-5 first:mt-0"
+      className="text-[14.5px] font-bold tracking-wider uppercase pb-1 mb-2 mt-5 first:mt-0 pdf-avoid-break"
       style={{ 
         color,
         borderBottom: `1px solid ${borderColor}`,
@@ -260,7 +260,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
                   <section key={sec.id}>
                     <SectionHeading color={tc.accent} borderColor={tc.border}>Experience</SectionHeading>
                     {sec.content.experiences.map((exp: any, idx: number) => (
-                      <div key={exp.id || idx} className="mb-4 last:mb-0"
+                      <div key={exp.id || idx} className="mb-4 last:mb-0 pdf-avoid-break"
                         style={{
                           backgroundColor: isDark ? cardBg : 'transparent',
                           borderRadius: `${cardRadius}px`,
@@ -290,7 +290,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
                     <div className="mb-3 last:mb-0">
                       <p className="text-[12px] italic font-semibold mb-1" style={{ color: mutedColor }}>Technical Projects</p>
                       {sec.content.projects.map((proj: any, idx: number) => (
-                        <div key={proj.id || idx} className="mb-2 last:mb-0"
+                        <div key={proj.id || idx} className="mb-2 last:mb-0 pdf-avoid-break"
                           style={{
                             backgroundColor: isDark ? cardBg : 'transparent',
                             borderRadius: `${cardRadius}px`,
@@ -327,7 +327,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
                   <section key={sec.id}>
                     <SectionHeading color={tc.accent} borderColor={tc.border}>Education</SectionHeading>
                     {sec.content.educations.map((edu: any, idx: number) => (
-                      <div key={edu.id || idx} className="mb-2 last:mb-0"
+                      <div key={edu.id || idx} className="mb-2 last:mb-0 pdf-avoid-break"
                         style={{
                           backgroundColor: isDark ? cardBg : 'transparent',
                           borderRadius: `${cardRadius}px`,
@@ -351,7 +351,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
               case 'certifications':
                 if (!sec.content.certifications || sec.content.certifications.length === 0) return null;
                 return (
-                  <section key={sec.id}>
+                  <section key={sec.id} className="pdf-avoid-break">
                     <SectionHeading color={tc.accent} borderColor={tc.border}>Certifications</SectionHeading>
                     <p className="text-[12.5px] leading-snug" style={{ color: textColor }}>
                       {sec.content.certifications
@@ -363,7 +363,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
               case 'achievements':
                 if (!sec.content.achievements || sec.content.achievements.length === 0) return null;
                 return (
-                  <section key={sec.id}>
+                  <section key={sec.id} className="pdf-avoid-break">
                     <SectionHeading color={tc.accent} borderColor={tc.border}>Achievements</SectionHeading>
                     <BulletList items={sec.content.achievements} color={textColor} />
                   </section>
@@ -371,7 +371,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
               case 'languages':
                 if (!sec.content.languages || sec.content.languages.length === 0) return null;
                 return (
-                  <section key={sec.id}>
+                  <section key={sec.id} className="pdf-avoid-break">
                     <SectionHeading color={tc.accent} borderColor={tc.border}>Languages</SectionHeading>
                     <p className="text-[12.5px] leading-snug" style={{ color: textColor }}>
                       {sec.content.languages
@@ -422,7 +422,7 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
                         <section key={customSect.id || sectIdx}>
                           <SectionHeading color={tc.accent} borderColor={tc.border}>{customSect.title}</SectionHeading>
                           {customSect.items.map((item: any, itemIdx: number) => (
-                            <div key={item.id || itemIdx} className="mb-2 last:mb-0"
+                            <div key={item.id || itemIdx} className="mb-2 last:mb-0 pdf-avoid-break"
                               style={{
                                 backgroundColor: isDark ? cardBg : 'transparent',
                                 borderRadius: `${cardRadius}px`,

@@ -219,7 +219,7 @@ const assertApiKey = () => {
   }
 };
 
-type ApiKeyConfig = { apiKey: string; url: string; defaultModel?: string };
+type ApiKeyConfig = { apiKey: string; url: string; defaultModel?: string; isOpenAI?: boolean };
 
 const getApiKeyConfigs = (): ApiKeyConfig[] => {
   const configs: ApiKeyConfig[] = [];
@@ -251,12 +251,15 @@ const getApiKeyConfigs = (): ApiKeyConfig[] => {
     configs.push({
       apiKey: ENV.grokApiKey,
       url: "https://api.groq.com/openai/v1/chat/completions",
-      defaultModel: "llama3-8b-8192",
+      defaultModel: "llama-3.3-70b-versatile",
     });
   }
 
   return configs;
 };
+
+const hasOpenAIConfig = (configs: ApiKeyConfig[]): boolean =>
+  configs.some((c) => !!c.isOpenAI);
 
 const normalizeResponseFormat = ({
   responseFormat,
@@ -438,11 +441,20 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const configs = getApiKeyConfigs();
+  const openAIConfigured = hasOpenAIConfig(configs);
   let lastError: Error | null = null;
 
   for (const config of configs) {
     const requestPayload = { ...payload };
-    requestPayload.model = model || config.defaultModel || requestPayload.model;
+    
+    // Map OpenAI model names (like gpt-4o) to the provider's defaultModel
+    // when no OpenAI credentials are configured.
+    let resolvedModel = model;
+    if (!openAIConfigured && config.defaultModel && model?.startsWith("gpt-")) {
+      resolvedModel = config.defaultModel;
+    }
+    
+    requestPayload.model = resolvedModel || config.defaultModel || requestPayload.model;
 
     try {
       const response = await fetchWithBackoff(config.url, {

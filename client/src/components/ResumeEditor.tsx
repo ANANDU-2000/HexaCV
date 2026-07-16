@@ -772,7 +772,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   return (
     <div className="w-full h-full font-sans text-slate-800 dark:text-slate-200 pb-[72px] lg:pb-0">
       {/* Editor workspace */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(430px,560px)] gap-4 h-full min-h-0">
+      <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
         <div className="w-full flex flex-col gap-2 sm:gap-3 h-full min-h-0">
         {/* Toggle Mode header on mobile, regular title + quick settings on desktop */}
         <div className={cn(
@@ -1083,6 +1083,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                         locationFields={getSectionContent('header').header?.locationFields || {}}
                         phone={getSectionContent('header').header?.phone || ''}
                         targetCountryCode={getSectionContent('header').header?.targetCountryCode || ''}
+                        location={getSectionContent('header').header?.location || ''}
                         onCountryChange={(code) => updateSection('header', {
                           header: { ...getSectionContent('header').header, countryCode: code }
                         })}
@@ -2726,10 +2727,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               </div>
               
               {/* Actions Section */}
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button 
                   onClick={handleExportPDF} 
-                  className="w-full bg-primary hover:bg-primary/95 text-white font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/95 text-white font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
                 >
                   <Download className="w-4 h-4" />
                   Download PDF Format
@@ -2737,10 +2738,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button 
                   onClick={handleExportDOCX} 
                   variant="outline"
-                  className="w-full border border-slate-200 dark:border-white/10 hover:border-primary text-slate-800 dark:text-slate-200 bg-white/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/8 font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
+                  className="w-full sm:flex-1 border border-slate-200 dark:border-white/10 hover:border-primary text-slate-800 dark:text-slate-200 bg-white/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/8 font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
                 >
                   <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  Download MS Word (.docx) Format
+                  Download Word (DOCX)
                 </Button>
               </div>
             </CardContent>

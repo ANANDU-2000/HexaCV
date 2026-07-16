@@ -380,6 +380,7 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                       locationFields={header.locationFields}
                       phone={header.phone}
                       targetCountryCode={header.targetCountryCode}
+                      location={header.location}
                       onCountryChange={(code) => setHeader({ ...header, countryCode: code })}
                       onTargetCountryChange={(code) => setHeader({ ...header, targetCountryCode: code })}
                       onLocationFieldChange={(fields) => setHeader({ ...header, locationFields: fields })}

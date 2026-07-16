@@ -357,10 +357,29 @@ function deduplicateParsedResume(parsed: ParsedResume): ParsedResume {
     location: cleanString(parsed.header?.location),
     jobTitle: cleanString(parsed.header?.jobTitle),
     targetRole: cleanString(parsed.header?.targetRole),
-    links: (parsed.header?.links || []).map(link => ({
-      label: cleanString(link.label),
-      url: cleanString(link.url)
-    })).filter(link => link.label && link.url),
+    links: (parsed.header?.links || []).map(link => {
+      const origUrl = cleanString(link.url);
+      let url = origUrl;
+      if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://" + url;
+      }
+      const label = cleanString(link.label).toLowerCase();
+      const urlLower = url.toLowerCase();
+      let normalizedLabel = cleanString(link.label) || "Portfolio";
+
+      if (label.includes("linkedin") || urlLower.includes("linkedin.com")) {
+        normalizedLabel = "LinkedIn";
+      } else if (label.includes("github") || urlLower.includes("github.com")) {
+        normalizedLabel = "GitHub";
+      } else {
+        normalizedLabel = "Portfolio";
+      }
+
+      return {
+        label: normalizedLabel,
+        url
+      };
+    }).filter(link => link.label && link.url),
     countryCode: cleanString(parsed.header?.countryCode),
     locationFields: parsed.header?.locationFields || {},
     targetCountryCode: cleanString(parsed.header?.targetCountryCode)
@@ -833,21 +852,41 @@ function fallbackHeuristicParser(text: string): ParsedResume {
   const { jobTitle, targetRole } = inferJobTitleAndTargetRole(text);
 
   // Look for location patterns (e.g., San Francisco, CA or London, UK)
-  const locationRegex = /[A-Z][a-zA-Z\s]+,\s*[A-Z]{2}/;
+  const locationRegex = /\b[A-Z][a-zA-Z\s]{1,30},\s*\b[A-Z]{2}\b/;
   const locationMatch = text.match(locationRegex);
   const location = locationMatch ? locationMatch[0] : "";
 
-  // Links
+  // Links — detect bare domains (linkedin.com, github.com) with or without http(s)://
   const links: { label: string; url: string }[] = [];
-  const urlRegex = /https?:\/\/[^\s$.?#].[^\s]*/g;
-  const urls = text.match(urlRegex) || [];
-  urls.forEach(url => {
-    if (url.includes("linkedin.com")) {
-      links.push({ label: "LinkedIn", url });
-    } else if (url.includes("github.com")) {
-      links.push({ label: "GitHub", url });
-    } else if (links.length < 3) {
-      links.push({ label: "Portfolio", url });
+  const words = text.split(/[\s,]+/);
+  const seenUrls = new Set<string>();
+  const KNOWN_DOMAINS = ["linkedin.com", "github.com"] as const;
+
+  words.forEach(word => {
+    let cleanWord = word.replace(/[().,;:]+$/, "").trim();
+    if (!cleanWord) return;
+
+    const lowerWord = cleanWord.toLowerCase();
+    const isKnownDomain = KNOWN_DOMAINS.some(d => lowerWord.includes(d));
+    const isUrl = /^(https?:\/\/)?(www\.)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$/.test(cleanWord);
+
+    if (isUrl || isKnownDomain) {
+      let fullUrl = cleanWord;
+      if (!fullUrl.startsWith("http://") && !fullUrl.startsWith("https://")) {
+        fullUrl = "https://" + fullUrl;
+      }
+
+      const lowerUrl = fullUrl.toLowerCase();
+      if (seenUrls.has(lowerUrl)) return;
+      seenUrls.add(lowerUrl);
+
+      if (lowerUrl.includes("linkedin.com")) {
+        links.push({ label: "LinkedIn", url: fullUrl });
+      } else if (lowerUrl.includes("github.com")) {
+        links.push({ label: "GitHub", url: fullUrl });
+      } else if (links.length < 3) {
+        links.push({ label: "Portfolio", url: fullUrl });
+      }
     }
   });
 
