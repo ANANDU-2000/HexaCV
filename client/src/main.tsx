@@ -8,23 +8,45 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-// Register Service Worker for PWA support on all pages
+// Register Service Worker for PWA support on all pages in production, or unregister in dev to prevent cache issues
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-  const registerSW = () => {
-    navigator.serviceWorker
-      .register("/service-worker.js", { scope: "/" })
-      .then((registration) => {
-        console.log("PWA Service Worker registered successfully:", registration.scope);
-      })
-      .catch((error) => {
-        console.error("PWA Service Worker registration failed:", error);
-      });
-  };
-
-  if (document.readyState === "complete") {
-    registerSW();
+  if (import.meta.env.DEV) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      let unregisteredAny = false;
+      for (const registration of registrations) {
+        registration.unregister().then((success) => {
+          if (success) {
+            console.log("Unregistered stale service worker in development:", registration.scope);
+            unregisteredAny = true;
+          }
+        });
+      }
+      if (typeof caches !== "undefined") {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => caches.delete(key));
+        });
+      }
+      if (unregisteredAny) {
+        window.location.reload();
+      }
+    });
   } else {
-    window.addEventListener("load", registerSW);
+    const registerSW = () => {
+      navigator.serviceWorker
+        .register("/service-worker.js", { scope: "/" })
+        .then((registration) => {
+          console.log("PWA Service Worker registered successfully:", registration.scope);
+        })
+        .catch((error) => {
+          console.error("PWA Service Worker registration failed:", error);
+        });
+    };
+
+    if (document.readyState === "complete") {
+      registerSW();
+    } else {
+      window.addEventListener("load", registerSW);
+    }
   }
 }
 
