@@ -53,6 +53,16 @@ pnpm run dev
 
 The app will be available at `http://localhost:3000`
 
+### Environment Setup & LLM Providers
+
+Before running the server, copy `.env.example` to `.env` and configure your API keys. HexaCv supports a tier of fallback LLM providers for resume parsing and rewriting:
+
+- **OpenRouter**: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `OPENROUTER_MODEL` (e.g., `google/gemma-4-31b-it:free`)
+- **OpenCode.ai**: `OPENCODE_API_KEY`, `OPENCODE_API_URL`, `OPENCODE_MODEL` (e.g., `glm-5.2`)
+- **Bynara**: `BYNARA_API_KEY`, `BYNARA_API_URL`, `BYNARA_MODEL` (e.g., `glm-5.2-free`)
+- **TokenRouter**: `TOKENROUTER_API_KEY`, `TOKENROUTER_API_URL`, `TOKENROUTER_MODEL` (e.g., `z-ai/glm-5.2-free`)
+- **Direct fallbacks**: Supports standard OpenAI, Groq (`GROK_API_KEY`), and Gemini (`GEMINI_API_KEY`) APIs.
+
 ### Building for Production
 
 ```bash
