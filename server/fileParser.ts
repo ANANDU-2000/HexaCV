@@ -207,13 +207,23 @@ function validateParsedAgainstSource(sourceText: string, parsed: ParsedResume): 
       (p) => p.name && textGroundedInSource(p.name, sourceText, 0.5) && !isPlaceholderText(p.name)
     );
 
-  const educations = (parsed.educations || []).filter(
-    (e) =>
-      (e.institution || e.degree) &&
-      !isPlaceholderText(e.institution) &&
-      !isPlaceholderText(e.degree) &&
-      (textGroundedInSource(e.institution, sourceText, 0.5) || textGroundedInSource(e.degree, sourceText, 0.5))
-  );
+  const educations = (parsed.educations || [])
+    .map(e => {
+      let field = (e.field || "").trim();
+      if (field.includes("•") || field.includes("- ") || field.length > 80 || /\b(developed|implemented|built|created|managed|designed|framework|express|node|react|django|api)\b/i.test(field)) {
+        const parts = field.split(/[\n•;]| - /);
+        const candidate = parts[0].replace(/^[•\-*]\s*/, "").trim();
+        field = candidate.length <= 60 && !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(candidate) ? candidate : "";
+      }
+      return { ...e, field };
+    })
+    .filter(
+      (e) =>
+        (e.institution || e.degree) &&
+        !isPlaceholderText(e.institution) &&
+        !isPlaceholderText(e.degree) &&
+        (textGroundedInSource(e.institution, sourceText, 0.5) || textGroundedInSource(e.degree, sourceText, 0.5))
+    );
 
   const certifications = (parsed.certifications || []).filter(
     (c) => c.name && textGroundedInSource(c.name, sourceText, 0.5) && !isPlaceholderText(c.name)
@@ -476,9 +486,27 @@ function deduplicateParsedResume(parsed: ParsedResume): ParsedResume {
   const seenEducations = new Set<string>();
   const educations = educationsList
     .map(edu => {
-      const institution = cleanString(edu.institution);
-      const degree = cleanString(edu.degree);
-      const field = cleanString(edu.field);
+      let institution = cleanString(edu.institution);
+      let degree = cleanString(edu.degree);
+      let field = cleanString(edu.field);
+
+      if (institution.startsWith("•") || institution.startsWith("-") || institution.startsWith("*")) {
+        institution = institution.replace(/^[•\-*]\s*/, "").trim();
+      }
+      if (degree.startsWith("•") || degree.startsWith("-") || degree.startsWith("*")) {
+        degree = degree.replace(/^[•\-*]\s*/, "").trim();
+      }
+
+      if (field.includes("•") || field.includes("\n") || field.length > 80 || /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(field)) {
+        const parts = field.split(/[\n•;]| - /);
+        const cleanCandidate = parts[0].replace(/^[•\-*]\s*/, "").trim();
+        if (cleanCandidate.length <= 60 && !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(cleanCandidate)) {
+          field = cleanCandidate;
+        } else {
+          field = "";
+        }
+      }
+
       const key = `${institution.toLowerCase()}|${degree.toLowerCase()}|${field.toLowerCase()}`;
 
       if (!institution && !degree) return null;
@@ -809,17 +837,46 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
     });
 
     const content = response.choices[0]?.message.content;
-    if (!content || typeof content !== "string") {
-      throw new Error("No structured output received from LLM");
+    if (content && typeof content === "string") {
+      const parsed = JSON.parse(content);
+      const deduped = deduplicateParsedResume(parsed);
+      return validateParsedAgainstSource(text, deduped);
     }
-    const parsed = JSON.parse(content);
-    const deduped = deduplicateParsedResume(parsed);
-    return validateParsedAgainstSource(text, deduped);
+  } catch (error) {
+    console.warn("LLM parser with json_schema failed, attempting json_object mode:", error);
+  }
+
+  // Attempt 2: JSON Object mode with LLM
+  try {
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert resume parser. Parse raw resume text into a structured JSON object with keys: header (name, email, phone, location, jobTitle, targetRole, links[{label, url}]), summary (string), skills [{category, skills[]}], experiences [{id, company, role, startDate, endDate, current, description[]}], projects [{id, name, description, technologies[], link, date}], educations [{id, institution, degree, field, graduationDate, gpa}], certifications [{id, name, issuer, date, link}], achievements [], languages [{language, proficiency}], references [{id, name, company, title, email, phone, availableOnRequest}]. Return STRICT VALID JSON ONLY. Education field must ONLY contain degree field of study (e.g. Computer Science), never project descriptions.",
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+      response_format: { type: "json_object" },
+      model: "gpt-4o",
+      temperature: 0.1,
+    });
+
+    const content = response.choices[0]?.message.content;
+    if (content && typeof content === "string") {
+      const parsed = JSON.parse(content);
+      const deduped = deduplicateParsedResume(parsed);
+      return validateParsedAgainstSource(text, deduped);
+    }
   } catch (error) {
     console.error("LLM parser failed, falling back to heuristic parser:", error);
-    const heuristic = fallbackHeuristicParser(text);
-    return validateParsedAgainstSource(text, deduplicateParsedResume(heuristic));
   }
+
+  const heuristic = fallbackHeuristicParser(text);
+  return validateParsedAgainstSource(text, deduplicateParsedResume(heuristic));
 }
 
 /**
@@ -987,8 +1044,25 @@ function fallbackHeuristicParser(text: string): ParsedResume {
         }
       }
     } else if (currentSection === "education") {
-      const eduKeywords = /university|college|school|institute|degree|bachelor|master|phd|b\.s|b\.a|m\.s|m\.a|b\.tech|m\.tech|diploma|academy|board/i;
-      if (eduKeywords.test(line) || educations.length === 0) {
+      const isBullet = line.startsWith("•") || line.startsWith("-") || line.startsWith("*");
+      const isProjectVerbOrTech = /\b(developed|implemented|built|created|managed|designed|framework|express|node|react|django|api|javascript|python|sql|html|css)\b/i.test(line) && !/university|college|school|institute|degree|bachelor|master|phd|b\.s|b\.a|m\.s|m\.a|b\.tech|m\.tech|diploma|academy|board|secondary|gpa/i.test(line);
+
+      if (isBullet || isProjectVerbOrTech) {
+        if (projects.length > 0) {
+          const lastProj = projects[projects.length - 1];
+          const bulletText = line.replace(/^[•\-*]\s*/, "").trim();
+          lastProj.description = lastProj.description ? `${lastProj.description}\n${bulletText}` : bulletText;
+        } else if (experiences.length > 0) {
+          const bulletText = line.replace(/^[•\-*]\s*/, "").trim();
+          currentBullets.push(bulletText);
+        }
+        continue;
+      }
+
+      const eduKeywords = /university|college|school|institute|degree|bachelor|master|phd|b\.s|b\.a|m\.s|m\.a|b\.tech|m\.tech|diploma|academy|board|secondary|hsc|ssc/i;
+      const isEduDegreeLine = eduKeywords.test(line) || /b\.?tech|b\.?e|b\.?s|m\.?s|m\.?tech|b\.?a|m\.?b\.?a|computer science|information technology|engineering/i.test(line);
+
+      if (isEduDegreeLine) {
         let degree = "";
         let institution = line;
         if (line.includes(" - ")) {
@@ -1014,10 +1088,10 @@ function fallbackHeuristicParser(text: string): ParsedResume {
           if (line.toLowerCase().includes("gpa") || line.match(/\b\d\.\d\b/)) {
             const gpaMatch = line.match(/\b\d\.\d\b/);
             lastEdu.gpa = gpaMatch ? gpaMatch[0] : line;
-          } else if (line.match(/\b\d{4}\b/)) {
-            lastEdu.graduationDate = line.match(/\b\d{4}\b/)?.[0] || line;
-          } else {
-            lastEdu.field = lastEdu.field ? `${lastEdu.field}, ${line}` : line;
+          } else if (line.match(/\b(19|20)\d{2}\b/)) {
+            lastEdu.graduationDate = line.match(/\b(19|20)\d{2}\b/)?.[0] || line;
+          } else if (!lastEdu.field && line.length < 70 && !line.includes("@") && !line.includes("http")) {
+            lastEdu.field = line;
           }
         }
       }

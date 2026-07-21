@@ -141,20 +141,33 @@ export default function ProfessionalResumeTemplate({ resume }: ProfessionalResum
             Education
           </h2>
           <div className="space-y-2">
-            {educationSection.content.educations.map((edu: any, idx: number) => (
-              <div key={idx}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">{edu.degree}</h3>
-                    <p className="text-sm text-slate-600">{edu.institution}</p>
+            {educationSection.content.educations.map((edu: any, idx: number) => {
+              const cleanField = (() => {
+                if (!edu.field) return '';
+                const f = String(edu.field).trim();
+                if (f.includes('•') || f.length > 80 || /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(f)) {
+                  const candidate = f.split(/[\n•;]| - /)[0].trim();
+                  return candidate.length <= 50 && !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(candidate) ? candidate : '';
+                }
+                return f;
+              })();
+              return (
+                <div key={idx}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        {edu.degree || 'Education'}{cleanField ? ` - ${cleanField}` : ''}
+                      </h3>
+                      <p className="text-sm text-slate-600">{edu.institution}</p>
+                    </div>
+                    {edu.graduationDate && (
+                      <span className="text-xs text-slate-500">{edu.graduationDate}</span>
+                    )}
                   </div>
-                  {edu.graduationDate && (
-                    <span className="text-xs text-slate-500">{edu.graduationDate}</span>
-                  )}
+                  {edu.gpa && <p className="text-xs text-slate-500 mt-0.5">GPA: {edu.gpa}</p>}
                 </div>
-                {edu.field && <p className="text-sm text-slate-700 mt-1">{edu.field}</p>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
