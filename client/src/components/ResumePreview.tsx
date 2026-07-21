@@ -326,26 +326,40 @@ export default function ResumePreview({ resume, templateId, zoom = 100, contentR
                 return (
                   <section key={sec.id}>
                     <SectionHeading color={tc.accent} borderColor={tc.border}>Education</SectionHeading>
-                    {sec.content.educations.map((edu: any, idx: number) => (
-                      <div key={edu.id || idx} className="mb-2 last:mb-0 pdf-avoid-break"
-                        style={{
-                          backgroundColor: isDark ? cardBg : 'transparent',
-                          borderRadius: `${cardRadius}px`,
-                          padding: isDark ? '0.75rem' : '0',
-                        }}
-                      >
-                        <div className="flex justify-between items-baseline flex-wrap gap-x-2">
-                          <h3 className="font-bold text-[13px]" style={{ color: textColor }}>{edu.degree} in {edu.field}</h3>
-                          <span className="text-[11.5px] italic whitespace-nowrap" style={{ color: mutedColor }}>
-                            {formatDateForResume(edu.graduationDate, dateFormat)}
-                          </span>
+                    {sec.content.educations.map((edu: any, idx: number) => {
+                      const cleanField = (() => {
+                        if (!edu.field) return '';
+                        const f = String(edu.field).trim();
+                        if (f.includes('•') || f.length > 80 || /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(f)) {
+                          const candidate = f.split(/[\n•;]| - /)[0].trim();
+                          return candidate.length <= 50 && !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(candidate) ? candidate : '';
+                        }
+                        return f;
+                      })();
+                      return (
+                        <div key={edu.id || idx} className="mb-2 last:mb-0 pdf-avoid-break"
+                          style={{
+                            backgroundColor: isDark ? cardBg : 'transparent',
+                            borderRadius: `${cardRadius}px`,
+                            padding: isDark ? '0.75rem' : '0',
+                          }}
+                        >
+                          <div className="flex justify-between items-baseline flex-wrap gap-x-2">
+                            <h3 className="font-bold text-[13px]" style={{ color: textColor }}>
+                              {edu.degree || 'Education'}
+                              {cleanField ? ` in ${cleanField}` : ''}
+                            </h3>
+                            <span className="text-[11.5px] italic whitespace-nowrap" style={{ color: mutedColor }}>
+                              {formatDateForResume(edu.graduationDate, dateFormat)}
+                            </span>
+                          </div>
+                          <p className="text-[12px]" style={{ color: lightText }}>
+                            {edu.institution}
+                            {edu.gpa && <> | GPA: {edu.gpa}</>}
+                          </p>
                         </div>
-                        <p className="text-[12px]" style={{ color: lightText }}>
-                          {edu.institution}
-                          {edu.gpa && <> | GPA: {edu.gpa}</>}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </section>
                 );
               case 'certifications':

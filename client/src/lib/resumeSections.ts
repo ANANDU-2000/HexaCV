@@ -61,7 +61,36 @@ export function ensureStandardResumeSections(resume: Resume): Resume {
   const standardSections: ResumeSection[] = STANDARD_SECTION_ORDER.map((def) => {
     const existing = byType.get(def.type);
     if (existing) {
-      return { ...existing, order: def.order, visible: existing.visible !== false };
+      let content = existing.content;
+      if (def.type === "education" && content.educations && Array.isArray(content.educations)) {
+        const sanitizedEducations = content.educations.map((edu: any) => {
+          let field = (edu.field || "").trim();
+          let institution = (edu.institution || "").trim();
+          let degree = (edu.degree || "").trim();
+
+          if (institution.startsWith("•") || institution.startsWith("-") || institution.startsWith("*")) {
+            institution = institution.replace(/^[•\-*]\s*/, "").trim();
+          }
+          if (degree.startsWith("•") || degree.startsWith("-") || degree.startsWith("*")) {
+            degree = degree.replace(/^[•\-*]\s*/, "").trim();
+          }
+
+          if (field.includes("•") || field.includes("\n") || field.length > 80 || /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(field)) {
+            const parts = field.split(/[\n•;]| - /);
+            const cleanCandidate = parts[0].replace(/^[•\-*]\s*/, "").trim();
+            if (cleanCandidate.length <= 60 && !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(cleanCandidate)) {
+              field = cleanCandidate;
+            } else {
+              field = "";
+            }
+          }
+
+          return { ...edu, institution, degree, field };
+        });
+        content = { ...content, educations: sanitizedEducations };
+      }
+
+      return { ...existing, order: def.order, visible: existing.visible !== false, content };
     }
     return {
       id: nanoid(),

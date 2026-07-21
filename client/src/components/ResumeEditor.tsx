@@ -197,14 +197,14 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     setLocalResume(resume);
   }, [resume.id]);
 
-  // Ensure all 10 standard resume sections exist in correct order
+  // Ensure all 10 standard resume sections exist in correct order and sanitize education fields
   useEffect(() => {
     const normalized = ensureStandardResumeSections(resume);
     const orderChanged = normalized.sections.some(
       (s, i) => s.type !== resume.sections[i]?.type || s.order !== resume.sections[i]?.order
     );
-    const missingSection = normalized.sections.length !== resume.sections.length;
-    if (orderChanged || missingSection) {
+    const contentChanged = JSON.stringify(normalized.sections) !== JSON.stringify(resume.sections);
+    if (orderChanged || contentChanged) {
       onUpdate(normalized);
       setLocalResume(normalized);
     }
@@ -1606,15 +1606,29 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                         <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">Your academic background including degrees, institutions, and graduation dates.</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
-                      const cur = getSectionContent('education').educations || [];
-                      updateSection('education', {
-                        educations: [...cur, { id: nanoid(), institution: '', degree: '', field: '', graduationDate: '', gpa: '' }]
-                      });
-                    }}>
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Education
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                        const cur = getSectionContent('education').educations || [];
+                        const cleaned = cur.map((e: any) => ({
+                          ...e,
+                          field: (e.field || '').includes('•') || (e.field || '').length > 80 || /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(e.field || '') ? '' : e.field
+                        }));
+                        updateSection('education', { educations: cleaned });
+                        toast.success('Cleaned up Education data!');
+                      }}>
+                        <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                        Clean Fields
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg" onClick={() => {
+                        const cur = getSectionContent('education').educations || [];
+                        updateSection('education', {
+                          educations: [...cur, { id: nanoid(), institution: '', degree: '', field: '', graduationDate: '', gpa: '' }]
+                        });
+                      }}>
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Education
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">

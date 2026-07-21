@@ -38,30 +38,51 @@ const SECTION_TITLE_MAP: Record<string, ResumeSectionKey> = {
   competencies: "skills",
   expertise: "skills",
   "technology stack": "skills",
+  "skills & competencies": "skills",
+  "skills & expertise": "skills",
+  "tools & technologies": "skills",
   experience: "experience",
   "work experience": "experience",
   employment: "experience",
   "work history": "experience",
   "career history": "experience",
   "professional experience": "experience",
+  "internship experience": "experience",
+  internships: "experience",
   projects: "projects",
   "personal projects": "projects",
   "key projects": "projects",
+  "academic projects": "projects",
+  "technical projects": "projects",
+  "selected projects": "projects",
+  "major projects": "projects",
+  "side projects": "projects",
+  "projects & experience": "projects",
+  "notable projects": "projects",
   education: "education",
   "academic background": "education",
+  "educational background": "education",
+  "educational qualifications": "education",
   qualifications: "education",
   academics: "education",
+  "academic profile": "education",
+  "education & qualifications": "education",
+  "education & certifications": "education",
   certifications: "certifications",
   certification: "certifications",
   credentials: "certifications",
   licenses: "certifications",
   courses: "certifications",
+  "licenses & certifications": "certifications",
+  "certifications & courses": "certifications",
   achievements: "achievements",
   achievement: "achievements",
   awards: "achievements",
   honors: "achievements",
   honours: "achievements",
   accomplishments: "achievements",
+  "honors & awards": "achievements",
+  "key achievements": "achievements",
   languages: "languages",
   language: "languages",
   "language proficiency": "languages",
@@ -77,8 +98,9 @@ export function detectSectionHeader(line: string): ResumeSectionKey | null {
   if (!trimmed || trimmed.length > 100) return null;
 
   let title = trimmed;
-  const numbered = trimmed.match(/^(?:#?\s*\d+[\.\):\-]+\s*)(.+)$/i);
-  if (numbered) {
+  // Remove leading bullets, numbers, markdown symbols
+  const numbered = trimmed.match(/^(?:[#*•-]*\s*\d*[\.\):\-]*\s*)(.+)$/i);
+  if (numbered && numbered[1]) {
     title = numbered[1].trim();
   }
 
@@ -96,11 +118,13 @@ export function detectSectionHeader(line: string): ResumeSectionKey | null {
   if (title.length <= 55) {
     const checks: [RegExp, ResumeSectionKey][] = [
       [/^(professional\s+)?(summary|profile|objective)\b/i, "summary"],
-      [/(technical\s+)?skills?\b/i, "skills"],
-      [/(work\s+)?experience|employment|work\s+history/i, "experience"],
-      [/^projects?\b/i, "projects"],
-      [/^education|academic|qualifications\b/i, "education"],
-      [/certifications?|credentials|licenses?\b/i, "certifications"],
+      [/(technical\s+)?skills?(\s*&\s*(competencies|expertise|tools))?\b/i, "skills"],
+      [/(work|professional|career)\s+experience|employment|work\s+history|internships?/i, "experience"],
+      [/^(personal|academic|technical|selected|key|major|side|notable\s+)?projects?\b/i, "projects"],
+      [/projects?\b/i, "projects"],
+      [/^(academic\s+)?education|academic\s+background|educational\s+qualifications|academics\b/i, "education"],
+      [/education\b/i, "education"],
+      [/certifications?|credentials|licenses?|courses?\b/i, "certifications"],
       [/achievements?|awards?|honors?|honours?|accomplishments?\b/i, "achievements"],
       [/languages?\b/i, "languages"],
       [/references?|referees?\b/i, "references"],
