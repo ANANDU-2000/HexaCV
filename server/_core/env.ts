@@ -11,5 +11,17 @@ export const ENV = {
   geminiApiKey2: process.env.GEMINI_API_KEY_2 ?? "",
   grokApiKey: process.env.GROK_API_KEY ?? "",
   huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY ?? process.env.HF_TOKEN ?? "",
+  bynaraApiUrl: process.env.BYNARA_API_URL ?? "https://router.bynara.id/v1",
+  bynaraApiKey: process.env.BYNARA_API_KEY ?? "",
+  bynaraModel: process.env.BYNARA_MODEL ?? "glm-5.2-free",
+  tokenrouterApiUrl: process.env.TOKENROUTER_API_URL ?? "https://api.tokenrouter.com/v1",
+  tokenrouterApiKey: process.env.TOKENROUTER_API_KEY ?? "",
+  tokenrouterModel: process.env.TOKENROUTER_MODEL ?? "z-ai/glm-5.2-free",
+  opencodeApiUrl: process.env.OPENCODE_API_URL ?? "https://opencode.ai/zen/go/v1",
+  opencodeApiKey: process.env.OPENCODE_API_KEY ?? "",
+  opencodeModel: process.env.OPENCODE_MODEL ?? "glm-5.2",
+  openrouterApiUrl: process.env.OPENROUTER_API_URL ?? "https://openrouter.ai/api/v1",
+  openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
+  openrouterModel: process.env.OPENROUTER_MODEL ?? "google/gemma-4-31b-it:free",
 };
 

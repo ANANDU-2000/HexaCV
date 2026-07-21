@@ -320,43 +320,55 @@ export default function ResumeBuilder() {
 
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 pb-24 pt-5 sm:px-6 lg:px-8">
         {mode === 'home' ? (
-          <>
-            <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/30 sm:p-7">
-                <Badge variant="outline" className="mb-4 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                  ATS friendly builder
-                </Badge>
-                <h1 className="max-w-2xl text-3xl font-extrabold leading-tight tracking-normal text-slate-950 dark:text-slate-50 sm:text-4xl">
-                  Build, edit, and export your resume from your phone.
-                </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-350 sm:text-base">
-                  Upload an existing resume or start clean with a guided editor. Every page is designed for quick thumb-friendly edits, preview, and export.
-                </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {BUILDER_MODES.filter((item) => item.primary).map((item) => (
-                    <ModeCard key={item.mode} item={item} onClick={() => navigateToMode(item.mode)} />
-                  ))}
-                </div>
-              </div>
-              <TargetSummary targetProfile={targetProfile} onEdit={startTargetEdit} />
-            </section>
+          <div className="space-y-8">
+            {/* Hero Header */}
+            <div className="text-center max-w-3xl mx-auto space-y-3 py-4">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 px-3 py-1 text-xs rounded-full border-blue-200">
+                ATS Friendly Resume Builder
+              </Badge>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 dark:text-slate-50">
+                Build & Optimize Your Resume
+              </h1>
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-350 leading-relaxed">
+                Create a professional, ATS-optimized resume in minutes. Upload an existing document, generate one with AI, or build it step-by-step.
+              </p>
+            </div>
 
+            {/* Target Profile Settings Bar */}
+            <div className="w-full">
+              <TargetSummary targetProfile={targetProfile} onEdit={startTargetEdit} inline />
+            </div>
+
+            {/* Creation Options Grid (4-columns on desktop) */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-slate-50 pl-1">Create New Resume</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {BUILDER_MODES.map((item) => (
+                  <ModeCard key={item.mode} item={item} onClick={() => navigateToMode(item.mode)} />
+                ))}
+              </div>
+            </div>
+
+            {/* Target Panel Modal/Settings */}
             {showTargetPanel && (
-              <TargetPanel
-                setupTargetRole={setupTargetRole}
-                setupExperience={setupExperience}
-                setupMarket={setupMarket}
-                setupJobDescription={setupJobDescription}
-                onRoleChange={setSetupTargetRole}
-                onExperienceChange={setSetupExperience}
-                onMarketChange={setSetupMarket}
-                onJobDescriptionChange={setSetupJobDescription}
-                onCancel={() => setShowTargetPanel(false)}
-                onSave={saveTargetProfile}
-              />
+              <div className="animate-fade-slide-up">
+                <TargetPanel
+                  setupTargetRole={setupTargetRole}
+                  setupExperience={setupExperience}
+                  setupMarket={setupMarket}
+                  setupJobDescription={setupJobDescription}
+                  onRoleChange={setSetupTargetRole}
+                  onExperienceChange={setSetupExperience}
+                  onMarketChange={setSetupMarket}
+                  onJobDescriptionChange={setSetupJobDescription}
+                  onCancel={() => setShowTargetPanel(false)}
+                  onSave={saveTargetProfile}
+                />
+              </div>
             )}
 
-            <section className="grid gap-5 lg:grid-cols-[1fr_360px] lg:items-start">
+            {/* Saved Drafts List */}
+            <div className="pt-4 border-t border-slate-200/60 dark:border-white/5">
               <DraftsList
                 resumesList={resumesList}
                 isAuthenticated={isAuthenticated}
@@ -364,13 +376,8 @@ export default function ResumeBuilder() {
                 onDelete={handleDeleteDraft}
                 onCreate={() => navigateToMode('scratch')}
               />
-              <div className="grid gap-3">
-                {BUILDER_MODES.filter((item) => !item.primary).map((item) => (
-                  <ModeCard key={item.mode} item={item} compact onClick={() => navigateToMode(item.mode)} />
-                ))}
-              </div>
-            </section>
-          </>
+            </div>
+          </div>
         ) : (
           <section className="space-y-5">
             <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/30 sm:flex-row sm:items-center sm:justify-between">
@@ -719,7 +726,7 @@ function DraftsList({
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {resumesList.map((resume) => (
           <Card
             key={resume.id}

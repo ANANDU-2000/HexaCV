@@ -19,6 +19,9 @@ interface CountryLocationFieldsProps {
   // Target country additions
   targetCountryCode?: string;
   onTargetCountryChange?: (code: string) => void;
+
+  // Raw location
+  location?: string;
 }
 
 export default function CountryLocationFields({
@@ -32,6 +35,7 @@ export default function CountryLocationFields({
   compact = false,
   targetCountryCode = '',
   onTargetCountryChange,
+  location = '',
 }: CountryLocationFieldsProps) {
   const [countriesList, setCountriesList] = useState<any[]>([]);
   const [statesList, setStatesList] = useState<any[]>([]);
@@ -226,14 +230,20 @@ export default function CountryLocationFields({
     if (nextC) {
       const oldDial = selectedCountry?.dialCode || '';
       const newDial = nextC.dialCode;
-      if (phone.startsWith(oldDial) && oldDial) {
-        const local = phone.slice(oldDial.length).trim();
-        onPhoneChange(newDial + ' ' + local);
-      } else if (!phone) {
-        onPhoneChange(newDial + ' ');
-      } else {
-        onPhoneChange(newDial + ' ' + phone.trim());
+      
+      let cleanPhone = phone.trim();
+      if (oldDial && cleanPhone.startsWith(oldDial)) {
+        cleanPhone = cleanPhone.slice(oldDial.length).trim();
+      } else if (cleanPhone.startsWith(newDial)) {
+        cleanPhone = cleanPhone.slice(newDial.length).trim();
+      } else if (cleanPhone.startsWith('+')) {
+        const match = cleanPhone.match(/^\+\d+\s*/);
+        if (match) {
+          cleanPhone = cleanPhone.slice(match[0].length).trim();
+        }
       }
+      
+      onPhoneChange(newDial + ' ' + cleanPhone);
     }
   };
 
@@ -429,12 +439,12 @@ export default function CountryLocationFields({
       </div>
 
       {/* 3. Phone Number with automatic validation feedback */}
-      {selectedCountry && (
-        <div className="space-y-1.5">
-          <Label className={cn(labelCls, 'flex items-center gap-1.5')}>
-            <Phone className="w-3.5 h-3.5 text-emerald-600" />
-            Phone Number
-          </Label>
+      <div className="space-y-1.5">
+        <Label className={cn(labelCls, 'flex items-center gap-1.5')}>
+          <Phone className="w-3.5 h-3.5 text-emerald-600" />
+          Phone Number
+        </Label>
+        {selectedCountry ? (
           <div className="relative">
             <div className="absolute left-0 top-0 h-full flex items-center pl-3.5 pointer-events-none border-r border-slate-150 pr-2">
               <span className="text-slate-500 flex items-center gap-1">
@@ -453,14 +463,22 @@ export default function CountryLocationFields({
               className={cn("pl-20 border-slate-200 rounded-lg", phoneError && "border-amber-300 focus-visible:ring-amber-500/20 focus-visible:border-amber-400")}
             />
           </div>
-          {phoneError && (
-            <div className="flex items-center gap-1.5 text-[10px] text-amber-600 font-medium">
-              <AlertTriangle className="w-3 h-3 text-amber-500" />
-              <span>{phoneError}</span>
-            </div>
-          )}
-        </div>
-      )}
+        ) : (
+          <Input
+            id="country-phone"
+            value={phone}
+            placeholder="e.g. +1 (555) 019-2834"
+            onChange={(e) => handlePhoneUpdate(e.target.value)}
+            className="border-slate-200 rounded-lg"
+          />
+        )}
+        {selectedCountry && phoneError && (
+          <div className="flex items-center gap-1.5 text-[10px] text-amber-600 font-medium">
+            <AlertTriangle className="w-3 h-3 text-amber-500" />
+            <span>{phoneError}</span>
+          </div>
+        )}
+      </div>
 
       {/* 4. Subdivisions Location Details */}
       {selectedCountry && (
@@ -582,9 +600,24 @@ export default function CountryLocationFields({
       )}
 
       {!selectedCountry && (
-        <div className="flex items-center gap-2 p-3 bg-slate-50/60 border border-dashed border-slate-200 rounded-xl">
-          <MapPin className="w-4 h-4 text-slate-400" />
-          <p className="text-xs text-slate-500">Choose your Current Country to view state/region mapping and automatic code helpers.</p>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className={cn(labelCls, 'flex items-center gap-1.5')}>
+              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+              Location (City, State, Country)
+            </Label>
+            <Input
+              id="raw-location"
+              value={location}
+              placeholder="e.g. San Francisco, CA"
+              onChange={(e) => onLocationStringChange(e.target.value)}
+              className="border-slate-200 rounded-lg text-sm bg-slate-50/50 dark:bg-white/5"
+            />
+          </div>
+          <div className="flex items-center gap-2 p-3 bg-slate-50/60 border border-dashed border-slate-200 rounded-xl dark:bg-white/5 dark:border-white/10">
+            <MapPin className="w-4 h-4 text-slate-400" />
+            <p className="text-xs text-slate-500 dark:text-slate-400">Choose your Current Country to view state/region mapping and automatic code helpers.</p>
+          </div>
         </div>
       )}
     </div>

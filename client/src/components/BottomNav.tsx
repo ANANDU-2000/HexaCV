@@ -19,7 +19,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 
 const navItems = [
-  { icon: FileText, label: "Builder", path: "/builder" },
+  { icon: FileText, label: "Builder", path: "/dashboard/builder" },
   { icon: Zap, label: "ATS", path: "/dashboard/ats" },
   { icon: Briefcase, label: "Jobs", path: "/dashboard/jobs" },
   { icon: Store, label: "Marketplace", path: "/dashboard/marketplace" },

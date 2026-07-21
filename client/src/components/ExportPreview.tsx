@@ -19,6 +19,7 @@ const EXPORT_TEMPLATES = [
   { id: 'minimal-executive', name: 'Minimal Executive', description: 'Clean minimalist design with emerald accents', thumbColor: 'bg-emerald-500' },
   { id: 'modern-sidebar-lite', name: 'Modern Sidebar Lite', description: 'Two-column with sidebar for skills and contact', thumbColor: 'bg-slate-700' },
   { id: 'technical-compact', name: 'Technical Compact', description: 'Compact layout optimized for dense technical content', thumbColor: 'bg-violet-500' },
+  { id: 'crystalline-professional', name: 'Crystalline Professional', description: 'Dark mode resume with crystalline blue tones and orange accents', thumbColor: 'bg-blue-950' },
 ] as const;
 
 const PROGRESS_STEPS = [
@@ -230,6 +231,7 @@ export default function ExportPreview({ resume, onBack, onSaveToDashboard }: Exp
               <div ref={exportContentRef}>
                 <ResumePreview
                   resume={{ ...resume, templateId: selectedTemplate }}
+                  templateId={selectedTemplate}
                   zoom={zoomValue}
                   contentId="export-preview-content"
                 />
@@ -314,6 +316,7 @@ export default function ExportPreview({ resume, onBack, onSaveToDashboard }: Exp
             <div ref={exportContentRef}>
               <ResumePreview
                 resume={{ ...resume, templateId: selectedTemplate }}
+                templateId={selectedTemplate}
                 zoom={zoomValue}
                 contentId="export-preview-content-mobile"
               />

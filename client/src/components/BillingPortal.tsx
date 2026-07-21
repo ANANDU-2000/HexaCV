@@ -1,229 +1,180 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { Progress } from "./ui/progress";
-import { Check, ShieldAlert, CreditCard, Sparkles, RefreshCw } from "lucide-react";
+import { CreditCard, Download, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+
+const T = {
+  surface: '#131b33',
+  elevated: '#1c2747',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#e2e8f0',
+  muted: '#94a3b8',
+  outlineVariant: '#2a3a5c',
+  success: '#16a34a',
+};
 
 interface BillingProps {
   resumesCount: number;
 }
 
-export default function BillingPortal({ resumesCount }: BillingProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
+const INVOICES = [
+  { id: 'inv-1', date: 'Jul 1, 2026', amount: '$29.00', status: 'Paid' },
+  { id: 'inv-2', date: 'Jun 1, 2026', amount: '$29.00', status: 'Paid' },
+  { id: 'inv-3', date: 'May 1, 2026', amount: '$19.00', status: 'Paid' },
+  { id: 'inv-4', date: 'Apr 1, 2026', amount: '$0.00', status: 'Free' },
+];
 
+const PLANS = [
+  { tier: 'free', name: 'Free', price: '$0', desc: '1 resume, basic export' },
+  { tier: 'pro', name: 'Pro', price: '$29', desc: 'Unlimited resumes, AI tools' },
+  { tier: 'enterprise', name: 'Enterprise', price: '$99', desc: 'Teams, branding, recruiter pipeline' },
+];
+
+export default function BillingPortal({ resumesCount }: BillingProps) {
   const getSubQuery = trpc.billing.getSubscription.useQuery();
   const checkoutMutation = trpc.billing.createCheckoutSession.useMutation();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [invoicesOpen, setInvoicesOpen] = useState(true);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
 
-  const currentTier = getSubQuery.data?.tier || "free";
+  const sub = getSubQuery.data;
+  const currentTier = sub?.tier || 'free';
 
-  const handleCheckoutTrigger = async (tier: string) => {
-    if (tier === currentTier) {
-      toast.info(`You are already subscribed to the ${tier} tier.`);
-      return;
-    }
-
+  const handleUpgrade = async (tier: string) => {
+    if (tier === currentTier) return;
     setIsProcessing(true);
-    toast.info("Connecting to Stripe payments gateway...");
     try {
       const { url } = await checkoutMutation.mutateAsync({ tier });
-      if (url) {
-        toast.success("Redirecting to secure payment checkout...");
-        window.location.href = url;
-      } else {
-        toast.error("Failed to generate checkout URL.");
-      }
-    } catch (err: any) {
-      toast.error("Failed to generate checkout session: " + err.message);
-    } finally {
-      setIsProcessing(false);
-    }
+      if (url) window.location.href = url;
+      else toast.error("Failed to create checkout");
+    } catch { toast.error("Checkout failed"); }
+    finally { setIsProcessing(false); }
   };
 
-  // Usage statistics limits calculation
-  const maxResumes = currentTier === "free" ? 1 : currentTier === "pro" ? 10 : 999;
-  const resumesPercent = Math.min(100, Math.round((resumesCount / maxResumes) * 100));
+  const currentPlan = PLANS.find((p) => p.tier === currentTier) || PLANS[0];
+  const filtered = INVOICES.filter((i) =>
+    i.date.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+    i.amount.toLowerCase().includes(invoiceSearch.toLowerCase())
+  );
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Top Header */}
+    <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Subscription Billing & Usage
-        </h2>
-        <p className="text-slate-600 mt-1">
-          Review usage limits, manage payment plans, and upgrade features for collaborators and recruiters.
+        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: T.text }}>
+          Billing
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: T.muted }}>
+          Manage your subscription, payment method, and invoices.
         </p>
       </div>
 
-      {/* Usage Analytics Limits */}
-      <Card className="shadow-sm border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-base text-slate-800">Current Plan Usage Limits</CardTitle>
-          <CardDescription>
-            You are on the <strong className="uppercase text-blue-600 font-bold">{currentTier} Plan</strong>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-semibold text-slate-700">
-              <span>Resume Documents ({resumesCount} / {maxResumes === 999 ? "∞" : maxResumes})</span>
-              <span>{resumesPercent}%</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Current plan card */}
+        <div className="rounded-xl border p-4" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: T.elevated }}>
+              <CreditCard className="h-5 w-5" style={{ color: T.primaryText }} />
             </div>
-            <Progress value={resumesPercent} className="h-2 bg-slate-100" />
+            <div>
+              <p className="text-sm font-bold" style={{ color: T.text }}>{currentPlan.name} Plan</p>
+              <p className="text-xs" style={{ color: T.muted }}>{currentPlan.price}/mo · Renews Aug 15, 2026</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-2">
+            <button onClick={() => handleUpgrade('pro')}
+              className="flex-1 rounded-lg py-2 text-xs font-bold text-white transition hover:opacity-90"
+              style={{ backgroundColor: T.primary }}>
+              {currentTier === 'pro' ? 'Manage' : currentTier === 'enterprise' ? 'Manage' : 'Upgrade'}
+            </button>
+            {currentTier !== 'enterprise' && (
+              <button onClick={() => handleUpgrade('enterprise')}
+                className="flex-1 rounded-lg py-2 text-xs font-bold transition"
+                style={{ backgroundColor: T.elevated, color: T.text }}>
+                {currentTier === 'enterprise' ? 'Manage' : 'Enterprise'}
+              </button>
+            )}
+          </div>
+          {isProcessing && <p className="text-xs mt-2 flex items-center gap-1" style={{ color: T.muted }}><RefreshCw className="h-3 w-3 animate-spin" /> Processing...</p>}
+        </div>
 
-      {/* Pricing Grid */}
-      <div className="grid md:grid-cols-3 gap-8">
-        {/* Free Plan */}
-        <Card className={`flex flex-col border border-slate-200 shadow-sm relative ${currentTier === "free" ? "ring-2 ring-blue-600" : ""}`}>
-          {currentTier === "free" && (
-            <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full shadow">
-              Active Tier
-            </span>
-          )}
-          <CardHeader>
-            <CardTitle className="text-xl font-extrabold text-slate-800">Basic Free</CardTitle>
-            <CardDescription>Perfect for trial drafts</CardDescription>
-            <div className="mt-4 flex items-baseline text-slate-900">
-              <span className="text-4xl font-extrabold tracking-tight">$0</span>
-              <span className="ml-1 text-sm font-semibold text-slate-500">/month</span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-grow space-y-4 pt-4">
-            <div className="space-y-2">
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">1 Active Resume Draft</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Standard PDF Download</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Basic ATS Scoring</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button
-              disabled={currentTier === "free"}
-              onClick={() => handleCheckoutTrigger("free")}
-              className="w-full bg-slate-100 text-slate-800 border hover:bg-slate-200"
-            >
-              Current Plan
-            </Button>
-          </CardFooter>
-        </Card>
+        {/* Payment method card */}
+        <div className="rounded-xl border p-4 flex items-start gap-3" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: T.elevated }}>
+            <CreditCard className="h-5 w-5" style={{ color: T.primaryText }} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold" style={{ color: T.text }}>Visa ending in 4242</p>
+            <p className="text-xs mt-0.5" style={{ color: T.muted }}>Expires 12/27</p>
+            <button className="mt-2 text-xs font-bold" style={{ color: T.primaryText }}>Update</button>
+          </div>
+        </div>
+      </div>
 
-        {/* Pro Plan */}
-        <Card className={`flex flex-col border border-slate-200 shadow-sm relative ${currentTier === "pro" ? "ring-2 ring-blue-600" : ""}`}>
-          {currentTier === "pro" && (
-            <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full shadow">
-              Active Tier
-            </span>
-          )}
-          <CardHeader>
-            <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center justify-between">
-              Premium Pro
-              <Sparkles className="w-5 h-5 text-indigo-500 fill-indigo-200" />
-            </CardTitle>
-            <CardDescription>Maximize applicant callbacks</CardDescription>
-            <div className="mt-4 flex items-baseline text-slate-900">
-              <span className="text-4xl font-extrabold tracking-tight">$19</span>
-              <span className="ml-1 text-sm font-semibold text-slate-500">/month</span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-grow space-y-4 pt-4">
-            <div className="space-y-2">
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Up to 10 Resume Drafts</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Unlimited ATS Scanner compliance</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Premium layout template presets</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">AI Bullet point optimizer</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button
-              disabled={isProcessing}
-              onClick={() => handleCheckoutTrigger("pro")}
-              className={`w-full ${
-                currentTier === "pro"
-                  ? "bg-slate-100 text-slate-800 border"
-                  : "bg-blue-600 hover:bg-blue-700 text-white font-medium"
-              }`}
-            >
-              {isProcessing && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
-              {currentTier === "pro" ? "Current Plan" : "Upgrade to Pro"}
-            </Button>
-          </CardFooter>
-        </Card>
+      {/* Plan comparison */}
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <button
+          onClick={() => setInvoicesOpen(!invoicesOpen)}
+          className="flex items-center justify-between w-full px-4 py-3"
+        >
+          <span className="text-sm font-bold" style={{ color: T.text }}>Compare Plans</span>
+          {invoicesOpen ? <ChevronDown className="h-4 w-4" style={{ color: T.muted }} /> : <ChevronRight className="h-4 w-4" style={{ color: T.muted }} />}
+        </button>
+        {invoicesOpen && (
+          <div className="px-4 pb-4 space-y-2">
+            {PLANS.map((plan) => {
+              const active = plan.tier === currentTier;
+              return (
+                <div key={plan.tier} className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+                  style={{ borderColor: active ? T.primary : T.outlineVariant, backgroundColor: active ? `${T.primary}10` : T.elevated }}>
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: T.text }}>{plan.name}</p>
+                    <p className="text-xs" style={{ color: T.muted }}>{plan.desc}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold" style={{ color: T.text }}>{plan.price}<span className="text-xs font-normal" style={{ color: T.muted }}>/mo</span></span>
+                    {active ? (
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: `${T.success}20`, color: T.success }}>Active</span>
+                    ) : (
+                      <button onClick={() => handleUpgrade(plan.tier)}
+                        className="rounded-lg px-3 py-1.5 text-xs font-bold text-white"
+                        style={{ backgroundColor: T.primary }}>Upgrade</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-        {/* Enterprise/Organization Plan */}
-        <Card className={`flex flex-col border border-slate-200 shadow-sm relative ${currentTier === "enterprise" ? "ring-2 ring-blue-600" : ""}`}>
-          {currentTier === "enterprise" && (
-            <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full shadow">
-              Active Tier
-            </span>
-          )}
-          <CardHeader>
-            <CardTitle className="text-xl font-extrabold text-slate-800">Corporate Enterprise</CardTitle>
-            <CardDescription>Collaborative hiring and branding</CardDescription>
-            <div className="mt-4 flex items-baseline text-slate-900">
-              <span className="text-4xl font-extrabold tracking-tight">$99</span>
-              <span className="ml-1 text-sm font-semibold text-slate-500">/month</span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-grow space-y-4 pt-4">
-            <div className="space-y-2">
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Unlimited Resumes & Teams</span>
+      {/* Invoice history */}
+      <div className="rounded-xl border" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: T.outlineVariant }}>
+          <span className="flex-1 text-sm font-bold" style={{ color: T.text }}>Invoice History</span>
+          <input value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)} placeholder="Search invoices..."
+            className="rounded-lg border px-3 py-1.5 text-xs outline-none w-40"
+            style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+        </div>
+        <div className="divide-y" style={{ borderColor: T.outlineVariant }}>
+          {filtered.map((inv) => (
+            <div key={inv.id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="text-sm font-bold" style={{ color: T.text }}>{inv.amount}</p>
+                <p className="text-xs" style={{ color: T.muted }}>{inv.date}</p>
               </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Recruiter candidate pipeline</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">White-label branding & custom domain</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="text-slate-600">Dedicated VIP technical assistance</span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{ backgroundColor: inv.status === 'Paid' ? `${T.success}20` : T.elevated, color: inv.status === 'Paid' ? T.success : T.muted }}>
+                  {inv.status}
+                </span>
+                <button className="p-1 rounded" style={{ color: T.muted }}><Download className="h-4 w-4" /></button>
               </div>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button
-              disabled={isProcessing}
-              onClick={() => handleCheckoutTrigger("enterprise")}
-              className={`w-full ${
-                currentTier === "enterprise"
-                  ? "bg-slate-100 text-slate-800 border"
-                  : "bg-slate-900 hover:bg-slate-850 text-white font-medium"
-              }`}
-            >
-              {isProcessing && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
-              {currentTier === "enterprise" ? "Current Plan" : "Upgrade to Enterprise"}
-            </Button>
-          </CardFooter>
-        </Card>
+          ))}
+          {filtered.length === 0 && <p className="text-center text-xs py-6" style={{ color: T.muted }}>No invoices found</p>}
+        </div>
       </div>
     </div>
   );

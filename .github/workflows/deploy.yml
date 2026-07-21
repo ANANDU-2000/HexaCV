@@ -2,9 +2,9 @@ name: HexaCv CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, development ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, development ]
 
 jobs:
   test-and-check:
@@ -16,7 +16,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.4.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile || npm install --legacy-peer-deps
 
-      - name: Run Linting & Format Checks
+      - name: Run TypeScript Check
         run: npm run check
 
       - name: Run Unit Tests

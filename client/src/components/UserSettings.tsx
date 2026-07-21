@@ -1,313 +1,393 @@
-import { useState, useEffect } from "react";
-import { trpc } from "@/lib/trpc";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { User, Mail, Phone, MapPin, Key, Github, Linkedin, ShieldCheck, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { useIsMobile } from "@/hooks/useMobile";
+import {
+  User, Palette, Bell, Shield, Trash2, Eye, EyeOff,
+  ChevronDown, ChevronRight, Check, RefreshCw, Moon, Sun, AlertTriangle
+} from "lucide-react";
 import { toast } from "sonner";
 
-export default function UserSettings() {
+const T = {
+  surface: '#131b33',
+  elevated: '#1c2747',
+  primary: '#1e40af',
+  primaryText: '#b8c4ff',
+  accent: '#ea580c',
+  text: '#e2e8f0',
+  muted: '#94a3b8',
+  outlineVariant: '#2a3a5c',
+  success: '#16a34a',
+  danger: '#dc2626',
+};
+
+type Section = 'profile' | 'preferences' | 'notifications' | 'security' | 'danger';
+
+const SECTIONS: { id: Section; label: string; icon: any }[] = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'preferences', label: 'Preferences', icon: Palette },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'danger', label: 'Danger Zone', icon: Trash2 },
+];
+
+interface Provider { id: string; name: string; configured: boolean; }
+const FALLBACK_PROVIDERS: Provider[] = [
+  { id: 'openai', name: 'OpenAI', configured: true },
+  { id: 'gemini', name: 'Gemini', configured: false },
+  { id: 'grok', name: 'Grok', configured: false },
+  { id: 'openrouter', name: 'OpenRouter', configured: false },
+  { id: 'huggingface', name: 'Hugging Face', configured: false },
+];
+
+const NOTIFS = [
+  { id: 'marketing', label: 'Marketing emails' },
+  { id: 'ats_alerts', label: 'ATS score alerts' },
+  { id: 'job_matches', label: 'Job match recommendations' },
+  { id: 'product_updates', label: 'Product updates' },
+];
+
+function ProfileForm() {
   const { user } = useAuth();
-  const [isSaving, setIsSaving] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  // Form coordinates state
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
-
-  // Password fields state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  useEffect(() => {
-    if (user) {
-      setFullName(user.name || "");
-      setEmail(user.email || "");
-      setPhone((user as any).phone || "+1 (555) 019-2834");
-      setLocation((user as any).location || "San Francisco, CA");
-    }
-  }, [user]);
-
-  const handleSaveCoordinates = (e: React.FormEvent) => {
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [saving, setSaving] = useState(false);
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-    // Simulate updating contact settings
-    setTimeout(() => {
-      setIsSaving(false);
-      toast.success("Contact configurations saved successfully.");
-    }, 1200);
+    setSaving(true);
+    setTimeout(() => { setSaving(false); toast.success('Profile updated'); }, 1000);
   };
+  return (
+    <form onSubmit={handleSave} className="space-y-4">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold"
+          style={{ backgroundColor: T.primary, color: 'white' }}>
+          {name.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <p className="text-sm font-bold" style={{ color: T.text }}>{name}</p>
+          <p className="text-xs" style={{ color: T.muted }}>{email}</p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs font-bold" style={{ color: T.muted }}>Full Name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs font-bold" style={{ color: T.muted }}>Email</label>
+        <input value={email} onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+      </div>
+      <button type="submit" disabled={saving}
+        className="rounded-lg px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
+        style={{ backgroundColor: T.primary }}>
+        {saving ? <><RefreshCw className="inline h-3 w-3 animate-spin mr-1" /> Saving...</> : 'Save Changes'}
+      </button>
+    </form>
+  );
+}
 
-  const handleChangePassword = (e: React.FormEvent) => {
+function PreferencesForm() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [lang, setLang] = useState('en');
+  const [selectedProvider, setSelectedProvider] = useState('openai');
+
+  const providers = FALLBACK_PROVIDERS;
+
+  return (
+    <div className="space-y-5">
+      {/* Theme toggle */}
+      <div>
+        <p className="text-sm font-bold mb-2" style={{ color: T.text }}>Theme</p>
+        <div className="flex gap-2">
+          {(['dark', 'light'] as const).map((t) => (
+            <button key={t} onClick={() => setTheme(t)}
+              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold capitalize transition"
+              style={{
+                borderColor: theme === t ? T.primary : T.outlineVariant,
+                backgroundColor: theme === t ? `${T.primary}20` : T.elevated,
+                color: T.text,
+              }}>
+              {t === 'dark' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Language */}
+      <div>
+        <p className="text-sm font-bold mb-2" style={{ color: T.text }}>Language</p>
+        <select value={lang} onChange={(e) => setLang(e.target.value)}
+          className="rounded-lg border px-3 py-2 text-sm outline-none"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
+
+      {/* AI Provider picker */}
+      <div>
+        <p className="text-sm font-bold mb-2" style={{ color: T.text }}>AI Provider</p>
+        <div className="space-y-2">
+          {providers.map((p) => (
+            <label key={p.id} onClick={() => setSelectedProvider(p.id)}
+              className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition"
+              style={{
+                borderColor: selectedProvider === p.id ? T.primary : T.outlineVariant,
+                backgroundColor: selectedProvider === p.id ? `${T.primary}15` : T.elevated,
+              }}>
+              <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 transition"
+                style={{
+                  borderColor: selectedProvider === p.id ? T.primary : T.muted,
+                  backgroundColor: selectedProvider === p.id ? T.primary : 'transparent',
+                }}>
+                {selectedProvider === p.id && <Check className="h-3 w-3 text-white" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold" style={{ color: T.text }}>{p.name}</p>
+              </div>
+              <div className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium`}
+                style={{
+                  backgroundColor: p.configured ? `${T.success}20` : T.outlineVariant,
+                  color: p.configured ? T.success : T.muted,
+                }}>
+                <span className={`h-1.5 w-1.5 rounded-full`}
+                  style={{ backgroundColor: p.configured ? T.success : T.muted }} />
+                {p.configured ? 'Configured' : 'Not configured'}
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationsForm() {
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({
+    marketing: false, ats_alerts: true, job_matches: true, product_updates: false,
+  });
+  return (
+    <div className="space-y-3">
+      {NOTIFS.map((n) => (
+        <label key={n.id} className="flex items-center justify-between rounded-lg border p-3 cursor-pointer"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}>
+          <span className="text-sm" style={{ color: T.text }}>{n.label}</span>
+          <button type="button" onClick={() => setEnabled((prev) => ({ ...prev, [n.id]: !prev[n.id] }))}
+            className={`relative h-5 w-9 rounded-full transition ${enabled[n.id] ? '' : ''}`}
+            style={{ backgroundColor: enabled[n.id] ? T.primary : T.outlineVariant }}>
+            <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition ${enabled[n.id] ? 'translate-x-4' : ''}`} />
+          </button>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function SecurityForm() {
+  const [showPw, setShowPw] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [twoFA, setTwoFA] = useState(false);
+
+  const handleChangePw = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Please fill in all password fields.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match.");
-      return;
-    }
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      toast.success("Security credentials updated successfully.");
-    }, 1500);
+    if (!currentPw || !newPw || !confirmPw) { toast.error('Fill all fields'); return; }
+    if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
+    setSaving(true);
+    setTimeout(() => { setSaving(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); toast.success('Password changed'); }, 1200);
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
+    <div className="space-y-5">
+      {/* Change password */}
+      <form onSubmit={handleChangePw} className="space-y-3">
+        <p className="text-sm font-bold" style={{ color: T.text }}>Change Password</p>
+        <div className="space-y-1">
+          <label className="text-xs font-bold" style={{ color: T.muted }}>Current Password</label>
+          <div className="relative">
+            <input type={showPw ? 'text' : 'password'} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 pr-9 text-sm outline-none"
+              style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: T.muted }}>
+              {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs font-bold" style={{ color: T.muted }}>New Password</label>
+            <input type={showPw ? 'text' : 'password'} value={newPw} onChange={(e) => setNewPw(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+              style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold" style={{ color: T.muted }}>Confirm</label>
+            <input type={showPw ? 'text' : 'password'} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+              style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+          </div>
+        </div>
+        <button type="submit" disabled={saving}
+          className="rounded-lg px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
+          style={{ backgroundColor: T.primary }}>
+          {saving ? <><RefreshCw className="inline h-3 w-3 animate-spin mr-1" /> Updating...</> : 'Update Password'}
+        </button>
+      </form>
+
+      <hr style={{ borderColor: T.outlineVariant }} />
+
+      {/* 2FA */}
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Account Configurations
-        </h2>
-        <p className="text-slate-600 mt-1">
-          Manage your personal details, secure coordinates, login credentials, and linked professional integrations.
-        </p>
+        <p className="text-sm font-bold mb-1" style={{ color: T.text }}>Two-Factor Authentication</p>
+        <p className="text-xs mb-2" style={{ color: T.muted }}>Add an extra layer of security to your account.</p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <button type="button" onClick={() => setTwoFA(!twoFA)}
+            className={`relative h-5 w-9 rounded-full transition ${twoFA ? '' : ''}`}
+            style={{ backgroundColor: twoFA ? T.primary : T.outlineVariant }}>
+            <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition ${twoFA ? 'translate-x-4' : ''}`} />
+          </button>
+          <span className="text-sm" style={{ color: T.text }}>{twoFA ? 'Enabled' : 'Disabled'}</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function DangerZoneForm() {
+  const [confirmText, setConfirmText] = useState('');
+  const handleDelete = () => {
+    if (confirmText !== 'DELETE') { toast.error('Type DELETE to confirm'); return; }
+    toast.success('Account deleted (simulated)');
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-3 rounded-lg border p-4"
+        style={{ borderColor: `${T.danger}40`, backgroundColor: `${T.danger}10` }}>
+        <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: T.danger }} />
+        <div>
+          <p className="text-sm font-bold" style={{ color: T.danger }}>Delete Account</p>
+          <p className="text-xs mt-1" style={{ color: T.muted }}>
+            Permanently remove your account and all associated data. This action cannot be undone.
+          </p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs font-bold" style={{ color: T.muted }}>
+          Type <span className="font-mono" style={{ color: T.danger }}>DELETE</span> to confirm
+        </label>
+        <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
+          placeholder="Type DELETE"
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+          style={{ borderColor: `${T.danger}40`, backgroundColor: T.elevated, color: T.text }} />
+      </div>
+      <button onClick={handleDelete}
+        className="rounded-lg px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
+        style={{ backgroundColor: T.danger }}>
+        Delete My Account
+      </button>
+    </div>
+  );
+}
+
+function SectionCard({ section, children, isOpen, onToggle }: {
+  section: typeof SECTIONS[0];
+  children: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const Icon = section.icon;
+  const isDanger = section.id === 'danger';
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{
+      borderColor: isDanger ? `${T.danger}30` : T.outlineVariant,
+      backgroundColor: T.surface,
+    }}>
+      <button onClick={onToggle}
+        className="flex items-center justify-between w-full px-4 py-3 transition"
+        style={{ backgroundColor: isDanger && isOpen ? `${T.danger}08` : 'transparent' }}>
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4" style={{ color: isDanger ? T.danger : T.primaryText }} />
+          <span className="text-sm font-bold" style={{ color: isDanger && isOpen ? T.danger : T.text }}>
+            {section.label}
+          </span>
+        </div>
+        {isOpen ? <ChevronDown className="h-4 w-4" style={{ color: T.muted }} /> : <ChevronRight className="h-4 w-4" style={{ color: T.muted }} />}
+      </button>
+      {isOpen && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
+export default function UserSettings() {
+  const isMobile = useIsMobile();
+  const [activeSection, setActiveSection] = useState<Section>('profile');
+  const [mobileOpenSections, setMobileOpenSections] = useState<Record<string, boolean>>({});
+
+  const toggleMobile = (id: string) =>
+    setMobileOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const renderSectionContent = (sectionId: Section) => {
+    switch (sectionId) {
+      case 'profile': return <ProfileForm />;
+      case 'preferences': return <PreferencesForm />;
+      case 'notifications': return <NotificationsForm />;
+      case 'security': return <SecurityForm />;
+      case 'danger': return <DangerZoneForm />;
+    }
+  };
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-3">
+        <h1 className="text-xl font-extrabold mb-1" style={{ color: T.text }}>Settings</h1>
+        {SECTIONS.map((s) => (
+          <SectionCard key={s.id} section={s} isOpen={!!mobileOpenSections[s.id]} onToggle={() => toggleMobile(s.id)}>
+            {renderSectionContent(s.id)}
+          </SectionCard>
+        ))}
+      </div>
+    );
+  }
+
+  /* Desktop: 25/75 split */
+  return (
+    <div className="flex gap-6 h-full">
+      {/* Nav */}
+      <div className="w-56 shrink-0 space-y-1">
+        <h2 className="text-sm font-bold mb-3 px-3" style={{ color: T.muted }}>Settings</h2>
+        {SECTIONS.map((s) => {
+          const Icon = s.icon;
+          const isDanger = s.id === 'danger';
+          const active = activeSection === s.id;
+          return (
+            <button key={s.id} onClick={() => setActiveSection(s.id)}
+              className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-bold transition"
+              style={{
+                backgroundColor: active ? `${isDanger ? T.danger : T.primary}20` : 'transparent',
+                color: active ? (isDanger ? T.danger : T.text) : T.muted,
+              }}>
+              <Icon className="h-4 w-4" />
+              {s.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
-        {/* Left column: Contact Coordinates */}
-        <div className="md:col-span-2 space-y-8">
-          <Card className="border border-slate-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                Contact Coordinates
-              </CardTitle>
-              <CardDescription>
-                Your public profile details used when generating custom CV documents.
-              </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSaveCoordinates}>
-              <CardContent className="space-y-4 pt-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Full Name</label>
-                    <div className="relative">
-                      <Input
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Anandu Krishna"
-                        className="pl-9"
-                        required
-                      />
-                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Email Coordinates</label>
-                    <div className="relative">
-                      <Input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="anandu@example.com"
-                        className="pl-9"
-                        required
-                      />
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Phone Number</label>
-                    <div className="relative">
-                      <Input
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="pl-9"
-                      />
-                      <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Office Location</label>
-                    <div className="relative">
-                      <Input
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Bangalore, India"
-                        className="pl-9"
-                      />
-                      <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="border-t border-slate-100 pt-4 flex justify-end">
-                <Button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white gap-2 font-medium">
-                  {isSaving ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Configurations"
-                  )}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-
-          {/* Security details */}
-          <Card className="border border-slate-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <Key className="w-5 h-5 text-blue-600" />
-                Change Password
-              </CardTitle>
-              <CardDescription>
-                Ensure your workspace remains fully private by cycling auth credentials regularly.
-              </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleChangePassword}>
-              <CardContent className="space-y-4 pt-6">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Current Password</label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">New Password</label>
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Confirm New Password</label>
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="border-t border-slate-100 pt-4 flex justify-end">
-                <Button type="submit" disabled={isSaving} className="bg-slate-900 hover:bg-slate-800 text-white font-medium gap-2">
-                  {isSaving ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    "Cycle Security Credentials"
-                  )}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-        </div>
-
-        {/* Right column: Linked Integrations & Audits */}
-        <div className="space-y-8">
-          <Card className="border border-slate-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-blue-600" />
-                Third-Party Integrations
-              </CardTitle>
-              <CardDescription>
-                Manage linked external systems for importing details or pushing vacancy listings.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6">
-              {/* LinkedIn Integration card */}
-              <div className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700">
-                    <Linkedin className="w-5 h-5 fill-current" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-850">LinkedIn Sync</div>
-                    <div className="text-[10px] text-slate-500">Auto import experience histories</div>
-                  </div>
-                </div>
-                <Badge className="bg-green-50 text-green-700 border-green-150 hover:bg-green-50">
-                  Linked
-                </Badge>
-              </div>
-
-              {/* GitHub Integration card */}
-              <div className="flex items-center justify-between p-3 border border-slate-150 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-800">
-                    <Github className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-850">GitHub Sync</div>
-                    <div className="text-[10px] text-slate-500">Auto pull repositories details</div>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" className="border-blue-200 text-blue-600 hover:bg-blue-50 text-[10px] font-semibold">
-                  Link Account
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Session Token Audits */}
-          <Card className="border border-slate-200 shadow-sm rounded-xl">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <CardTitle className="text-sm font-bold text-slate-800">
-                Active Session Audits
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 text-xs space-y-3">
-              <div className="flex justify-between items-center text-slate-600 border-b border-slate-100 pb-2">
-                <div>
-                  <span className="font-semibold text-slate-800">Web Session (You)</span>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Google Chrome • Windows 10</p>
-                </div>
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-150 text-[10px]">
-                  Active
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center text-slate-600">
-                <div>
-                  <span className="font-semibold text-slate-850">OAuth API Client Token</span>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Expired 2 hours ago • API Gateway</p>
-                </div>
-                <span className="text-[10px] text-slate-400">Revoked</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Content */}
+      <div className="flex-1 rounded-xl border p-5" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <h3 className="text-base font-bold mb-4" style={{ color: T.text }}>
+          {SECTIONS.find((s) => s.id === activeSection)?.label}
+        </h3>
+        {renderSectionContent(activeSection)}
       </div>
     </div>
   );

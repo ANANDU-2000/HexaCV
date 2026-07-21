@@ -30,6 +30,60 @@ export async function exportResumeToPDF(resumeElement: HTMLElement, fileName: st
     captureHost.appendChild(captureElement);
     document.body.appendChild(captureHost);
 
+    // Wait a brief tick for browser layout rendering before measuring
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Dynamic Pagination Algorithm
+    let elementWidth = captureElement.getBoundingClientRect().width;
+    if (!elementWidth || elementWidth === 0) {
+      elementWidth = 794; // Fallback to standard A4 pixel width at 96 DPI
+    }
+    const pxPageHeight = (elementWidth * 297) / 210;
+    
+    let shifted = true;
+    let attempts = 0;
+    
+    while (shifted && attempts < 50) {
+      shifted = false;
+      attempts++;
+      
+      const elementsToAvoid = Array.from(captureElement.querySelectorAll('.pdf-avoid-break')) as HTMLElement[];
+      const baseTop = captureElement.getBoundingClientRect().top;
+      
+      for (const el of elementsToAvoid) {
+        if (el.dataset.pdfSpacer === 'true') continue;
+        
+        const rect = el.getBoundingClientRect();
+        const relativeTop = rect.top - baseTop;
+        const relativeBottom = rect.bottom - baseTop + 10; // 10px safety padding buffer
+        
+        const pageIndex = Math.floor(relativeTop / pxPageHeight);
+        const nextPageBoundary = (pageIndex + 1) * pxPageHeight;
+        
+        // If element crosses the page boundary
+        if (relativeBottom > nextPageBoundary) {
+          // Skip if element is taller than a full page
+          if (rect.height >= pxPageHeight) continue;
+          
+          const spacerHeight = nextPageBoundary - relativeTop;
+          if (spacerHeight > 0 && spacerHeight < pxPageHeight) {
+            const spacer = document.createElement('div');
+            spacer.style.height = `${spacerHeight}px`;
+            spacer.style.minHeight = `${spacerHeight}px`;
+            spacer.style.flexShrink = '0';
+            spacer.style.display = 'block';
+            spacer.style.width = '100%';
+            spacer.className = 'pdf-spacer';
+            spacer.dataset.pdfSpacer = 'true';
+            
+            el.parentNode?.insertBefore(spacer, el);
+            shifted = true;
+            break; // Restart loop to re-measure positions
+          }
+        }
+      }
+    }
+
     // Render HTML to canvas
     const canvas = await html2canvas(captureElement, {
       scale: 2, // High resolution scaling
@@ -60,8 +114,8 @@ export async function exportResumeToPDF(resumeElement: HTMLElement, fileName: st
     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
-    // Add subsequent pages if there's significant overflow (with 2mm tolerance to avoid trailing blank page)
-    while (heightLeft > 2) {
+    // Add subsequent pages if there's significant overflow (with 15mm tolerance to avoid trailing blank page)
+    while (heightLeft > 15) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
@@ -122,7 +176,7 @@ export async function generatePDFFromHTML(
     pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
     heightLeft -= pageHeight - 20;
 
-    while (heightLeft > 0) {
+    while (heightLeft > 15) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
@@ -176,7 +230,7 @@ export async function createPDFBlob(htmlElement: HTMLElement): Promise<Blob> {
     pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
     heightLeft -= pageHeight - 20;
 
-    while (heightLeft > 0) {
+    while (heightLeft > 15) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);

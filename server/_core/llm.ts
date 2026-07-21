@@ -214,16 +214,44 @@ const normalizeToolChoice = (
 };
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey && !ENV.grokApiKey && !ENV.geminiApiKey && !ENV.geminiApiKey2) {
-    throw new Error("No API key is configured. Please set BUILT_IN_FORGE_API_KEY, GEMINI_API_KEY, GEMINI_API_KEY_2, or GROK_API_KEY in .env");
+  if (!ENV.forgeApiKey && !ENV.grokApiKey && !ENV.geminiApiKey && !ENV.geminiApiKey2 && !ENV.bynaraApiKey && !ENV.tokenrouterApiKey && !ENV.opencodeApiKey && !ENV.openrouterApiKey) {
+    throw new Error("No API key is configured. Please set BUILT_IN_FORGE_API_KEY, GEMINI_API_KEY, GEMINI_API_KEY_2, GROK_API_KEY, BYNARA_API_KEY, TOKENROUTER_API_KEY, OPENCODE_API_KEY, or OPENROUTER_API_KEY in .env");
   }
 };
 
-type ApiKeyConfig = { apiKey: string; url: string; defaultModel?: string };
+type ApiKeyConfig = { apiKey: string; url: string; defaultModel?: string; isOpenAI?: boolean };
 
 const getApiKeyConfigs = (): ApiKeyConfig[] => {
   const configs: ApiKeyConfig[] = [];
 
+  if (ENV.openrouterApiKey) {
+    configs.push({
+      apiKey: ENV.openrouterApiKey,
+      url: `${ENV.openrouterApiUrl.replace(/\/$/, "")}/chat/completions`,
+      defaultModel: ENV.openrouterModel || "google/gemma-4-31b-it:free",
+    });
+  }
+  if (ENV.opencodeApiKey) {
+    configs.push({
+      apiKey: ENV.opencodeApiKey,
+      url: `${ENV.opencodeApiUrl.replace(/\/$/, "")}/chat/completions`,
+      defaultModel: ENV.opencodeModel || "glm-5.2",
+    });
+  }
+  if (ENV.bynaraApiKey) {
+    configs.push({
+      apiKey: ENV.bynaraApiKey,
+      url: `${ENV.bynaraApiUrl.replace(/\/$/, "")}/chat/completions`,
+      defaultModel: ENV.bynaraModel || "glm-5.2-free",
+    });
+  }
+  if (ENV.tokenrouterApiKey) {
+    configs.push({
+      apiKey: ENV.tokenrouterApiKey,
+      url: `${ENV.tokenrouterApiUrl.replace(/\/$/, "")}/chat/completions`,
+      defaultModel: ENV.tokenrouterModel || "z-ai/glm-5.2-free",
+    });
+  }
   if (ENV.forgeApiKey) {
     configs.push({
       apiKey: ENV.forgeApiKey,
@@ -251,12 +279,15 @@ const getApiKeyConfigs = (): ApiKeyConfig[] => {
     configs.push({
       apiKey: ENV.grokApiKey,
       url: "https://api.groq.com/openai/v1/chat/completions",
-      defaultModel: "llama3-8b-8192",
+      defaultModel: "llama-3.3-70b-versatile",
     });
   }
 
   return configs;
 };
+
+const hasOpenAIConfig = (configs: ApiKeyConfig[]): boolean =>
+  configs.some((c) => !!c.isOpenAI);
 
 const normalizeResponseFormat = ({
   responseFormat,
@@ -438,11 +469,20 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const configs = getApiKeyConfigs();
+  const openAIConfigured = hasOpenAIConfig(configs);
   let lastError: Error | null = null;
 
   for (const config of configs) {
     const requestPayload = { ...payload };
-    requestPayload.model = model || config.defaultModel || requestPayload.model;
+    
+    // Map OpenAI model names (like gpt-4o) to the provider's defaultModel
+    // when no OpenAI credentials are configured.
+    let resolvedModel = model;
+    if (!openAIConfigured && config.defaultModel && model?.startsWith("gpt-")) {
+      resolvedModel = config.defaultModel;
+    }
+    
+    requestPayload.model = resolvedModel || config.defaultModel || requestPayload.model;
 
     try {
       const response = await fetchWithBackoff(config.url, {
