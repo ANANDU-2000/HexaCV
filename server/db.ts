@@ -38,7 +38,7 @@ export async function getDb() {
 // ==========================================
 export const mockDb = {
   users: [
-    { id: 1, openId: "admin-key-owner", name: "Surag", email: "surag@hexastacksolutions.com", loginMethod: "oauth", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
+    { id: 1, openId: "admin-key-owner", name: "Admin User", email: "admin@hexacv.com", loginMethod: "oauth", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
     { id: 2, openId: "user-2", name: "Anandu Krishna", email: "anandu@hexastacksolutions.com", loginMethod: "oauth", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
     { id: 3, openId: "user-3", name: "John Doe", email: "john@example.com", loginMethod: "oauth", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }
   ] as any[],
@@ -74,9 +74,7 @@ export const mockDb = {
     { id: "sub-1", userId: 1, tier: "enterprise", status: "active", provider: "stripe", referenceId: "sub_123", startDate: new Date(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
     { id: "sub-2", userId: 2, tier: "pro", status: "active", provider: "stripe", referenceId: "sub_456", startDate: new Date(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }
   ] as any[],
-  supportTickets: [
-    { id: "tkt-1", userId: 2, title: "Custom domain mapping issue", description: "Subdomain for white label returns 404.", status: "open", priority: "high", createdAt: new Date(), updatedAt: new Date() }
-  ] as any[],
+  supportTickets: [] as any[],
   countries: [] as any[],
   states: [] as any[],
   districts: [] as any[],
@@ -88,6 +86,12 @@ export const mockDb = {
   resumeHistory: [] as any[],
   cloudBackups: [] as any[]
 };
+
+const ADMIN_SEEDED_DEMO_OPEN_IDS = new Set(["user-2", "user-3"]);
+
+function getAdminVisibleMockUsers() {
+  return mockDb.users.filter(u => !ADMIN_SEEDED_DEMO_OPEN_IDS.has(u.openId));
+}
 
 // ==========================================
 // CORE CRUD HELPERS
@@ -786,18 +790,20 @@ export async function resolveSupportTicket(id: string, status: string = "resolve
 export async function getAnalyticsSummary() {
   const db = await getDb();
   if (!db) {
-    const totalGuests = mockDb.guestSessions.length + 42; // base offset
-    const converted = mockDb.guestSessions.filter(s => s.convertedUserId !== null).length + 12;
-    const activeReg = mockDb.users.length;
+    const adminVisibleUsers = getAdminVisibleMockUsers();
+    const adminVisibleUserIds = new Set(adminVisibleUsers.map(u => u.id));
+    const totalGuests = mockDb.guestSessions.length;
+    const converted = mockDb.guestSessions.filter(s => s.convertedUserId !== null).length;
+    const activeReg = adminVisibleUsers.length;
     const activeGuest = mockDb.guestSessions.length;
     return {
-      totalUsers: mockDb.users.length,
+      totalUsers: adminVisibleUsers.length,
       totalGuests,
       conversionRate: Math.round((converted / Math.max(1, totalGuests)) * 100),
       activeUsers: activeReg + activeGuest,
-      resumesCreated: mockDb.resumes.length + 8, // base offset for visuals
-      pdfDownloads: (mockDb.resumes.length + 8) * 2,
-      subscriptionRevenue: mockDb.subscriptions.filter(s => s.status === "active").reduce((acc, curr) => {
+      resumesCreated: mockDb.resumes.filter(r => adminVisibleUserIds.has(r.userId)).length,
+      pdfDownloads: 0,
+      subscriptionRevenue: mockDb.subscriptions.filter(s => s.status === "active" && adminVisibleUserIds.has(s.userId)).reduce((acc, curr) => {
         return acc + (curr.tier === "enterprise" ? 99 : curr.tier === "pro" ? 19 : 0);
       }, 0)
     };
@@ -836,15 +842,15 @@ export async function getAnalyticsSummary() {
       subscriptionRevenue: Number(activePremiumCount[0]?.count || 0) * 19,
     };
   } catch (error) {
-    console.warn("[Analytics] Queries failed, using default mock stats:", error);
+    console.warn("[Analytics] Queries failed, returning empty admin stats:", error);
     return {
-      totalUsers: 15,
-      totalGuests: 42,
-      conversionRate: 28,
-      activeUsers: 8,
-      resumesCreated: 24,
-      pdfDownloads: 48,
-      subscriptionRevenue: 118,
+      totalUsers: 0,
+      totalGuests: 0,
+      conversionRate: 0,
+      activeUsers: 0,
+      resumesCreated: 0,
+      pdfDownloads: 0,
+      subscriptionRevenue: 0,
     };
   }
 }
@@ -852,7 +858,7 @@ export async function getAnalyticsSummary() {
 export async function getCRMUsersList() {
   const db = await getDb();
   if (!db) {
-    return mockDb.users.map(u => {
+    return getAdminVisibleMockUsers().map(u => {
       const sub = mockDb.subscriptions.find(s => s.userId === u.id && s.status === "active");
       const rc = mockDb.resumes.filter(r => r.userId === u.id).length;
       return {
@@ -1741,4 +1747,3 @@ export async function deleteCloudBackup(id: string, userId: number) {
   );
   return true;
 }
-

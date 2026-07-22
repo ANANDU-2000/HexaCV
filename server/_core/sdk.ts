@@ -280,8 +280,8 @@ class SDKServer {
         try {
           await db.upsertUser({
             openId: "admin-key-owner",
-            name: "Surag",
-            email: "surag@hexastacksolutions.com",
+            name: "Admin User",
+            email: "admin@hexacv.com",
             loginMethod: "oauth",
             lastSignedIn: signedInAt,
             role: "admin",
