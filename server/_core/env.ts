@@ -23,5 +23,8 @@ export const ENV = {
   openrouterApiUrl: process.env.OPENROUTER_API_URL ?? "https://openrouter.ai/api/v1",
   openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
   openrouterModel: process.env.OPENROUTER_MODEL ?? "google/gemma-4-31b-it:free",
+  adminEmail: process.env.ADMIN_EMAIL ?? "admin@hexacv.com",
+  adminPassword: process.env.ADMIN_PASSWORD ?? "1234@hexaCv",
 };
+
 

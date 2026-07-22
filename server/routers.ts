@@ -9,6 +9,8 @@ import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
 import { extractText, parseResumeWithLLM } from "./fileParser";
 import Stripe from "stripe";
+import { getAllApiKeys, saveApiKey, testApiKey as testApiKeyFunc } from "./apiKeyManager";
+
 
 export const appRouter = router({
   system: systemRouter,
@@ -897,9 +899,24 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
       .input(z.object({ id: z.string(), status: z.string() }))
       .mutation(async ({ input }) => {
         return db.resolveSupportTicket(input.id, input.status);
-      })
+      }),
+    getApiKeys: adminProcedure.query(async () => {
+      return getAllApiKeys();
+    }),
+    updateApiKey: adminProcedure
+      .input(z.object({ keyName: z.string(), value: z.string() }))
+      .mutation(async ({ input }) => {
+        saveApiKey(input.keyName, input.value);
+        return { success: true, keyName: input.keyName };
+      }),
+    testApiKey: adminProcedure
+      .input(z.object({ keyName: z.string() }))
+      .mutation(async ({ input }) => {
+        return testApiKeyFunc(input.keyName);
+      }),
   }),
 });
+
 
 export type AppRouter = typeof appRouter;
 

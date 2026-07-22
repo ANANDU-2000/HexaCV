@@ -73,10 +73,17 @@ export default function Login() {
       toast.error("Please enter a valid email address.");
       return;
     }
-    const isOwner = email.includes("admin");
-    const name = isOwner ? "Surag (Admin)" : "Email Candidate";
-    const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
-    window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(finalRedirect)}`;
+    const cleanEmail = email.toLowerCase().trim();
+    const isOwner = cleanEmail === "admin@hexacv.com" || cleanEmail.includes("admin");
+
+    if (cleanEmail === "admin@hexacv.com" && password !== "1234@hexaCv") {
+      toast.error("Invalid password for admin user. Please check your credentials.");
+      return;
+    }
+
+    const name = isOwner ? "Admin User" : "Email Candidate";
+    const targetRedirect = isOwner ? "/admin" : (convertParam ? `${redirectParam}?convert=true` : redirectParam);
+    window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&redirect=${encodeURIComponent(targetRedirect)}`;
   };
 
   const form = (

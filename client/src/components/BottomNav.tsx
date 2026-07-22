@@ -30,7 +30,7 @@ const moreItems = [
   { icon: Gift, label: "Affiliate Program", path: "/dashboard/affiliate" },
   { icon: Building, label: "Organization", path: "/dashboard/organization" },
   { icon: CreditCard, label: "Billing & Subscriptions", path: "/dashboard/billing" },
-  { icon: ShieldCheck, label: "Admin CRM", path: "/admin", adminOnly: true },
+  { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 
