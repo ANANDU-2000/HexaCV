@@ -22,10 +22,11 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
-  FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings 
+  FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
+  BarChart3, Globe, KeyRound, Receipt, LifeBuoy
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { BottomNav } from './BottomNav';
 import { Button } from "./ui/button";
@@ -39,7 +40,17 @@ const menuItems = [
   { icon: Gift, label: "Affiliate Program", path: "/dashboard/affiliate" },
   { icon: Building, label: "Organization", path: "/dashboard/organization" },
   { icon: CreditCard, label: "Billing & Subscriptions", path: "/dashboard/billing" },
-  { icon: ShieldCheck, label: "Admin CRM", path: "/admin" }
+  { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true }
+];
+
+const adminMenuItems = [
+  { icon: BarChart3, label: "CRM Dashboard", path: "/admin?tab=crm", tab: "crm" },
+  { icon: Users, label: "Logged-in Users", path: "/admin?tab=users", tab: "users" },
+  { icon: Globe, label: "Guest Users", path: "/admin?tab=guests", tab: "guests" },
+  { icon: KeyRound, label: "API Key Usage", path: "/admin?tab=api", tab: "api" },
+  { icon: Receipt, label: "Payments Received", path: "/admin?tab=payments", tab: "payments" },
+  { icon: ShieldCheck, label: "Audit Logs", path: "/admin?tab=audit", tab: "audit" },
+  { icon: LifeBuoy, label: "Support Tickets", path: "/admin?tab=tickets", tab: "tickets" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -94,13 +105,20 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const search = useSearch();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => 
-    item.path === location || (item.path === "/admin" && location === "/url")
-  );
+  const currentPath = location.split("?")[0];
+  const currentSearch = location.includes("?") ? location.split("?")[1] : search;
+  const activeAdminTab = new URLSearchParams(currentSearch).get("tab") || "crm";
+  const isAdminRoute = currentPath.startsWith("/admin") || currentPath.startsWith("/dashboard/admin") || currentPath === "/url";
+  const visibleMenuItems = isAdminRoute ? adminMenuItems : menuItems;
+  const activeMenuItem = visibleMenuItems.find(item => {
+    if (isAdminRoute) return "tab" in item && item.tab === activeAdminTab;
+    return item.path === currentPath;
+  });
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -159,7 +177,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    {isAdminRoute ? "Admin Console" : "Navigation"}
                   </span>
                 </div>
               ) : null}
@@ -168,10 +186,12 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
+              {visibleMenuItems.map(item => {
                 // Hide admin CRM if they are not an administrator
-                if ((item as any).adminOnly && user?.role !== 'admin') return null;
-                const isActive = location === item.path || (item.path === "/admin" && location === "/url");
+                if (!isAdminRoute && (item as any).adminOnly && user?.role !== 'admin') return null;
+                const isActive = isAdminRoute
+                  ? "tab" in item && item.tab === activeAdminTab
+                  : currentPath === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
@@ -192,33 +212,35 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
-            {user ? (
+            {user || isAdminRoute ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    <Avatar className="h-9 w-9 border shrink-0">
-                      <AvatarFallback className="text-xs font-medium">
-                        {user.name?.charAt(0).toUpperCase() || "U"}
+                    <Avatar className="h-9 w-9 border shrink-0 bg-blue-600 text-white">
+                      <AvatarFallback className="text-xs font-bold">
+                        {user?.name?.charAt(0).toUpperCase() || "A"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                       <p className="text-sm font-medium truncate leading-none">
-                        {user.name || "User"}
+                        {user?.name || "Admin User"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-1.5">
-                        {user.email || ""}
+                        {user?.email || "admin@hexacv.com"}
                       </p>
                     </div>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 bg-white">
-                  <DropdownMenuItem
-                    onClick={() => setLocation("/dashboard/settings")}
-                    className="cursor-pointer"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Account Settings</span>
-                  </DropdownMenuItem>
+                  {!isAdminRoute && (
+                    <DropdownMenuItem
+                      onClick={() => setLocation("/dashboard/settings")}
+                      className="cursor-pointer"
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Account Settings</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={logout}
                     className="cursor-pointer text-destructive focus:text-destructive"
@@ -276,7 +298,7 @@ function DashboardLayoutContent({
         <main className={`flex-1 p-4 ${isMobile && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') ? "pb-20" : ""}`}>{children}</main>
       </SidebarInset>
 
-      {isMobile && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') && <BottomNav />}
+      {isMobile && !isAdminRoute && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') && <BottomNav />}
     </>
   );
 }

@@ -54,29 +54,40 @@ export function registerOAuthRoutes(app: Express) {
   // Mock login for local sandbox / dev testing
   app.get("/api/mock/login", async (req: Request, res: Response) => {
     const email = (req.query.email as string) || "test.candidate@gmail.com";
-    const name = (req.query.name as string) || "Test Candidate";
+    const password = (req.query.password as string) || "";
+    const name = (req.query.name as string) || (email.toLowerCase() === "admin@hexacv.com" ? "Admin User" : "Test Candidate");
     const provider = (req.query.provider as string) || "google";
-    const openId = `mock-${provider}-${email.replace("@", "-")}`;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Verify admin credentials if logging in as admin@hexacv.com
+    if (normalizedEmail === "admin@hexacv.com" && password && password !== "1234@hexaCv") {
+      res.status(401).json({ error: "Invalid credentials for admin account." });
+      return;
+    }
+
+    const isAdmin = normalizedEmail === "admin@hexacv.com" || normalizedEmail.includes("admin");
+    const openId = isAdmin ? "admin-key-owner" : `mock-${provider}-${normalizedEmail.replace("@", "-")}`;
 
     try {
       await db.upsertUser({
         openId,
-        name,
-        email,
+        name: isAdmin ? "Admin User" : name,
+        email: normalizedEmail,
         loginMethod: provider,
         lastSignedIn: new Date(),
-        role: email.includes("admin") ? "admin" : "user",
+        role: isAdmin ? "admin" : "user",
       });
 
       const sessionToken = await sdk.createSessionToken(openId, {
-        name,
+        name: isAdmin ? "Admin User" : name,
         expiresInMs: ONE_YEAR_MS,
       });
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
       
-      const redirect = (req.query.redirect as string) || "/";
+      const defaultRedirect = isAdmin ? "/admin" : "/";
+      const redirect = (req.query.redirect as string) || defaultRedirect;
       res.redirect(302, redirect);
     } catch (error) {
       console.error("[Mock Auth] Login failed", error);

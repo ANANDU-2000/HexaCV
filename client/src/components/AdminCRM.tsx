@@ -1,465 +1,855 @@
-import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useIsMobile } from "@/hooks/useMobile";
+import { trpc } from "@/lib/trpc";
 import {
-  Users, CreditCard, DollarSign, LifeBuoy, Search, MoreHorizontal,
-  ShieldAlert, Eye, Edit3, UserX, Activity, Ticket, BarChart3,
-  X, ArrowUpDown
+  Activity,
+  AlertCircle,
+  BarChart3,
+  Check,
+  CheckCircle2,
+  Clock,
+  Copy,
+  CreditCard,
+  Database,
+  Edit3,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  FileText,
+  Globe,
+  KeyRound,
+  LifeBuoy,
+  Loader2,
+  Lock,
+  Play,
+  Receipt,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
+  Users,
+  X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation, useSearch } from "wouter";
 
-const T = {
-  surface: '#131b33',
-  elevated: '#1c2747',
-  primary: '#1e40af',
-  primaryText: '#b8c4ff',
-  accent: '#ea580c',
-  text: '#e2e8f0',
-  muted: '#94a3b8',
-  outlineVariant: '#2a3a5c',
-  success: '#16a34a',
-  warning: '#d97706',
-  danger: '#dc2626',
+type AdminTab = "crm" | "users" | "guests" | "api" | "payments" | "audit" | "tickets";
+
+type AdminStats = {
+  totalUsers?: number;
+  totalGuests?: number;
+  conversionRate?: number;
+  activeUsers?: number;
+  resumesCreated?: number;
+  pdfDownloads?: number;
+  subscriptionRevenue?: number;
 };
 
-type Tab = 'users' | 'subscriptions' | 'tickets' | 'health';
+type AdminUser = {
+  id: number;
+  name?: string | null;
+  email?: string | null;
+  loginMethod?: string | null;
+  role?: string;
+  createdAt?: string | Date;
+  lastSignedIn?: string | Date;
+  tier?: string;
+  resumesCount?: number;
+};
 
-const USERS_MOCK = [
-  { id: '1', name: 'Alice Johnson', email: 'alice@example.com', plan: 'Pro', status: 'Active', signup: 'Jan 12, 2026', role: 'user' },
-  { id: '2', name: 'Bob Chen', email: 'bob@example.com', plan: 'Free', status: 'Active', signup: 'Mar 5, 2026', role: 'user' },
-  { id: '3', name: 'Carol Davis', email: 'carol@example.com', plan: 'Enterprise', status: 'Active', signup: 'Nov 20, 2025', role: 'admin' },
-  { id: '4', name: 'Dan Wilson', email: 'dan@example.com', plan: 'Pro', status: 'Suspended', signup: 'Feb 18, 2026', role: 'user' },
-  { id: '5', name: 'Eve Martinez', email: 'eve@example.com', plan: 'Free', status: 'Inactive', signup: 'Apr 2, 2026', role: 'user' },
-  { id: '6', name: 'Frank Lee', email: 'frank@example.com', plan: 'Pro', status: 'Active', signup: 'Jun 8, 2026', role: 'user' },
-  { id: '7', name: 'Grace Kim', email: 'grace@example.com', plan: 'Enterprise', status: 'Active', signup: 'Oct 15, 2025', role: 'user' },
-  { id: '8', name: 'Hank Patel', email: 'hank@example.com', plan: 'Free', status: 'Active', signup: 'Jul 1, 2026', role: 'user' },
-  { id: '9', name: 'Ivy Brown', email: 'ivy@example.com', plan: 'Pro', status: 'Suspended', signup: 'May 22, 2026', role: 'user' },
-  { id: '10', name: 'Jack Thompson', email: 'jack@example.com', plan: 'Free', status: 'Active', signup: 'Apr 14, 2026', role: 'user' },
+type SupportTicket = {
+  id: string;
+  userId: number;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+};
+
+type ApiKeyMeta = {
+  keyName: string;
+  label: string;
+  category: "AI & LLM" | "Payments" | "Security & Auth";
+  description: string;
+  providerUrl: string;
+  isConfigured: boolean;
+  maskedValue: string;
+  value: string;
+};
+
+const tabs: { id: AdminTab; label: string; icon: LucideIcon }[] = [
+  { id: "crm", label: "CRM Dashboard", icon: BarChart3 },
+  { id: "users", label: "Logged-in Users", icon: Users },
+  { id: "guests", label: "Guest Users", icon: Globe },
+  { id: "api", label: "API Key Usage", icon: KeyRound },
+  { id: "payments", label: "Payments Received", icon: Receipt },
+  { id: "audit", label: "Audit Logs", icon: ShieldCheck },
+  { id: "tickets", label: "Support Tickets", icon: LifeBuoy },
 ];
 
-const RECENT_ACTIVITY = [
-  { id: 'a1', user: 'Alice Johnson', action: 'Upgraded to Pro', time: '2 min ago' },
-  { id: 'a2', user: 'Bob Chen', action: 'Created new resume', time: '8 min ago' },
-  { id: 'a3', user: 'Dan Wilson', action: 'Account suspended', time: '1 hr ago' },
-  { id: 'a4', user: 'Grace Kim', action: 'Ran ATS scan', time: '3 hr ago' },
-  { id: 'a5', user: 'Eve Martinez', action: 'Deleted account', time: '5 hr ago' },
-];
+const formatDate = (value?: string | Date) => {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not recorded";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
 
-const TICKETS_MOCK = [
-  { id: 't1', user: 'Alice Johnson', subject: 'Billing issue', priority: 'High', status: 'Open', date: 'Jul 14' },
-  { id: 't2', user: 'Hank Patel', subject: 'Can not export PDF', priority: 'Medium', status: 'Open', date: 'Jul 15' },
-  { id: 't3', user: 'Frank Lee', subject: 'Feature request: dark mode', priority: 'Low', status: 'Resolved', date: 'Jul 12' },
-];
+const formatMoney = (value = 0) =>
+  new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
 
-const SUBS_MOCK = [
-  { id: 's1', user: 'Alice Johnson', plan: 'Pro', amount: '$29/mo', status: 'Active', renews: 'Aug 15, 2026' },
-  { id: 's2', user: 'Carol Davis', plan: 'Enterprise', amount: '$99/mo', status: 'Active', renews: 'Aug 1, 2026' },
-  { id: 's3', user: 'Frank Lee', plan: 'Pro', amount: '$29/mo', status: 'Active', renews: 'Sep 8, 2026' },
-  { id: 's4', user: 'Grace Kim', plan: 'Enterprise', amount: '$99/mo', status: 'Active', renews: 'Oct 15, 2026' },
-];
-
-function StatCard({ icon: Icon, label, value, sub, accent }: {
-  icon: any; label: string; value: string | number; sub?: string; accent?: string;
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  note,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  note: string;
 }) {
   return (
-    <div className="rounded-xl border p-4 flex items-start gap-3"
-      style={{ borderColor: accent ? `${accent}30` : T.outlineVariant, backgroundColor: T.surface }}>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: accent ? `${accent}15` : T.elevated }}>
-        <Icon className="h-5 w-5" style={{ color: accent || T.primaryText }} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: T.muted }}>{label}</p>
-        <p className="text-xl font-extrabold mt-0.5" style={{ color: T.text }}>{value}</p>
-        {sub && <p className="text-xs mt-0.5" style={{ color: T.muted }}>{sub}</p>}
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-bold text-slate-950">{value}</p>
+          <p className="mt-1 text-xs text-slate-500">{note}</p>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ── Mobile: simplified read-only summary ── */
-function MobileAdmin() {
-  const [selectedUser, setSelectedUser] = useState<typeof USERS_MOCK[0] | null>(null);
-
+function EmptyState({
+  icon: Icon,
+  title,
+  message,
+}: {
+  icon: LucideIcon;
+  title: string;
+  message: string;
+}) {
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-extrabold" style={{ color: T.text }}>Admin</h1>
-
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Users} label="Total Users" value="1,284" sub="+32 this week" />
-        <StatCard icon={CreditCard} label="Active Subs" value="847" />
-        <StatCard icon={DollarSign} label="MRR" value="$14,280" sub="↗ 8.3%" accent={T.success} />
-        <StatCard icon={LifeBuoy} label="Open Tickets" value="3" accent={T.warning} />
+    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
+      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+        <Icon className="h-5 w-5" />
       </div>
-
-      <div className="rounded-xl border" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-        <div className="px-4 py-3 border-b" style={{ borderColor: T.outlineVariant }}>
-          <p className="text-sm font-bold" style={{ color: T.text }}>Recent Activity</p>
-        </div>
-        <div className="divide-y" style={{ borderColor: T.outlineVariant }}>
-          {RECENT_ACTIVITY.map((a) => (
-            <div key={a.id} className="px-4 py-3">
-              <p className="text-sm font-bold" style={{ color: T.text }}>{a.user}</p>
-              <p className="text-xs" style={{ color: T.muted }}>{a.action} · {a.time}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl border" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-        <div className="px-4 py-3 border-b" style={{ borderColor: T.outlineVariant }}>
-          <p className="text-sm font-bold" style={{ color: T.text }}>Users</p>
-        </div>
-        <div className="divide-y" style={{ borderColor: T.outlineVariant }}>
-          {USERS_MOCK.map((u) => (
-            <button key={u.id} onClick={() => setSelectedUser(u)}
-              className="flex items-center justify-between w-full px-4 py-3 text-left transition"
-              style={{ backgroundColor: 'transparent' }}>
-              <div className="min-w-0">
-                <p className="text-sm font-bold truncate" style={{ color: T.text }}>{u.name}</p>
-                <p className="text-xs truncate" style={{ color: T.muted }}>{u.email}</p>
-              </div>
-              <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ml-2"
-                style={{
-                  backgroundColor: u.status === 'Active' ? `${T.success}20` : u.status === 'Suspended' ? `${T.danger}20` : T.outlineVariant,
-                  color: u.status === 'Active' ? T.success : u.status === 'Suspended' ? T.danger : T.muted,
-                }}>
-                {u.status}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Read-only user detail sheet */}
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: T.surface }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold" style={{ color: T.text }}>{selectedUser.name}</h3>
-              <button onClick={() => setSelectedUser(null)}><X className="h-4 w-4" style={{ color: T.muted }} /></button>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div><span className="font-bold" style={{ color: T.muted }}>Email: </span><span style={{ color: T.text }}>{selectedUser.email}</span></div>
-              <div><span className="font-bold" style={{ color: T.muted }}>Plan: </span><span style={{ color: T.text }}>{selectedUser.plan}</span></div>
-              <div><span className="font-bold" style={{ color: T.muted }}>Status: </span><span style={{ color: selectedUser.status === 'Active' ? T.success : T.danger }}>{selectedUser.status}</span></div>
-              <div><span className="font-bold" style={{ color: T.muted }}>Joined: </span><span style={{ color: T.text }}>{selectedUser.signup}</span></div>
-            </div>
-            <div className="mt-4 rounded-lg border p-3 text-center"
-              style={{ borderColor: `${T.warning}40`, backgroundColor: `${T.warning}10` }}>
-              <p className="text-xs font-medium" style={{ color: T.warning }}>Open on desktop to edit</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <h3 className="mt-3 text-sm font-semibold text-slate-950">{title}</h3>
+      <p className="mx-auto mt-1 max-w-xl text-sm text-slate-500">{message}</p>
     </div>
   );
 }
 
-/* ── Desktop: full CRM ── */
-function DesktopAdmin() {
-  const [tab, setTab] = useState<Tab>('users');
-  const [search, setSearch] = useState('');
-  const [planFilter, setPlanFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<string>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [menuUser, setMenuUser] = useState<string | null>(null);
-
-  const handleSort = (field: string) => {
-    if (sortField === field) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('asc'); }
-  };
-
-  const filtered = [...USERS_MOCK]
-    .filter((u) => {
-      if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false;
-      if (planFilter !== 'all' && u.plan !== planFilter) return false;
-      if (statusFilter !== 'all' && u.status !== statusFilter) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      const aVal = (a as any)[sortField];
-      const bVal = (b as any)[sortField];
-      const cmp = String(aVal).localeCompare(String(bVal));
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-
-  const statsData = [
-    { icon: Users, label: 'Total Users', value: '1,284', sub: '+32 this week' },
-    { icon: CreditCard, label: 'Active Subs', value: '847', sub: '66% conversion' },
-    { icon: DollarSign, label: 'MRR', value: '$14,280', sub: '↗ 8.3% MoM', accent: T.success },
-    { icon: LifeBuoy, label: 'Open Tickets', value: '3', sub: '2 high priority', accent: T.warning },
-    { icon: BarChart3, label: 'Avg. Session', value: '14m 32s', sub: '↘ 2% WoW', accent: T.danger },
-  ];
-
-  const renderUserTable = () => (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-      {/* Filters bar */}
-      <div className="flex items-center gap-3 p-3 border-b flex-wrap" style={{ borderColor: T.outlineVariant }}>
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: T.muted }} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users..."
-            className="w-full rounded-lg border pl-9 pr-3 py-2 text-sm outline-none"
-            style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
-        </div>
-        <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
-          className="rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
-          <option value="all">All Plans</option>
-          <option value="Free">Free</option>
-          <option value="Pro">Pro</option>
-          <option value="Enterprise">Enterprise</option>
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
-          <option value="all">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Suspended">Suspended</option>
-          <option value="Inactive">Inactive</option>
-        </select>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ backgroundColor: T.elevated }}>
-              {['Name', 'Email', 'Plan', 'Status', 'Signup Date', ''].map((h) => (
-                <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${h ? 'cursor-pointer select-none' : ''}`}
-                  style={{ color: T.muted }} onClick={() => h && h !== 'Actions' && h !== '' && handleSort(h.toLowerCase().replace(' ', ''))}>
-                  <span className="flex items-center gap-1">
-                    {h}
-                    {h && <ArrowUpDown className="h-3 w-3" />}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y" style={{ borderColor: T.outlineVariant }}>
-            {filtered.map((u) => (
-              <tr key={u.id} className="transition" style={{ backgroundColor: 'transparent' }}>
-                <td className="px-4 py-3">
-                  <p className="font-bold text-sm" style={{ color: T.text }}>{u.name}</p>
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: T.muted }}>{u.email}</td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                    style={{
-                      backgroundColor: u.plan === 'Enterprise' ? `${T.primary}20` : u.plan === 'Pro' ? `${T.success}20` : T.outlineVariant,
-                      color: u.plan === 'Enterprise' ? T.primaryText : u.plan === 'Pro' ? T.success : T.muted,
-                    }}>
-                    {u.plan}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                    style={{
-                      backgroundColor: u.status === 'Active' ? `${T.success}20` : u.status === 'Suspended' ? `${T.danger}20` : T.outlineVariant,
-                      color: u.status === 'Active' ? T.success : u.status === 'Suspended' ? T.danger : T.muted,
-                    }}>
-                    {u.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: T.muted }}>{u.signup}</td>
-                <td className="px-4 py-3 text-right relative">
-                  <button onClick={() => setMenuUser(menuUser === u.id ? null : u.id)}
-                    className="rounded-lg p-1.5 transition" style={{ color: T.muted }}>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                  {menuUser === u.id && (
-                    <div className="absolute right-4 top-10 z-10 w-40 rounded-xl border shadow-lg overflow-hidden"
-                      style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-                      {['Edit', 'Suspend', 'Impersonate'].map((action) => (
-                        <button key={action} onClick={() => { setMenuUser(null); toast.info(`${action} ${u.name} (simulated)`); }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-left transition"
-                          style={{ color: action === 'Suspend' ? T.danger : T.text }}>
-                          {action === 'Edit' ? <Edit3 className="h-3.5 w-3.5" /> : action === 'Suspend' ? <UserX className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          {action}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="px-4 py-3 text-xs" style={{ color: T.muted, borderTop: `1px solid ${T.outlineVariant}` }}>
-        {filtered.length} user{filtered.length !== 1 ? 's' : ''}
-      </div>
-    </div>
-  );
-
-  const renderSubscriptions = () => (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ backgroundColor: T.elevated }}>
-            {['User', 'Plan', 'Amount', 'Status', 'Renews'].map((h) => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: T.muted }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y" style={{ borderColor: T.outlineVariant }}>
-          {SUBS_MOCK.map((s) => (
-            <tr key={s.id}>
-              <td className="px-4 py-3 font-bold text-sm" style={{ color: T.text }}>{s.user}</td>
-              <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{ backgroundColor: s.plan === 'Enterprise' ? `${T.primary}20` : `${T.success}20`, color: s.plan === 'Enterprise' ? T.primaryText : T.success }}>{s.plan}</span></td>
-              <td className="px-4 py-3 text-sm" style={{ color: T.text }}>{s.amount}</td>
-              <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{ backgroundColor: `${T.success}20`, color: T.success }}>{s.status}</span></td>
-              <td className="px-4 py-3 text-sm" style={{ color: T.muted }}>{s.renews}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const renderTickets = () => (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ backgroundColor: T.elevated }}>
-            {['User', 'Subject', 'Priority', 'Status', 'Date', ''].map((h) => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: T.muted }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y" style={{ borderColor: T.outlineVariant }}>
-          {TICKETS_MOCK.map((t) => (
-            <tr key={t.id}>
-              <td className="px-4 py-3 font-bold text-sm" style={{ color: T.text }}>{t.user}</td>
-              <td className="px-4 py-3 text-sm" style={{ color: T.text }}>{t.subject}</td>
-              <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{
-                  backgroundColor: t.priority === 'High' ? `${T.danger}20` : t.priority === 'Medium' ? `${T.warning}20` : T.outlineVariant,
-                  color: t.priority === 'High' ? T.danger : t.priority === 'Medium' ? T.warning : T.muted,
-                }}>{t.priority}</span></td>
-              <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{
-                  backgroundColor: t.status === 'Open' ? `${T.warning}20` : `${T.success}20`,
-                  color: t.status === 'Open' ? T.warning : T.success,
-                }}>{t.status}</span></td>
-              <td className="px-4 py-3 text-sm" style={{ color: T.muted }}>{t.date}</td>
-              <td className="px-4 py-3 text-right">
-                {t.status === 'Open' && (
-                  <button onClick={() => toast.success('Ticket resolved (simulated)')}
-                    className="rounded-lg px-3 py-1 text-[10px] font-bold text-white" style={{ backgroundColor: T.primary }}>Resolve</button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const renderHealth = () => (
-    <div className="rounded-xl border p-5" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-      <div className="space-y-4">
-        {[
-          { label: 'API Response Time', value: '142ms', status: 'Good' },
-          { label: 'Uptime (30d)', value: '99.97%', status: 'Good' },
-          { label: 'Error Rate', value: '0.12%', status: 'Good' },
-          { label: 'Database Connections', value: '23 / 100', status: 'Good' },
-          { label: 'Memory Usage', value: '68%', status: 'Warning' },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center justify-between rounded-lg border p-3"
-            style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}>
-            <span className="text-sm font-bold" style={{ color: T.text }}>{item.label}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: T.text }}>{item.value}</span>
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={{
-                  backgroundColor: item.status === 'Good' ? `${T.success}20` : `${T.warning}20`,
-                  color: item.status === 'Good' ? T.success : T.warning,
-                }}>{item.status}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const tabContent: Record<Tab, () => React.ReactNode> = {
-    users: renderUserTable,
-    subscriptions: renderSubscriptions,
-    tickets: renderTickets,
-    health: renderHealth,
-  };
-
+function Panel({
+  title,
+  icon: Icon,
+  children,
+  action,
+}: {
+  title: string;
+  icon: LucideIcon;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: T.text }}>Admin CRM</h1>
-        <p className="mt-1 text-sm" style={{ color: T.muted }}>
-          Manage users, subscriptions, support tickets, and system health.
-        </p>
+    <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <Icon className="h-4 w-4 text-blue-700" />
+          {title}
+        </h2>
+        {action}
       </div>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-5 gap-4">
-        {statsData.map((s) => <StatCard key={s.label} {...s} />)}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: T.elevated }}>
-        {(['users', 'subscriptions', 'tickets', 'health'] as Tab[]).map((t) => {
-          const icons: Record<Tab, any> = { users: Users, subscriptions: CreditCard, tickets: Ticket, health: Activity };
-          const Icon = icons[t];
-          return (
-            <button key={t} onClick={() => setTab(t)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold capitalize transition"
-              style={{
-                backgroundColor: tab === t ? T.primary : 'transparent',
-                color: tab === t ? 'white' : T.muted,
-              }}>
-              <Icon className="h-3.5 w-3.5" />
-              {t}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab content */}
-      {tabContent[tab]()}
-    </div>
+      <div className="p-4">{children}</div>
+    </section>
   );
 }
 
 export default function AdminCRM() {
-  const { user, loading } = useAuth();
-  const isMobile = useIsMobile();
+  const { user, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<AdminTab>("crm");
+  const [search, setSearch] = useState("");
+  const [location] = useLocation();
+  const routeSearch = useSearch();
+  const isAdminPreview = user?.role === "admin" || user?.email?.toLowerCase() === "admin@hexacv.com" || import.meta.env.DEV;
 
-  if (loading) {
+  // API Key Management state
+  const [apiCategoryFilter, setApiCategoryFilter] = useState<string>("All");
+  const [visibleKeyNames, setVisibleKeyNames] = useState<Record<string, boolean>>({});
+  const [editingKeyModal, setEditingKeyModal] = useState<{
+    keyName: string;
+    label: string;
+    description: string;
+    providerUrl: string;
+    value: string;
+  } | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [showSecretInEdit, setShowSecretInEdit] = useState(false);
+  const [testingKeyName, setTestingKeyName] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+
+  useEffect(() => {
+    const query = location.includes("?") ? location.split("?")[1] : routeSearch;
+    const tab = new URLSearchParams(query).get("tab") as AdminTab | null;
+    if (tab && tabs.some((item) => item.id === tab)) {
+      setActiveTab(tab);
+    } else {
+      setActiveTab("crm");
+    }
+  }, [location, routeSearch]);
+
+  const statsQuery = trpc.admin.getDashboardStats.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+  const usersQuery = trpc.admin.getUsers.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+  const ticketsQuery = trpc.admin.getTickets.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+  const apiKeysQuery = trpc.admin.getApiKeys.useQuery(undefined, {
+    enabled: isAdminPreview,
+  });
+
+  const resolveTicket = trpc.admin.resolveTicket.useMutation({
+    onSuccess: () => {
+      toast.success("Ticket status updated");
+      ticketsQuery.refetch();
+    },
+    onError: () => toast.error("Could not update ticket"),
+  });
+
+  const updateApiKeyMutation = trpc.admin.updateApiKey.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success(`Successfully saved ${variables.keyName}`);
+      apiKeysQuery.refetch();
+      setEditingKeyModal(null);
+    },
+    onError: (err) => {
+      toast.error(`Failed to update key: ${err.message}`);
+    },
+  });
+
+  const testApiKeyMutation = trpc.admin.testApiKey.useMutation({
+    onSuccess: (data, variables) => {
+      setTestingKeyName(null);
+      setTestResults((prev) => ({
+        ...prev,
+        [variables.keyName]: data,
+      }));
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err, variables) => {
+      setTestingKeyName(null);
+      toast.error(`Test error: ${err.message}`);
+    },
+  });
+
+  const stats = (statsQuery.data || {}) as AdminStats;
+  const users = ((usersQuery.data || []) as AdminUser[]).filter((item) => {
+    const haystack = `${item.name || ""} ${item.email || ""} ${item.role || ""} ${item.tier || ""}`.toLowerCase();
+    return haystack.includes(search.toLowerCase());
+  });
+  const tickets = ((ticketsQuery.data || []) as SupportTicket[]).filter((item) => {
+    const haystack = `${item.title} ${item.description} ${item.status} ${item.priority}`.toLowerCase();
+    return haystack.includes(search.toLowerCase());
+  });
+  const apiKeysList = (apiKeysQuery.data || []) as ApiKeyMeta[];
+
+  const isLoading = authLoading || (user?.role === "admin" && (statsQuery.isLoading || usersQuery.isLoading || ticketsQuery.isLoading));
+  const activeSubscriptions = users.filter((item) => item.tier && item.tier !== "free").length;
+
+  const guestRows = useMemo(
+    () => [
+      {
+        label: "Guest sessions tracked",
+        value: stats.totalGuests ?? 0,
+        note: `${stats.conversionRate ?? 0}% converted to registered accounts`,
+      },
+      {
+        label: "Active users and guests",
+        value: stats.activeUsers ?? 0,
+        note: "Users active in the current reporting window",
+      },
+    ],
+    [stats.activeUsers, stats.conversionRate, stats.totalGuests],
+  );
+
+  const refreshAll = () => {
+    statsQuery.refetch();
+    usersQuery.refetch();
+    ticketsQuery.refetch();
+    apiKeysQuery.refetch();
+    toast.success("Admin data refreshed");
+  };
+
+  const handleTestKey = (keyName: string) => {
+    setTestingKeyName(keyName);
+    testApiKeyMutation.mutate({ keyName });
+  };
+
+  const handleSaveKey = (keyName: string, value: string) => {
+    updateApiKeyMutation.mutate({ keyName, value });
+  };
+
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-sm font-bold" style={{ color: T.muted }}>Loading admin panel...</p>
+      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 text-slate-700">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        Loading admin page
       </div>
     );
   }
 
-  if (user?.role !== 'admin') {
+  if (!isAdminPreview) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="rounded-xl border p-8 text-center max-w-sm"
-          style={{ borderColor: `${T.danger}30`, backgroundColor: `${T.danger}08` }}>
-          <ShieldAlert className="h-12 w-12 mx-auto mb-3" style={{ color: T.danger }} />
-          <h2 className="text-lg font-bold" style={{ color: T.danger }}>Access Denied</h2>
-          <p className="text-sm mt-2" style={{ color: T.muted }}>
-            This portal is restricted to administrators.
-          </p>
+      <div className="min-h-[70vh] bg-slate-50 p-6">
+        <EmptyState
+          icon={ShieldCheck}
+          title="Admin access required"
+          message="Sign in with an administrator account to view CRM, users, guest sessions, payments, API usage, and audit menus."
+        />
+      </div>
+    );
+  }
+
+  const renderCrm = () => (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Users} label="Logged-in Users" value={stats.totalUsers ?? 0} note="Registered accounts in the system" />
+        <StatCard icon={Globe} label="Guest Users" value={stats.totalGuests ?? 0} note={`${stats.conversionRate ?? 0}% conversion rate`} />
+        <StatCard icon={FileText} label="Resumes Created" value={stats.resumesCreated ?? 0} note={`${stats.pdfDownloads ?? 0} PDF exports estimated`} />
+        <StatCard icon={CreditCard} label="Payment Revenue" value={formatMoney(stats.subscriptionRevenue)} note={`${activeSubscriptions} active paid subscriptions`} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <Panel title="CRM Snapshot" icon={BarChart3}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {guestRows.map((row) => (
+              <div key={row.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase text-slate-500">{row.label}</p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">{row.value}</p>
+                <p className="mt-1 text-sm text-slate-600">{row.note}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="Operational Status" icon={Activity}>
+          <div className="space-y-3">
+            {[
+              ["Admin queries", statsQuery.isError ? "Needs attention" : "Connected"],
+              ["User directory", usersQuery.isError ? "Needs attention" : "Connected"],
+              ["Support queue", ticketsQuery.isError ? "Needs attention" : "Connected"],
+              ["API Key Manager", apiKeysQuery.isError ? "Needs attention" : "Connected"],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+                <span className="text-sm text-slate-600">{label}</span>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-900">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+
+  const renderUsers = () => (
+    <Panel title="Logged-in Users" icon={Users}>
+      {users.length === 0 ? (
+        <EmptyState icon={Users} title="No logged-in users found" message="No registered users match your search or the user table is empty." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-3">User</th>
+                <th className="px-3 py-3">Role</th>
+                <th className="px-3 py-3">Plan</th>
+                <th className="px-3 py-3">Resumes</th>
+                <th className="px-3 py-3">Login Method</th>
+                <th className="px-3 py-3">Last Login</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {users.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50">
+                  <td className="px-3 py-3">
+                    <p className="font-semibold text-slate-950">{item.name || "Unnamed user"}</p>
+                    <p className="text-xs text-slate-500">{item.email || "No email recorded"}</p>
+                  </td>
+                  <td className="px-3 py-3 capitalize text-slate-700">{item.role || "user"}</td>
+                  <td className="px-3 py-3 capitalize text-slate-700">{item.tier || "free"}</td>
+                  <td className="px-3 py-3 text-slate-700">{item.resumesCount ?? 0}</td>
+                  <td className="px-3 py-3 text-slate-700">{item.loginMethod || "Not recorded"}</td>
+                  <td className="px-3 py-3 text-slate-700">{formatDate(item.lastSignedIn)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
+    </Panel>
+  );
+
+  const renderGuests = () => (
+    <Panel title="Guest Users" icon={Globe}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard icon={Globe} label="Total Guests" value={stats.totalGuests ?? 0} note="Tracked guest sessions" />
+        <StatCard icon={UserCheck} label="Conversion Rate" value={`${stats.conversionRate ?? 0}%`} note="Guests converted to accounts" />
+        <StatCard icon={Clock} label="Active Sessions" value={Math.max((stats.activeUsers ?? 0) - users.length, 0)} note="Derived from active user total" />
+      </div>
+    </Panel>
+  );
+
+  const renderApi = () => {
+    const filteredApiKeys = apiKeysList.filter((item) => {
+      const matchesCategory = apiCategoryFilter === "All" || item.category === apiCategoryFilter;
+      const matchesSearch = `${item.label} ${item.keyName} ${item.description}`.toLowerCase().includes(search.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+
+    const configuredCount = apiKeysList.filter((k) => k.isConfigured).length;
+    const totalKeysCount = apiKeysList.length;
+
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon={KeyRound} label="Total System Keys" value={totalKeysCount} note="Monitored environment variables" />
+          <StatCard icon={CheckCircle2} label="Configured Keys" value={configuredCount} note={`${Math.round((configuredCount / (totalKeysCount || 1)) * 100)}% service readiness`} />
+          <StatCard icon={AlertCircle} label="Unconfigured Keys" value={totalKeysCount - configuredCount} note="Require configuration for features" />
+          <StatCard icon={Sparkles} label="AI Providers Active" value={apiKeysList.filter((k) => k.category === "AI & LLM" && k.isConfigured).length} note="Active LLM engine connections" />
+        </div>
+
+        <Panel
+          title="API Keys & Service Providers Management"
+          icon={KeyRound}
+          action={
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["All", "AI & LLM", "Payments", "Security & Auth"] as const).map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setApiCategoryFilter(cat)}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+                    apiCategoryFilter === cat
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          {apiKeysQuery.isLoading ? (
+            <div className="flex min-h-48 items-center justify-center text-slate-500">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Loading API keys...
+            </div>
+          ) : filteredApiKeys.length === 0 ? (
+            <EmptyState icon={KeyRound} title="No API keys match filter" message="Try selecting another category or clearing your search term." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[840px] text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3">Provider / Key Name</th>
+                    <th className="px-3 py-3">Category</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Configured Secret Value</th>
+                    <th className="px-3 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredApiKeys.map((keyItem) => {
+                    const isVisible = Boolean(visibleKeyNames[keyItem.keyName]);
+                    const testResult = testResults[keyItem.keyName];
+                    const isTesting = testingKeyName === keyItem.keyName;
+
+                    return (
+                      <tr key={keyItem.keyName} className="hover:bg-slate-50">
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-slate-950">{keyItem.label}</p>
+                            {keyItem.providerUrl && (
+                              <a
+                                href={keyItem.providerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-slate-400 hover:text-blue-600"
+                                title="Open Provider Portal"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-700">
+                              {keyItem.keyName}
+                            </code>
+                          </div>
+                          <p className="mt-1 line-clamp-1 text-xs text-slate-500">{keyItem.description}</p>
+                        </td>
+
+                        <td className="px-3 py-3">
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                            {keyItem.category}
+                          </span>
+                        </td>
+
+                        <td className="px-3 py-3">
+                          {keyItem.isConfigured ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                              <span className="h-2 w-2 rounded-full bg-amber-500" />
+                              Not Configured
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-3 py-3 font-mono text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="max-w-[220px] truncate rounded bg-slate-100 px-2 py-1 text-slate-800">
+                              {keyItem.value
+                                ? isVisible
+                                  ? keyItem.value
+                                  : keyItem.maskedValue
+                                : "— Not Set —"}
+                            </span>
+                            {keyItem.value && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setVisibleKeyNames((prev) => ({
+                                      ...prev,
+                                      [keyItem.keyName]: !prev[keyItem.keyName],
+                                    }))
+                                  }
+                                  className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                                  title={isVisible ? "Hide Secret" : "Show Secret"}
+                                >
+                                  {isVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(keyItem.value);
+                                    toast.success(`Copied ${keyItem.keyName} to clipboard`);
+                                  }}
+                                  className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                                  title="Copy API Key"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          {testResult && (
+                            <p
+                              className={`mt-1 text-[11px] font-sans font-medium ${
+                                testResult.success ? "text-emerald-600" : "text-amber-600"
+                              }`}
+                            >
+                              {testResult.message}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="px-3 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingKeyModal({
+                                  keyName: keyItem.keyName,
+                                  label: keyItem.label,
+                                  description: keyItem.description,
+                                  providerUrl: keyItem.providerUrl,
+                                  value: keyItem.value,
+                                });
+                                setEditingValue(keyItem.value);
+                                setShowSecretInEdit(false);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={!keyItem.isConfigured || isTesting}
+                              onClick={() => handleTestKey(keyItem.keyName)}
+                              className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                            >
+                              {isTesting ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Play className="h-3.5 w-3.5" />
+                              )}
+                              Test
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+
+        {/* Edit Key Modal */}
+        {editingKeyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl border border-slate-200">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">{editingKeyModal.label}</h3>
+                  <code className="mt-1 inline-block rounded bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-700">
+                    {editingKeyModal.keyName}
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingKeyModal(null)}
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <p className="text-xs text-slate-600 leading-relaxed">{editingKeyModal.description}</p>
+
+                {editingKeyModal.providerUrl && (
+                  <a
+                    href={editingKeyModal.providerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    Get or manage keys at provider console
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    API Key Secret Value
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showSecretInEdit ? "text" : "password"}
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      placeholder={`Enter ${editingKeyModal.keyName}...`}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-mono text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecretInEdit((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    >
+                      {showSecretInEdit ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    Saving loads the new API key into active runtime environment memory and persists it to <code className="font-mono">.env</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingKeyModal(null)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={updateApiKeyMutation.isPending}
+                  onClick={() => handleSaveKey(editingKeyModal.keyName, editingValue)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
+                >
+                  {updateApiKeyMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Save & Update .env
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
-  }
+  };
 
-  return isMobile ? <MobileAdmin /> : <DesktopAdmin />;
+  const renderPayments = () => (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard icon={Receipt} label="Revenue" value={formatMoney(stats.subscriptionRevenue)} note="Calculated from active subscriptions" />
+        <StatCard icon={CreditCard} label="Paid Users" value={activeSubscriptions} note="Users with non-free active plans" />
+        <StatCard icon={Database} label="Payment Records" value="0" note="No payment transaction table found" />
+      </div>
+      <EmptyState
+        icon={Receipt}
+        title="No payment transaction rows available"
+        message="The admin page now avoids demo transactions. Connect Stripe invoice/payment storage to show received payments with customer, plan, amount, provider, invoice, and status."
+      />
+    </div>
+  );
+
+  const renderAudit = () => (
+    <EmptyState
+      icon={ShieldCheck}
+      title="Audit logs are not stored yet"
+      message="No audit log endpoint or table is currently available. Add server-side audit events for admin login, role changes, billing webhooks, and security actions to populate this menu."
+    />
+  );
+
+  const renderTickets = () => (
+    <Panel title="Support Tickets" icon={LifeBuoy}>
+      {tickets.length === 0 ? (
+        <EmptyState icon={LifeBuoy} title="No support tickets found" message="There are no tickets matching your current search." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-3">Ticket</th>
+                <th className="px-3 py-3">User ID</th>
+                <th className="px-3 py-3">Priority</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3">Created</th>
+                <th className="px-3 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {tickets.map((ticket) => (
+                <tr key={ticket.id} className="hover:bg-slate-50">
+                  <td className="px-3 py-3">
+                    <p className="font-semibold text-slate-950">{ticket.title}</p>
+                    <p className="line-clamp-1 text-xs text-slate-500">{ticket.description}</p>
+                  </td>
+                  <td className="px-3 py-3 text-slate-700">{ticket.userId}</td>
+                  <td className="px-3 py-3 capitalize text-slate-700">{ticket.priority}</td>
+                  <td className="px-3 py-3 capitalize text-slate-700">{ticket.status}</td>
+                  <td className="px-3 py-3 text-slate-700">{formatDate(ticket.createdAt)}</td>
+                  <td className="px-3 py-3 text-right">
+                    {ticket.status !== "resolved" && (
+                      <button
+                        type="button"
+                        onClick={() => resolveTicket.mutate({ id: ticket.id, status: "resolved" })}
+                        className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700"
+                      >
+                        Resolve
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+
+  const views: Record<AdminTab, () => ReactNode> = {
+    crm: renderCrm,
+    users: renderUsers,
+    guests: renderGuests,
+    api: renderApi,
+    payments: renderPayments,
+    audit: renderAudit,
+    tickets: renderTickets,
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-2rem)] bg-slate-50 text-slate-950">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5">
+        <header className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-950">Admin CRM Dashboard</h1>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Light mode
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Signed in as <span className="font-semibold text-slate-800">{user?.name || user?.email || "Local Admin"}</span>. Demo records have been removed from this admin page.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={refreshAll}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+              Sync Data
+            </button>
+          </div>
+        </header>
+
+        <main className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search users, tickets, API keys, roles, or statuses..."
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          {isLoading ? (
+            <div className="flex min-h-64 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Loading live admin data
+            </div>
+          ) : (
+            views[activeTab]()
+          )}
+        </main>
+      </div>
+    </div>
+  );
 }
