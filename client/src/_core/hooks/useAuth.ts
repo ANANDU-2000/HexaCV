@@ -29,13 +29,7 @@ export function useAuth(options?: UseAuthOptions) {
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
-      if (
-        error instanceof TRPCClientError &&
-        error.data?.code === "UNAUTHORIZED"
-      ) {
-        return;
-      }
-      throw error;
+      console.warn("[Auth] Logout request warning:", error);
     } finally {
       localStorage.removeItem("manus-runtime-user-info");
       utils.auth.me.setData(undefined, null);
