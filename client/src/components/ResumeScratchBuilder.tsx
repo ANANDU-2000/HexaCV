@@ -23,6 +23,7 @@ import {
   User,
   Users,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { ParsedResume, Experience, Project, Education, Certification, SkillCategory } from '@shared/types';
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
@@ -243,9 +244,9 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start text-slate-800 dark:text-slate-200">
-      {/* Desktop Sidebar Stepper */}
-      <div className="hidden md:flex md:col-span-3 lg:col-span-3 flex-col gap-1.5 border-r border-slate-200 dark:border-white/10 pr-6 sticky top-24">
-        <h3 className="text-[10px] font-extrabold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-4 mb-2">Resume Steps</h3>
+      {/* Desktop Sidebar Stepper — Premium */}
+      <div className="hidden md:flex md:col-span-3 lg:col-span-3 flex-col gap-1.5 border-r border-slate-200/60 dark:border-white/10 pr-6 sticky top-24">
+        <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] pl-4 mb-3">Resume Steps</h3>
         {steps.map((step, index) => {
           const isActive = currentStep === step.id;
           const isDone = isStepCompleted(step.id);
@@ -254,44 +255,68 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
             <button
               key={step.id}
               onClick={() => setCurrentStep(step.id as any)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
-                isActive 
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-bold shadow-md shadow-blue-500/10 scale-[1.02]' 
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white'
-              }`}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200',
+                isActive
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
+                  : isDone
+                    ? 'text-slate-600 hover:bg-slate-100/50 dark:text-slate-300 dark:hover:bg-white/5'
+                    : 'text-slate-400 hover:bg-slate-50/50 dark:text-slate-500 dark:hover:bg-white/5',
+              )}
             >
-              <span className={`text-xs flex items-center justify-center w-6 h-6 rounded-lg font-bold shrink-0 ${
-                isActive 
-                  ? 'bg-white/20 text-white' 
-                  : isDone 
-                    ? 'bg-blue-950/60 text-blue-300 border border-blue-500/20' 
-                    : 'bg-slate-50/50 dark:bg-white/5 text-slate-500 dark:text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10'
-              }`}>
+              <span className={cn(
+                'flex items-center justify-center w-7 h-7 rounded-lg font-bold shrink-0 text-xs transition-all',
+                isActive && 'bg-white/20',
+                isDone && 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+                !isActive && !isDone && 'bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500',
+              )}>
                 {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
               </span>
               <div className="flex flex-col min-w-0">
                 <span className="text-[9px] font-bold uppercase tracking-wider opacity-60 leading-none">Step {index + 1}</span>
-                <span className="text-xs font-semibold truncate leading-tight mt-1">{step.label}</span>
+                <span className="text-xs font-semibold truncate leading-tight mt-0.5">{step.label}</span>
               </div>
+              {/* Active indicator */}
+              {isActive && <div className="ml-auto w-1 h-8 rounded-full bg-white/30" />}
             </button>
           );
         })}
       </div>
 
-      {/* Mobile Stepper Progress */}
-      <div className="md:hidden bg-white/90 border border-slate-200 dark:border-white/10 dark:bg-slate-900/40 rounded-2xl p-5 shadow-sm space-y-3.5 w-full backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-3 text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-          <span>Step {steps.findIndex(s => s.id === currentStep) + 1} of {steps.length}: {steps.find(s => s.id === currentStep)?.label}</span>
-          <span className="text-blue-600 dark:text-blue-400">{Math.round(((steps.findIndex(s => s.id === currentStep) + 1) / steps.length) * 100)}%</span>
+      {/* Mobile Stepper — Premium */}
+      <div className="md:hidden rounded-2xl border border-slate-200/70 bg-white/85 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40 space-y-4 w-full">
+        {/* Step label and percentage */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-extrabold shadow-sm">
+              {steps.findIndex(s => s.id === currentStep) + 1}
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">
+                {steps.find(s => s.id === currentStep)?.label}
+              </span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                {steps.findIndex(s => s.id === currentStep) + 1} of {steps.length}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">
+              {Math.round(((steps.findIndex(s => s.id === currentStep) + 1) / steps.length) * 100)}%
+            </span>
+          </div>
         </div>
-        <div className="w-full h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500" 
+
+        {/* Premium gradient progress bar */}
+        <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden shadow-inner">
+          <div
+            className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${((steps.findIndex(s => s.id === currentStep) + 1) / steps.length) * 100}%` }}
-          ></div>
+          />
         </div>
-        {/* Scrollable button strip on mobile with hidden scrollbar */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mt-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth">
+
+        {/* Scrollable step chips */}
+        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth">
           {steps.map((step) => {
             const isActive = currentStep === step.id;
             const isDone = isStepCompleted(step.id);
@@ -300,15 +325,14 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
               <button
                 key={step.id}
                 onClick={() => setCurrentStep(step.id as any)}
-                className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-semibold border transition-all ${
-                  isActive
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-500/10'
-                    : isDone
-                      ? 'bg-blue-950/40 border-blue-500/20 text-blue-300'
-                      : 'bg-slate-50/50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10'
-                }`}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap text-xs font-semibold border transition-all duration-200',
+                  isActive && 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20',
+                  isDone && !isActive && 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800/30 dark:text-emerald-300',
+                  !isActive && !isDone && 'bg-white/80 border-slate-200 text-slate-500 dark:bg-white/5 dark:border-white/10 dark:text-slate-400',
+                )}
               >
-                <span className="shrink-0">{isDone ? <CheckCircle className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}</span>
+                {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
                 <span>{step.label}</span>
               </button>
             );
@@ -318,12 +342,18 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
 
       {/* Form Content Area */}
       <div className="col-span-1 md:col-span-9 lg:col-span-9 space-y-6 w-full">
-        <Card className="border-slate-200 dark:border-white/10 rounded-2xl shadow-sm bg-slate-50/50 dark:bg-white/5 overflow-hidden backdrop-blur-md">
-          <CardHeader className="bg-slate-100/50 dark:bg-slate-950/20 border-b border-slate-200 dark:border-white/10 p-6">
-            <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden dark:border-white/10 dark:bg-slate-900/30">
+          <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200/60 p-6 dark:from-slate-900/40 dark:to-slate-900/20 dark:border-white/5">
+            <CardTitle className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/5 text-blue-700 dark:from-blue-400/10 dark:to-blue-500/5 dark:text-blue-300">
+                {(() => {
+                  const SectionIcon = steps.find((s) => s.id === currentStep)?.icon || FileText;
+                  return <SectionIcon className="h-4 w-4" />;
+                })()}
+              </div>
               {steps.find((s) => s.id === currentStep)?.label}
             </CardTitle>
-            <CardDescription className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+            <CardDescription className="text-slate-500 dark:text-slate-400 text-xs mt-1 ml-10">
               {currentStep === 'header' && 'Provide your name, title, contact details, and social links.'}
               {currentStep === 'summary' && 'Write a compelling professional summary.'}
               {currentStep === 'skills' && 'Add categorized skills to make your resume keyword-rich.'}
@@ -338,7 +368,7 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
               {currentStep === 'review' && 'Verify details before loading into the live resume editor.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
+          <CardContent className="p-6 sm:p-8 space-y-8">
             {/* Header Step */}
             {currentStep === 'header' && (
               <div className="space-y-4">
@@ -485,7 +515,7 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                 <Button
                   variant="outline"
                   onClick={() => setSkills([...skills, { category: '', skills: [] }])}
-                  className="w-full gap-2 border-dashed border-slate-300 dark:border-white/20 rounded-xl py-5 bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200"
+                  className="w-full gap-2 border-2 border-dashed border-slate-300/70 rounded-xl py-5 bg-white/50 text-slate-600 font-semibold hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-400 dark:hover:border-blue-500/30 dark:hover:bg-blue-950/20 dark:hover:text-blue-300 transition-all duration-200"
                 >
                   <Plus className="w-4 h-4" />
                   Add Skill Category
@@ -598,7 +628,7 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                 <Button
                   variant="outline"
                   onClick={handleAddExperience}
-                  className="w-full gap-2 border-dashed border-slate-300 dark:border-white/20 rounded-xl py-5 bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200"
+                  className="w-full gap-2 border-2 border-dashed border-slate-300/70 rounded-xl py-5 bg-white/50 text-slate-600 font-semibold hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-400 dark:hover:border-blue-500/30 dark:hover:bg-blue-950/20 dark:hover:text-blue-300 transition-all duration-200"
                 >
                   <Plus className="w-4 h-4" />
                   Add Professional Experience
@@ -1209,55 +1239,81 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
               </div>
             )}
 
-            {/* Review Step */}
+            {/* Review Step — Premium Dashboard */}
             {currentStep === 'review' && (
-              <div className="space-y-5 animate-fade-slide-up">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4.5 flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <p className="text-sm text-emerald-200 font-semibold">Your resume skeleton is complete. Ready to load into the live editor!</p>
+              <div className="space-y-6 animate-fade-slide-up">
+                {/* Success banner */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 dark:bg-emerald-500/10 dark:border-emerald-500/20">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Ready to edit!</p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-300/70 mt-0.5">
+                      Your resume skeleton is complete with all sections filled below.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-3.5 text-sm text-slate-700 dark:text-slate-300 bg-[#131b2e] border border-slate-200 dark:border-white/10 p-5 rounded-xl shadow-inner">
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Full Name:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{header.name || 'Not provided'}</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Job Title:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{header.jobTitle || 'Not provided'}</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Email:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{header.email || 'Not provided'}</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Location:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{header.location || 'Not provided'}</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Skills Categories:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{skills.length} categories added</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Work Experience:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{experiences.length} positions listed</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Projects:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{projects.length} projects listed</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Educations:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{educations.length} records listed</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>Languages:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{languages.length} languages added</span></p>
-                  <p className="border-b border-slate-200/50 dark:border-white/5 pb-2 flex justify-between"><strong>References:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{references.length} references added</span></p>
-                  <p className="flex justify-between"><strong>Custom Sections:</strong> <span className="font-semibold text-slate-900 dark:text-slate-100">{customSections.length} sections added</span></p>
+
+                {/* Summary cards grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Name', value: header.name || 'Not set', icon: User },
+                    { label: 'Summary', value: summary ? `${summary.slice(0, 40)}...` : 'Not set', icon: AlignLeft },
+                    { label: 'Skills', value: `${skills.reduce((a, s) => a + s.skills.length, 0)} skills`, icon: Code },
+                    { label: 'Experience', value: `${experiences.length} positions`, icon: Briefcase },
+                    { label: 'Projects', value: `${projects.length} projects`, icon: Folder },
+                    { label: 'Education', value: `${educations.length} records`, icon: GraduationCap },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/20">
+                      <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 mb-2">
+                        <item.icon className="h-3.5 w-3.5" />
+                        {item.label}
+                      </div>
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Additional sections badges */}
+                <div className="flex flex-wrap gap-2">
+                  {certifications.length > 0 && <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">{certifications.length} Certifications</span>}
+                  {achievements.length > 0 && <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">{achievements.length} Achievements</span>}
+                  {languages.length > 0 && <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">{languages.length} Languages</span>}
+                  {references.length > 0 && <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">{references.length} References</span>}
+                  {customSections.length > 0 && <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">{customSections.length} Custom</span>}
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Navigation Buttons */}
-        <div className="flex gap-3 justify-between">
+        {/* Navigation Buttons — Premium */}
+        <div className="flex gap-3 justify-between items-center pt-2">
           <Button
             variant="outline"
             onClick={handlePrevStep}
             disabled={currentStep === 'header'}
-            className="gap-2 rounded-xl border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 px-6 py-5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+            className="gap-2 rounded-xl border-slate-200 bg-white/80 px-6 py-5 font-bold text-slate-700 shadow-sm hover:bg-white hover:shadow-md disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 transition-all duration-200"
           >
             <ChevronLeft className="w-4 h-4" />
-            Previous Step
+            Back
           </Button>
+
           {currentStep !== 'review' ? (
             <Button
               onClick={handleNextStep}
-              className="bg-blue-650 hover:bg-blue-700 text-white font-bold gap-2 px-8 py-5 rounded-xl transition-all shadow-md shadow-blue-500/20"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold gap-2 px-8 py-5 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all duration-200"
             >
-              Next Step
+              Continue
               <ChevronRight className="w-4 h-4" />
             </Button>
           ) : (
             <Button
               onClick={handleFinish}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 px-8 py-5 rounded-xl transition-all shadow-md shadow-blue-500/20"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold gap-2 px-8 py-5 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all duration-200"
             >
+              <CheckCircle className="w-4 h-4" />
               Continue to Live Editor
               <ChevronRight className="w-4 h-4" />
             </Button>

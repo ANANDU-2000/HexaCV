@@ -157,6 +157,14 @@ export function inferJobTitleAndTargetRole(
     jobTitle = targetRole;
   }
 
+  // Final sanity: reject AI-generated or placeholder titles
+  if (isAiGeneratedPhrase(jobTitle) || isPlaceholderText(jobTitle)) {
+    jobTitle = "";
+  }
+  if (isAiGeneratedPhrase(targetRole) || isPlaceholderText(targetRole)) {
+    targetRole = jobTitle || "";
+  }
+
   return { jobTitle: jobTitle.trim(), targetRole: targetRole.trim() };
 }
 
@@ -273,6 +281,7 @@ function validateParsedAgainstSource(
         field.includes("•") ||
         field.includes("- ") ||
         field.length > 80 ||
+        isAiGeneratedPhrase(field) ||
         /\b(developed|implemented|built|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
           field
         )
@@ -281,6 +290,7 @@ function validateParsedAgainstSource(
         const candidate = parts[0].replace(/^[•\-*]\s*/, "").trim();
         field =
           candidate.length <= 60 &&
+          !isAiGeneratedPhrase(candidate) &&
           !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
             candidate
           )
@@ -381,6 +391,24 @@ function cleanExtractedText(raw: string): string {
 
     // Skip lines that are only special characters
     if (!/[a-zA-Z0-9]/.test(line)) {
+      continue;
+    }
+
+    // Skip DOCX artifacts: header/footer markers, section number-only lines
+    if (/^(header|footer)\s+\d+$/i.test(line)) {
+      continue;
+    }
+    if (/^section\s+\d+\s*\(?next\s+page\)?$/i.test(line)) {
+      continue;
+    }
+
+    // Skip email signature markers that are not real email addresses
+    if (/^[-]{2,}$/.test(line) && cleanedLines.length > 0) {
+      continue;
+    }
+
+    // Remove lines that start with a PDF page break artifact (e.g. "3 / 4")
+    if (/^\d+\s*\/\s*\d+$/.test(line)) {
       continue;
     }
 
@@ -624,6 +652,7 @@ function deduplicateParsedResume(parsed: ParsedResume): ParsedResume {
         field.includes("•") ||
         field.includes("\n") ||
         field.length > 80 ||
+        isAiGeneratedPhrase(field) ||
         /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
           field
         )
@@ -632,6 +661,7 @@ function deduplicateParsedResume(parsed: ParsedResume): ParsedResume {
         const cleanCandidate = parts[0].replace(/^[•\-*]\s*/, "").trim();
         if (
           cleanCandidate.length <= 60 &&
+          !isAiGeneratedPhrase(cleanCandidate) &&
           !/\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
             cleanCandidate
           )

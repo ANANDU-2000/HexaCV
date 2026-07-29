@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, Linkedin, Upload, FileText } from 'lucide-react';
+import { Loader2, Linkedin, Upload, FileText, AlertCircle } from 'lucide-react';
 import { ParsedResume } from '@shared/types';
 import { toast } from 'sonner';
 import { parseResumeText } from '@/lib/resumeParser';
+import { trpc } from '@/lib/trpc';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ResumeLinkedInImporterProps {
   onImported: (data: ParsedResume) => void;
@@ -16,7 +18,10 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
   const [pastedText, setPastedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const parseMutation = trpc.resume.parse.useMutation();
 
   const handleTextImport = () => {
     if (!pastedText.trim()) {
@@ -46,66 +51,81 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
         return;
       }
       setFile(selectedFile);
+      setFileError(null);
     }
   };
 
-  const handleFileImport = () => {
+  const handleFileImport = async () => {
     if (!file) return;
 
     setLoading(true);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const parsed = parseResumeText(text);
-        toast.success('Successfully parsed LinkedIn profile file!');
-        onImported(parsed);
-      } catch (err) {
-        toast.error('Failed to parse file content.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    reader.onerror = () => {
-      toast.error('Failed to read file.');
-      setLoading(false);
-    };
+    setFileError(null);
 
     if (file.type === 'text/plain') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const parsed = parseResumeText(text);
+          toast.success('Successfully parsed LinkedIn profile file!');
+          onImported(parsed);
+        } catch (err) {
+          toast.error('Failed to parse file content.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read file.');
+        setLoading(false);
+      };
       reader.readAsText(file);
     } else {
-      // PDF text extraction mock for demo purposes, fallback to standard layout
-      setTimeout(() => {
-        const mockLinkedInImport: ParsedResume = {
-          header: {
-            name: file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-            email: "linkedin.member@example.com",
-            phone: "",
-            location: "",
-            links: [{ label: "LinkedIn", url: "https://linkedin.com/in/imported-profile" }]
-          },
-          summary: "Experienced professional with detailed experience imported from LinkedIn profile PDF.",
-          skills: [
-            { category: "Imported Skills", skills: ["Management", "Leadership", "Project Delivery"] }
-          ],
-          experiences: [
-            {
-              id: "li-exp-1",
-              company: "Current Company",
-              role: "Senior Consultant",
-              startDate: "2024",
-              current: true,
-              description: ["Responsible for execution and delivery of client projects."]
+      // PDF files: send to server for proper parsing (never fabricate data)
+      try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const result = e.target?.result as string;
+            const base64 = result.split(',')[1];
+            if (!base64) {
+              throw new Error('Failed to read PDF file as base64.');
             }
-          ],
-          projects: [],
-          educations: [],
-          certifications: []
+
+            const parsed = await parseMutation.mutateAsync({
+              filename: file.name,
+              base64,
+            });
+
+            // Ensure the LinkedIn profile source is marked
+            if (!parsed.header?.links?.some(l => l.label === 'LinkedIn')) {
+              parsed.header = parsed.header || {};
+              parsed.header.links = [
+                ...(parsed.header.links || []),
+                { label: 'LinkedIn', url: 'https://linkedin.com/in/imported-profile' }
+              ];
+            }
+
+            toast.success('Successfully parsed LinkedIn profile PDF!');
+            onImported(parsed);
+          } catch (err: any) {
+            console.error('LinkedIn PDF parsing error:', err);
+            setFileError(
+              err?.message || 'Failed to parse PDF. Please paste your profile text instead.'
+            );
+          } finally {
+            setLoading(false);
+          }
         };
-        toast.success('Extracted profile from PDF successfully!');
-        onImported(mockLinkedInImport);
+        reader.onerror = () => {
+          setFileError('Failed to read PDF file.');
+          setLoading(false);
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        setFileError(err?.message || 'Failed to process PDF file.');
         setLoading(false);
-      }, 1500);
+      }
     }
   };
 
@@ -176,6 +196,13 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
               <p className="text-xs text-slate-500">Supports PDF or plain text</p>
             </div>
           </div>
+
+          {fileError && (
+            <Alert variant="destructive" className="rounded-xl">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="font-medium text-xs">{fileError}</AlertDescription>
+            </Alert>
+          )}
 
           {file && (
             <Button

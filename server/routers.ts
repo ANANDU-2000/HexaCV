@@ -8,6 +8,7 @@ import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignme
 import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
 import { extractText, parseResumeWithLLM } from "./fileParser";
+import { validateGeneratedResume, isPlaceholderText, isAiGeneratedPhrase } from "./contentValidation";
 import Stripe from "stripe";
 import { getAllApiKeys, saveApiKey, testApiKey as testApiKeyFunc } from "./apiKeyManager";
 
@@ -339,77 +340,37 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
 
           const content = response.choices[0]?.message.content;
           if (!content || typeof content !== "string") throw new Error("Failed to generate content from AI");
-          return JSON.parse(content);
-        } catch (error) {
+
+          const parsed = JSON.parse(content);
+
+          // Validate the generated content — strip AI hallucinations, placeholders, and empty data
+          const validated = validateGeneratedResume(parsed);
+
+          // If after validation the resume has no real content, throw a clear error
+          const hasRealContent =
+            validated.header?.name ||
+            validated.summary ||
+            validated.skills?.length > 0 ||
+            validated.experiences?.length > 0 ||
+            validated.projects?.length > 0 ||
+            validated.educations?.length > 0;
+
+          if (!hasRealContent) {
+            throw new Error(
+              "AI generation produced no valid content from your background details. " +
+              "Please provide more specific information about your experience, skills, and background."
+            );
+          }
+
+          return validated;
+        } catch (error: any) {
           console.error("AI Generation error:", error);
-          // Return a structured mockup matching the schema in case LLM is unconfigured
-          return {
-            header: {
-              name: "Professional Candidate",
-              email: "candidate@hexastacksolutions.com",
-              phone: "+1 (555) 019-2834",
-              location: "San Francisco, CA",
-              links: [
-                { label: "LinkedIn", url: "https://linkedin.com/in/candidate" },
-                { label: "GitHub", url: "https://github.com/candidate" }
-              ]
-            },
-            summary: `Results-driven and highly motivated professional specializing in ${input.jobTitle}. Proven track record of designing scalable applications and driving project success.`,
-            skills: [
-              { category: "Core Technologies", skills: ["JavaScript", "TypeScript", "React", "Node.js"] },
-              { category: "Methods", skills: ["Agile", "Scrum", "CI/CD", "TDD"] }
-            ],
-            experiences: [
-              {
-                id: "exp-1",
-                company: "Tech Solutions Corp",
-                role: input.jobTitle,
-                startDate: "2023-01",
-                endDate: "Present",
-                current: true,
-                description: [
-                  "Led the architecture and development of core software solutions.",
-                  "Collaborated with product designers to create mobile-responsive interfaces.",
-                  "Improved system performance and database queries, resulting in 30% faster load times."
-                ]
-              }
-            ],
-            projects: [
-              {
-                id: "proj-1",
-                name: "HexaCv Platform",
-                description: "An AI-powered ATS resume builder application.",
-                technologies: ["React", "TypeScript", "Tailwind CSS"],
-                link: "https://github.com/hexastack/hexacv",
-                date: "2026-05"
-              }
-            ],
-            educations: [
-              {
-                id: "edu-1",
-                institution: "State University of Technology",
-                degree: "Bachelor of Science",
-                field: "Computer Science",
-                graduationDate: "2022-05",
-                gpa: "3.8"
-              }
-            ],
-            certifications: [
-              {
-                id: "cert-1",
-                name: "AWS Certified Solutions Architect",
-                issuer: "Amazon Web Services",
-                date: "2024-08",
-                link: ""
-              }
-            ],
-            languages: [
-              { language: "English", proficiency: "Professional Native" }
-            ],
-            achievements: ["Delivered 10+ major products on schedule", "Awarded Employee of the Quarter, Q3 2025"],
-            publications: ["Optimizing Frontend Performance in React (Tech Journal 2025)"],
-            references: ["Available upon request"]
-          };
+          // NEVER return fabricated data — throw a real error instead
+          throw new Error(
+            `Resume generation failed: ${error?.message || "Unknown error"}. ` +
+            "Please check that your API keys are configured correctly in the .env file and try again, " +
+            "or use the 'Create from scratch' option to build your resume manually."
+          );
         }
       }),
 
