@@ -24,20 +24,6 @@ const T = {
   radius: 8,
 };
 
-const T = {
-  bg: '#0b1326',
-  surface: '#171f33',
-  elevated: '#222a3d',
-  primary: '#1e40af',
-  primaryText: '#b8c4ff',
-  accent: '#ea580c',
-  text: '#dae2fd',
-  muted: '#c4c5d5',
-  border: '#444653',
-  success: '#16a34a',
-  radius: 8,
-};
-
 export default function Login() {
   const { isAuthenticated, refresh } = useAuth();
   const [, setLocation] = useLocation();

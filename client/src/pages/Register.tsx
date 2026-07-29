@@ -245,7 +245,7 @@ export default function Register() {
 
       <div className="text-center mt-4">
         <Link href={redirectParam}>
-          <span style={{ color: T.muted, fontSize: 12, cursor: 'pointer', display: 'inline-flex', items: 'center', gap: 4 }}
+          <span style={{ color: T.muted, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
             className="hover:opacity-80 transition-opacity">
             <Sparkles className="w-3 h-3" /> Continue as Guest
           </span>
