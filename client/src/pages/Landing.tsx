@@ -224,15 +224,10 @@ export default function Landing() {
         {/* Desktop right */}
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold" style={{ color: T.text }}>
-                {user?.name || user?.email}
-              </span>
-              <Button variant="outline" size="sm" onClick={() => logout()}
-                style={{ borderRadius: 8, borderColor: T.border, color: T.text, fontSize: 13 }}
-                className="font-medium"
-              >Log out</Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => logout()}
+              style={{ borderRadius: 8, borderColor: T.border, color: T.text, fontSize: 13 }}
+              className="font-medium"
+            >Log out</Button>
           ) : (
             <Link href="/login">
               <Button variant="ghost" size="sm"
@@ -280,13 +275,8 @@ export default function Landing() {
         ))}
         <div className="flex flex-col gap-3 mt-8">
           {isAuthenticated ? (
-            <>
-              <span className="text-sm font-medium text-center py-1" style={{ color: T.text }}>
-                {user?.name || user?.email}
-              </span>
-              <Button variant="outline" className="w-full" onClick={() => logout()}
-                style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log out</Button>
-            </>
+            <Button variant="outline" className="w-full" onClick={() => logout()}
+              style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log out</Button>
           ) : (
             <Link href="/login">
               <Button variant="outline" className="w-full"
