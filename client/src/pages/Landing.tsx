@@ -160,7 +160,7 @@ const footerLinks = {
 // ──────────────────────────── Component ────────────────────────────
 export default function Landing() {
   const { installPrompt, installApp } = usePWA();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [emailInput, setEmailInput] = useState('');
