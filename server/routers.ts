@@ -20,12 +20,10 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions });
-      ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true, sameSite: "none", secure: false });
-      ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true, sameSite: "none", secure: true });
+      ctx.res.clearCookie(COOKIE_NAME, cookieOptions);
       ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true, sameSite: "lax", secure: false });
-      ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true, sameSite: "strict", secure: false });
-      ctx.res.clearCookie(COOKIE_NAME, { path: "/" });
+      ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true, sameSite: "none", secure: true });
+      ctx.res.clearCookie(COOKIE_NAME, { path: "/", httpOnly: true });
       ctx.res.clearCookie(COOKIE_NAME);
       return {
         success: true,
