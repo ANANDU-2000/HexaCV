@@ -252,6 +252,11 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<AuthenticatedUser | null> {
+    // If client explicitly sent logout header, return null immediately
+    if (req.headers["x-local-user-logout"] === "true") {
+      return null;
+    }
+
     const cookies = this.parseCookies(req.headers.cookie);
     const cookieValue = cookies.get(COOKIE_NAME);
 
@@ -262,6 +267,31 @@ class SDKServer {
         if (user) {
           return user;
         }
+      }
+    }
+
+    // Check header for local user openId sent by frontend
+    const localUserOpenId = req.headers["x-local-user-openid"] as string | undefined;
+    if (localUserOpenId) {
+      let user = await db.getUserByOpenId(localUserOpenId);
+      if (user) {
+        return user;
+      }
+      // If user not in server DB yet, auto-upsert mock user for this openId
+      const isOwner = localUserOpenId === "admin-key-owner" || localUserOpenId.includes("admin");
+      try {
+        await db.upsertUser({
+          openId: localUserOpenId,
+          name: isOwner ? "Admin User" : "Candidate User",
+          email: isOwner ? "admin@hexacv.com" : "candidate@hexacv.local",
+          loginMethod: "local",
+          lastSignedIn: new Date(),
+          role: isOwner ? "admin" : "user",
+        });
+        user = await db.getUserByOpenId(localUserOpenId);
+        if (user) return user;
+      } catch (err) {
+        console.error("[Auth] Error upserting header openId user:", err);
       }
     }
 

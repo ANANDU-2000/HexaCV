@@ -36,20 +36,29 @@ export function useResumeStorage() {
   // Public CRUD operations
   const listResumes = useCallback(async (): Promise<Resume[]> => {
     if (isAuthenticated) {
-      const cloudResumes = await utils.resume.list.fetch();
-      return cloudResumes.map(r => {
-        const parsedContent = typeof r.content === 'string' ? JSON.parse(r.content) : r.content;
-        return {
-          id: r.id,
-          userId: String(r.userId),
-          title: r.title,
-          templateId: r.templateId,
-          jobDescriptionId: r.jobDescriptionId || undefined,
-          sections: parsedContent?.sections || parsedContent || [],
+      try {
+        const cloudResumes = await utils.resume.list.fetch();
+        return cloudResumes.map(r => {
+          const parsedContent = typeof r.content === 'string' ? JSON.parse(r.content) : r.content;
+          return {
+            id: r.id,
+            userId: String(r.userId),
+            title: r.title,
+            templateId: r.templateId,
+            jobDescriptionId: r.jobDescriptionId || undefined,
+            sections: parsedContent?.sections || parsedContent || [],
+            createdAt: new Date(r.createdAt),
+            updatedAt: new Date(r.updatedAt)
+          };
+        });
+      } catch (err) {
+        console.warn("[ResumeStorage] Cloud resumes fetch failed, falling back to local storage:", err);
+        return getLocalResumes().map(r => ({
+          ...r,
           createdAt: new Date(r.createdAt),
           updatedAt: new Date(r.updatedAt)
-        };
-      });
+        }));
+      }
     } else {
       return getLocalResumes().map(r => ({
         ...r,
@@ -61,52 +70,73 @@ export function useResumeStorage() {
 
   const saveResume = useCallback(async (resume: Resume): Promise<Resume> => {
     if (isAuthenticated) {
-      const cloudList = await utils.resume.list.fetch();
-      const exists = cloudList.some(r => r.id === resume.id);
-      const serializedContent = JSON.stringify({ sections: resume.sections });
+      try {
+        const cloudList = await utils.resume.list.fetch();
+        const exists = cloudList.some(r => r.id === resume.id);
+        const serializedContent = JSON.stringify({ sections: resume.sections });
 
-      if (exists) {
-        const res = await updateResumeMutation.mutateAsync({
-          id: resume.id,
-          title: resume.title,
-          templateId: resume.templateId,
-          content: serializedContent,
-          jobDescriptionId: resume.jobDescriptionId,
-        });
-        await utils.resume.list.invalidate();
-        if (!res) {
-          throw new Error("Failed to update resume");
+        if (exists) {
+          const res = await updateResumeMutation.mutateAsync({
+            id: resume.id,
+            title: resume.title,
+            templateId: resume.templateId,
+            content: serializedContent,
+            jobDescriptionId: resume.jobDescriptionId,
+          });
+          await utils.resume.list.invalidate();
+          if (!res) {
+            throw new Error("Failed to update resume");
+          }
+          const parsedContent = typeof res.content === 'string' ? JSON.parse(res.content) : res.content;
+          return {
+            id: res.id,
+            userId: String(res.userId),
+            title: res.title,
+            templateId: res.templateId,
+            jobDescriptionId: res.jobDescriptionId || undefined,
+            sections: parsedContent?.sections || parsedContent || [],
+            createdAt: new Date(res.createdAt),
+            updatedAt: new Date(res.updatedAt)
+          };
+        } else {
+          const res = await createResumeMutation.mutateAsync({
+            title: resume.title,
+            templateId: resume.templateId,
+            content: serializedContent,
+            jobDescriptionId: resume.jobDescriptionId || undefined,
+          });
+          await utils.resume.list.invalidate();
+          const parsedContent = typeof res.content === 'string' ? JSON.parse(res.content) : res.content;
+          return {
+            id: res.id,
+            userId: String(res.userId),
+            title: res.title,
+            templateId: res.templateId,
+            jobDescriptionId: res.jobDescriptionId || undefined,
+            sections: parsedContent?.sections || parsedContent || [],
+            createdAt: new Date(res.createdAt),
+            updatedAt: new Date(res.updatedAt)
+          };
         }
-        const parsedContent = typeof res.content === 'string' ? JSON.parse(res.content) : res.content;
-        return {
-          id: res.id,
-          userId: String(res.userId),
-          title: res.title,
-          templateId: res.templateId,
-          jobDescriptionId: res.jobDescriptionId || undefined,
-          sections: parsedContent?.sections || parsedContent || [],
-          createdAt: new Date(res.createdAt),
-          updatedAt: new Date(res.updatedAt)
-        };
-      } else {
-        const res = await createResumeMutation.mutateAsync({
-          title: resume.title,
-          templateId: resume.templateId,
-          content: serializedContent,
-          jobDescriptionId: resume.jobDescriptionId || undefined,
-        });
-        await utils.resume.list.invalidate();
-        const parsedContent = typeof res.content === 'string' ? JSON.parse(res.content) : res.content;
-        return {
-          id: res.id,
-          userId: String(res.userId),
-          title: res.title,
-          templateId: res.templateId,
-          jobDescriptionId: res.jobDescriptionId || undefined,
-          sections: parsedContent?.sections || parsedContent || [],
-          createdAt: new Date(res.createdAt),
-          updatedAt: new Date(res.updatedAt)
-        };
+      } catch (err) {
+        console.warn("[ResumeStorage] Cloud save failed, saving to local storage:", err);
+        const local = getLocalResumes();
+        const existingIdx = local.findIndex(r => r.id === resume.id);
+
+        if (existingIdx > -1) {
+          local[existingIdx] = {
+            ...resume,
+            updatedAt: new Date()
+          };
+        } else {
+          local.push({
+            ...resume,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+        }
+        saveLocalResumes(local);
+        return resume;
       }
     } else {
       const local = getLocalResumes();
@@ -134,8 +164,15 @@ export function useResumeStorage() {
 
   const deleteResume = useCallback(async (id: string) => {
     if (isAuthenticated) {
-      await deleteResumeMutation.mutateAsync({ id });
-      await utils.resume.list.invalidate();
+      try {
+        await deleteResumeMutation.mutateAsync({ id });
+        await utils.resume.list.invalidate();
+      } catch (err) {
+        console.warn("[ResumeStorage] Cloud delete failed, removing locally:", err);
+        const local = getLocalResumes();
+        const updated = local.filter(r => r.id !== id);
+        saveLocalResumes(updated);
+      }
     } else {
       const local = getLocalResumes();
       const updated = local.filter(r => r.id !== id);
@@ -159,13 +196,22 @@ export function useResumeStorage() {
 
   const listBackups = useCallback(async (type: string): Promise<any[]> => {
     if (isAuthenticated) {
-      const res = await utils.backup.list.fetch({ type });
-      return res.map(b => ({
-        ...b,
-        content: typeof b.content === 'string' ? JSON.parse(b.content) : b.content,
-        createdAt: new Date(b.createdAt),
-        updatedAt: new Date(b.updatedAt)
-      }));
+      try {
+        const res = await utils.backup.list.fetch({ type });
+        return res.map(b => ({
+          ...b,
+          content: typeof b.content === 'string' ? JSON.parse(b.content) : b.content,
+          createdAt: new Date(b.createdAt),
+          updatedAt: new Date(b.updatedAt)
+        }));
+      } catch (err) {
+        console.warn(`[ResumeStorage] Cloud backup list failed for ${type}, returning local:`, err);
+        return getLocalBackups(type).map(b => ({
+          ...b,
+          createdAt: new Date(b.createdAt),
+          updatedAt: new Date(b.updatedAt)
+        }));
+      }
     } else {
       return getLocalBackups(type).map(b => ({
         ...b,

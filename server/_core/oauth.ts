@@ -72,7 +72,7 @@ export function registerOAuthRoutes(app: Express) {
     try {
       await db.upsertUser({
         openId,
-        name: isAdmin ? "Admin User" : name,
+        name: name || (isAdmin ? "Admin User" : "Test Candidate"),
         email: normalizedEmail,
         loginMethod: provider,
         lastSignedIn: new Date(),
@@ -80,7 +80,7 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const sessionToken = await sdk.createSessionToken(openId, {
-        name: isAdmin ? "Admin User" : name,
+        name: name || (isAdmin ? "Admin User" : "Test Candidate"),
         expiresInMs: ONE_YEAR_MS,
       });
 
