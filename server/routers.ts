@@ -21,6 +21,7 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      ctx.res.cookie("hexacv_logout", "1", { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
       return {
         success: true,
       } as const;

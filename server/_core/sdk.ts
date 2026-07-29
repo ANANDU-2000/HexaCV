@@ -254,8 +254,9 @@ class SDKServer {
   async authenticateRequest(req: Request): Promise<AuthenticatedUser | null> {
     const cookies = this.parseCookies(req.headers.cookie);
     const cookieValue = cookies.get(COOKIE_NAME);
+    const isLoggedOut = cookies.get("hexacv_logout") === "1" || req.headers["x-logged-out"] === "true";
 
-    if (cookieValue) {
+    if (cookieValue && !isLoggedOut) {
       const session = await this.verifySession(cookieValue);
       if (session) {
         const user = await db.getUserByOpenId(session.openId);
@@ -265,13 +266,13 @@ class SDKServer {
       }
     }
 
-    // If guest session header is present, return null immediately (Guest Mode)
+    // If explicit logout cookie or guest session header is present, return null immediately
     const guestSessionHeader = req.headers["x-guest-session-id"];
-    if (guestSessionHeader) {
+    if (isLoggedOut || guestSessionHeader) {
       return null;
     }
 
-    // In local sandbox or when DATABASE_URL is not set/active, fallback to mock admin user for convenience
+    // In local sandbox or when DATABASE_URL is not set/active, fallback to mock admin user ONLY if not logged out
     if (process.env.SANDBOX_LOCAL === "true" || !process.env.DATABASE_URL) {
       const signedInAt = new Date();
       let user = await db.getUserByOpenId("admin-key-owner");
