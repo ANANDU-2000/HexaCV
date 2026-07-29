@@ -20,8 +20,8 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      ctx.res.cookie("hexacv_logout", "1", { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions });
+      ctx.res.clearCookie(COOKIE_NAME, { path: "/" });
       return {
         success: true,
       } as const;

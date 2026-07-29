@@ -16,6 +16,7 @@ export function useAuth(options?: UseAuthOptions) {
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -39,6 +40,9 @@ export function useAuth(options?: UseAuthOptions) {
       localStorage.removeItem("manus-runtime-user-info");
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
     }
   }, [logoutMutation, utils]);
 
