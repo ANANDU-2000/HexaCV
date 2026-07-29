@@ -41,7 +41,7 @@ const footerLinks = {
 
 export default function Landing() {
   const { installPrompt, installApp } = usePWA();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
@@ -75,9 +75,20 @@ export default function Landing() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" size="sm" style={{ color: T.muted, fontSize: 13 }} className="font-medium">Log in</Button>
-            </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold" style={{ color: T.text }}>
+                  {user?.name || user?.email || 'Logged in'}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => logout()} style={{ borderRadius: T.radius, borderColor: T.border, color: T.text, fontSize: 13 }} className="font-medium">
+                  Log out
+                </Button>
+              </div>
+            ) : (
+              <Link href="/login">
+                <Button variant="ghost" size="sm" style={{ color: T.muted, fontSize: 13 }} className="font-medium">Log in</Button>
+              </Link>
+            )}
             <Link href="/builder">
               <Button size="sm" style={{
                 backgroundColor: T.accent, color: '#fff', borderRadius: T.radius,
@@ -115,9 +126,18 @@ export default function Landing() {
               >{link.label}</a>
             ))}
             <div className="flex flex-col gap-3 mt-6">
-              <Link href="/login">
-                <Button variant="outline" className="w-full" style={{ borderRadius: T.radius, borderColor: T.border, color: T.text }}>Log in</Button>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <span className="text-sm font-medium text-center py-1" style={{ color: T.text }}>
+                    {user?.name || user?.email}
+                  </span>
+                  <Button variant="outline" className="w-full" onClick={() => logout()} style={{ borderRadius: T.radius, borderColor: T.border, color: T.text }}>Log out</Button>
+                </>
+              ) : (
+                <Link href="/login">
+                  <Button variant="outline" className="w-full" style={{ borderRadius: T.radius, borderColor: T.border, color: T.text }}>Log in</Button>
+                </Link>
+              )}
               <Link href="/builder">
                 <Button className="w-full" style={{ backgroundColor: T.accent, color: '#fff', borderRadius: T.radius }}>Get Started</Button>
               </Link>

@@ -252,6 +252,11 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<AuthenticatedUser | null> {
+    // If client explicitly sent logout header, return null immediately
+    if (req.headers["x-local-user-logout"] === "true") {
+      return null;
+    }
+
     const cookies = this.parseCookies(req.headers.cookie);
     const cookieValue = cookies.get(COOKIE_NAME);
 
@@ -265,14 +270,33 @@ class SDKServer {
       }
     }
 
-    // If guest session header is present, return null immediately (Guest Mode)
-    const guestSessionHeader = req.headers["x-guest-session-id"];
-    if (guestSessionHeader) {
-      return null;
+    // Check header for local user openId sent by frontend
+    const localUserOpenId = req.headers["x-local-user-openid"] as string | undefined;
+    if (localUserOpenId) {
+      let user = await db.getUserByOpenId(localUserOpenId);
+      if (user) {
+        return user;
+      }
+      // If user not in server DB yet, auto-upsert mock user for this openId
+      const isOwner = localUserOpenId === "admin-key-owner" || localUserOpenId.includes("admin");
+      try {
+        await db.upsertUser({
+          openId: localUserOpenId,
+          name: isOwner ? "Admin User" : "Candidate User",
+          email: isOwner ? "admin@hexacv.com" : "candidate@hexacv.local",
+          loginMethod: "local",
+          lastSignedIn: new Date(),
+          role: isOwner ? "admin" : "user",
+        });
+        user = await db.getUserByOpenId(localUserOpenId);
+        if (user) return user;
+      } catch (err) {
+        console.error("[Auth] Error upserting header openId user:", err);
+      }
     }
 
-    // In local sandbox or when DATABASE_URL is not set/active, fallback to mock admin user for convenience
-    if (process.env.SANDBOX_LOCAL === "true" || !process.env.DATABASE_URL) {
+    // In local development or fallback sandbox, default to seeded admin user
+    if (process.env.NODE_ENV === "development" || process.env.SANDBOX_LOCAL === "true" || !process.env.DATABASE_URL) {
       const signedInAt = new Date();
       let user = await db.getUserByOpenId("admin-key-owner");
 
