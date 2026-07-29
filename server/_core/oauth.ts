@@ -68,7 +68,6 @@ export function registerOAuthRoutes(app: Express) {
     const isAdmin = normalizedEmail === "admin@hexacv.com" || normalizedEmail.includes("admin");
     const openId = isAdmin ? "admin-key-owner" : `mock-${provider}-${normalizedEmail.replace("@", "-")}`;
 
-    try {
       await db.upsertUser({
         openId,
         name: name || (isAdmin ? "Admin User" : "Test Candidate"),
