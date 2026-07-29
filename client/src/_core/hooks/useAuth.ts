@@ -1,5 +1,6 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { getCurrentLocalUser, logoutLocalUser } from "@/lib/localStorageDb";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -25,6 +26,8 @@ export function useAuth(options?: UseAuthOptions) {
   });
 
   const logout = useCallback(async () => {
+    logoutLocalUser();
+    utils.auth.me.setData(undefined, null);
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
@@ -34,26 +37,36 @@ export function useAuth(options?: UseAuthOptions) {
       ) {
         return;
       }
-      throw error;
     } finally {
+      logoutLocalUser();
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }
   }, [logoutMutation, utils]);
 
+  const isLoggedOut = typeof window !== "undefined" && localStorage.getItem("hexacv_logged_out") === "true";
+
+  const localUser = useMemo(() => isLoggedOut ? null : getCurrentLocalUser(), [meQuery.data, meQuery.isLoading, isLoggedOut]);
+
+  const activeUser = isLoggedOut ? null : (localUser as any) ?? meQuery.data ?? null;
+
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
+    if (activeUser) {
+      localStorage.setItem(
+        "manus-runtime-user-info",
+        JSON.stringify(activeUser)
+      );
+    } else {
+      localStorage.removeItem("manus-runtime-user-info");
+    }
     return {
-      user: meQuery.data ?? null,
+      user: activeUser,
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: Boolean(activeUser),
     };
   }, [
-    meQuery.data,
+    activeUser,
     meQuery.error,
     meQuery.isLoading,
     logoutMutation.error,
@@ -67,7 +80,7 @@ export function useAuth(options?: UseAuthOptions) {
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
 
-    window.location.href = redirectPath
+    window.location.href = redirectPath;
   }, [
     redirectOnUnauthenticated,
     redirectPath,
@@ -82,3 +95,4 @@ export function useAuth(options?: UseAuthOptions) {
     logout,
   };
 }
+

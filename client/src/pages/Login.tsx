@@ -8,6 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useResumeStorage } from "@/_core/hooks/useResumeStorage";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { loginLocalUser, registerLocalUser } from "@/lib/localStorageDb";
 
 const T = {
   bg: '#0b1326',
@@ -35,7 +36,7 @@ export default function Login() {
 
   const params = new URLSearchParams(window.location.search);
   const convertParam = params.get("convert") === "true";
-  const redirectParam = params.get("redirect") || "/builder";
+  const redirectParam = params.get("redirect") || "/";
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -63,27 +64,31 @@ export default function Login() {
   const handleMockLogin = (provider: string) => {
     const name = provider.charAt(0).toUpperCase() + provider.slice(1) + " Candidate";
     const userEmail = `${provider}.candidate@gmail.com`;
+    registerLocalUser(name, userEmail);
     const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
+    toast.success(`Logged in with ${provider}!`);
     window.location.href = `/api/mock/login?provider=${provider}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(userEmail)}&redirect=${encodeURIComponent(finalRedirect)}`;
   };
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    if (!email || !email.includes('@')) {
       toast.error("Please enter a valid email address.");
       return;
     }
-    const cleanEmail = email.toLowerCase().trim();
-    const isOwner = cleanEmail === "admin@hexacv.com" || cleanEmail.includes("admin");
 
-    if (cleanEmail === "admin@hexacv.com" && password !== "1234@hexaCv") {
-      toast.error("Invalid password for admin user. Please check your credentials.");
+    const res = loginLocalUser(email, password);
+    if (!res.success) {
+      toast.error(res.message || "Invalid credentials.");
       return;
     }
 
-    const name = isOwner ? "Admin User" : "Email Candidate";
+    const loggedUser = res.user!;
+    toast.success(`Welcome back, ${loggedUser.name}!`);
+
+    const isOwner = loggedUser.role === "admin";
     const targetRedirect = isOwner ? "/admin" : (convertParam ? `${redirectParam}?convert=true` : redirectParam);
-    window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&redirect=${encodeURIComponent(targetRedirect)}`;
+    window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(loggedUser.name)}&email=${encodeURIComponent(loggedUser.email)}&password=${encodeURIComponent(password)}&redirect=${encodeURIComponent(targetRedirect)}`;
   };
 
   const form = (
@@ -241,8 +246,8 @@ export default function Login() {
               <blockquote style={{ color: '#fff', fontSize: 18, lineHeight: 1.6, fontWeight: 500, fontStyle: 'italic' }}>
                 "HexaCv helped me tailor my resume for a senior role at Google. The ATS score jumped from 65 to 94 — I got the interview."
               </blockquote>
-              <div style={{ marginTop: 20, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-                — Sarah K., Software Engineer
+              <div style={{ marginTop: 20, color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 600 }}>
+                — Surag M S - Software Engineer, Founder Of HexaStack Solutions
               </div>
             </div>
           </div>

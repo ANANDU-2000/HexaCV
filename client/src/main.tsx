@@ -12,12 +12,10 @@ import "./index.css";
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   if (import.meta.env.DEV) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
-      let unregisteredAny = false;
       for (const registration of registrations) {
         registration.unregister().then((success) => {
           if (success) {
             console.log("Unregistered stale service worker in development:", registration.scope);
-            unregisteredAny = true;
           }
         });
       }
@@ -25,9 +23,6 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
         caches.keys().then((keys) => {
           keys.forEach((key) => caches.delete(key));
         });
-      }
-      if (unregisteredAny) {
-        window.location.reload();
       }
     });
   } else {
@@ -64,30 +59,27 @@ if (analyticsEndpoint && analyticsWebsiteId) {
 
 const queryClient = new QueryClient();
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
-  if (!(error instanceof TRPCClientError)) return;
-  if (typeof window === "undefined") return;
-
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
-  if (!isUnauthorized) return;
-
-  window.location.href = getLoginUrl();
-};
-
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    const msg = (error as any)?.message || "";
+    if (msg.includes("Failed to fetch") || msg === UNAUTHED_ERR_MSG) {
+      console.warn("[API Query Warning]", msg);
+    } else {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    const msg = (error as any)?.message || "";
+    if (msg.includes("Failed to fetch") || msg === UNAUTHED_ERR_MSG) {
+      console.warn("[API Mutation Warning]", msg);
+    } else {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 
@@ -96,6 +88,21 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        const isLoggedOut = localStorage.getItem("hexacv_logged_out") === "true";
+        if (isLoggedOut) {
+          return { "x-local-user-logout": "true" };
+        }
+        let openId = "";
+        try {
+          const raw = localStorage.getItem("hexacv_current_user");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            openId = parsed?.openId || "";
+          }
+        } catch (e) {}
+        return openId ? { "x-local-user-openid": openId } : {};
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),

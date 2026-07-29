@@ -5,6 +5,7 @@ import { Chrome, Layers, Mail, Lock, Eye, EyeOff, User, Check, X, Sparkles } fro
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import { registerLocalUser } from "@/lib/localStorageDb";
 
 const T = {
   bg: '#0b1326',
@@ -31,11 +32,11 @@ const strengthConfig = [
 
 function getStrength(password: string) {
   let score = 0;
+  if (password.length >= 6) score++;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[a-z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (/[0-9]/.test(password) || /[^A-Za-z0-9]/.test(password)) score++;
   return strengthConfig.find(s => score >= s.min) ?? strengthConfig[0];
 }
 
@@ -47,33 +48,48 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(true);
 
   const params = new URLSearchParams(window.location.search);
-  const redirectParam = params.get('redirect') || '/builder';
+  const redirectParam = params.get('redirect') || '/';
 
   const strength = useMemo(() => getStrength(password), [password]);
-  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const isFormValid = fullName.trim() && email.trim() && password.length >= 8 && passwordsMatch && agreedToTerms;
+  const isFormValid = Boolean(fullName.trim() && email.trim() && password.length >= 6 && passwordsMatch);
 
   const checks = [
-    { label: 'At least 8 characters', met: password.length >= 8 },
+    { label: 'At least 6 characters', met: password.length >= 6 },
     { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
     { label: 'One lowercase letter', met: /[a-z]/.test(password) },
-    { label: 'One number', met: /[0-9]/.test(password) },
-    { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+    { label: 'One number or symbol', met: /[0-9]|[^A-Za-z0-9]/.test(password) },
   ];
 
   const handleEmailRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) { toast.error('Please enter your full name.'); return; }
-    if (!email.trim()) { toast.error('Please enter a valid email address.'); return; }
-    if (password.length < 8) { toast.error('Password must be at least 8 characters.'); return; }
-    if (password !== confirmPassword) { toast.error('Passwords do not match.'); return; }
+    if (!email.trim() || !email.includes('@')) { toast.error('Please enter a valid email address.'); return; }
+    if (password.length < 6) { toast.error('Password must be at least 6 characters.'); return; }
+    if (confirmPassword && password !== confirmPassword) { toast.error('Passwords do not match.'); return; }
     if (!agreedToTerms) { toast.error('Please agree to the Terms of Service.'); return; }
-    const name = email.includes('admin') ? 'Surag (Admin)' : fullName;
-    window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectParam)}`;
+
+    const result = registerLocalUser(fullName, email, password);
+    if (result.success) {
+      toast.success(result.message || 'Account created successfully!');
+      const targetRedirect = email.includes('admin') ? '/admin' : redirectParam;
+      // Sync with server session in background & redirect
+      window.location.href = `/api/mock/login?provider=email&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(targetRedirect)}`;
+    } else {
+      toast.error(result.message || 'Failed to create account.');
+    }
+  };
+
+  const handleGoogleRegister = () => {
+    const name = 'Google Candidate';
+    const gEmail = 'google.candidate@gmail.com';
+    registerLocalUser(name, gEmail);
+    toast.success('Account created with Google!');
+    window.location.href = `/api/mock/login?provider=google&name=${encodeURIComponent(name)}&email=${encodeURIComponent(gEmail)}&redirect=${encodeURIComponent(redirectParam)}`;
   };
 
   const inputStyle = {
@@ -171,7 +187,7 @@ export default function Register() {
               value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
               style={{
                 ...inputStyle, paddingRight: 40,
-                borderColor: passwordsMismatch ? T.error : passwordsMatch ? T.success : T.border,
+                borderColor: passwordsMismatch ? T.error : confirmPassword.length > 0 && passwordsMatch ? T.success : T.border,
               }}
               onFocus={e => e.currentTarget.style.borderColor = T.primaryText}
               onBlur={e => { if (!passwordsMismatch && !passwordsMatch) e.currentTarget.style.borderColor = T.border; }}
@@ -182,7 +198,7 @@ export default function Register() {
             </button>
           </div>
           {passwordsMismatch && <p className="text-xs flex items-center gap-1 mt-1" style={{ color: T.error }}><X className="w-3 h-3" /> Passwords do not match</p>}
-          {passwordsMatch && <p className="text-xs flex items-center gap-1 mt-1" style={{ color: T.success }}><Check className="w-3 h-3" /> Passwords match</p>}
+          {confirmPassword.length > 0 && passwordsMatch && <p className="text-xs flex items-center gap-1 mt-1" style={{ color: T.success }}><Check className="w-3 h-3" /> Passwords match</p>}
         </div>
 
         {/* Terms checkbox */}
@@ -201,7 +217,7 @@ export default function Register() {
           backgroundColor: isFormValid ? T.accent : T.border,
           color: isFormValid ? '#fff' : T.muted, fontSize: 15, fontWeight: 600,
           border: 'none', cursor: isFormValid ? 'pointer' : 'not-allowed', marginTop: 4,
-        }} className="transition-opacity">
+        }} className="transition-opacity hover:opacity-90">
           Create Account
         </Button>
       </form>
@@ -213,10 +229,7 @@ export default function Register() {
         <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
       </div>
 
-      <Button variant="outline" onClick={() => {
-        const name = 'Google Candidate';
-        window.location.href = `/api/mock/login?provider=google&name=${encodeURIComponent(name)}&email=${encodeURIComponent('google.candidate@gmail.com')}&redirect=${encodeURIComponent(redirectParam)}`;
-      }} style={{
+      <Button variant="outline" onClick={handleGoogleRegister} style={{
         width: '100%', height: 48, borderRadius: T.radius,
         backgroundColor: 'transparent', border: `1px solid ${T.border}`,
         color: T.text, fontSize: 14, fontWeight: 500, gap: 8, cursor: 'pointer',
@@ -281,8 +294,8 @@ export default function Register() {
               <blockquote style={{ color: '#fff', fontSize: 18, lineHeight: 1.6, fontWeight: 500, fontStyle: 'italic' }}>
                 "Creating an account took less than a minute. I was able to import my old resume and tailor it for a new role right away."
               </blockquote>
-              <div style={{ marginTop: 20, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-                — Alex M., Product Designer
+              <div style={{ marginTop: 20, color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 600 }}>
+                — Anandu Krishna P A - Software Engineer, Co-Founder Of HexaStack Solutions
               </div>
             </div>
           </div>

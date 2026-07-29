@@ -481,6 +481,7 @@ function BuilderHeader({
   onBack: () => void;
   action?: ReactNode;
 }) {
+  const { user, isAuthenticated, logout } = useAuth();
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/80">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
@@ -494,7 +495,34 @@ function BuilderHeader({
             <p className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{modeTitle}</p>
           </div>
         </div>
-        {action}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {action}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {user?.name || user?.email}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => logout()}
+                className="h-9 rounded-lg px-3 text-xs font-bold border-slate-300 dark:border-white/10"
+              >
+                Log out
+              </Button>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-lg px-3 text-xs font-bold border-slate-300 dark:border-white/10"
+              >
+                Log in
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );
