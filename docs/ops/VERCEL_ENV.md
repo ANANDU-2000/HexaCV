@@ -4,7 +4,9 @@
 **Domain:** https://www.hexacv.online  
 **Repo:** https://github.com/ANANDU-2000/HexaCV.git  
 
-**No Render. No Vercel backend. No MongoDB on this frontend project.**
+**Vercel = SPA only. Empty Environment Variables on Vercel is correct.**  
+**All secrets (DB, JWT, Razorpay, LLM keys) live on Render service `hexacv-app` (`srv-d9lenj710e5c73di93h0`).**  
+**No MongoDB. No LLM secrets on Vercel.**
 
 ---
 
@@ -19,77 +21,55 @@ Vercel published the **server bundle** (`dist/index.js`) instead of the **Vite S
 | Build Command | `npx vite build` |
 | Output Directory | **`dist/public`** |
 | Framework | Other / null |
-| `/api/*` | Rewritten to live backend `https://hexacv-app.onrender.com/api/$1` |
+| `/api/*` | Rewritten to `https://hexacv-app.onrender.com/api/$1` |
 
-**Auth note:** UI “Continue with Google” is currently **`/api/mock/login`** (dev mock), not Clerk. Clerk keys in `.env` are not wired into `Login.tsx` yet.
+**Auth note:** UI “Continue with Google” is currently **`/api/mock/login`** (dev mock), not Clerk. Clerk keys are not wired into `Login.tsx` yet.
 
 ---
 
-## Vercel Environment Variables (frontend project)
+## Vercel Environment Variables
 
-### DELETE from Vercel (wrong for this app)
+### Correct state: **none required**
+
+Leave Vercel env empty (or only optional public `VITE_*` analytics later).  
+Do **not** add `DATABASE_URL`, Razorpay, or AI keys here — the SPA never uses them at runtime; `/api` is proxied to Render.
+
+### DELETE if present (wrong for this app)
 
 | Key | Why remove |
 |---|---|
-| `DATABASE_URL` with `mongodb+srv://…` | HexaCV uses **MySQL + Drizzle**, not Mongo. DB belongs on the **API server**, not Vercel. |
-| `PAYU_KEY` / `PAYU_SALT` | App payments are **Razorpay**, not PayU. |
-| `VITE_OPENAI_API_KEY` / `VITE_GEMINI_API_KEY` / `VITE_GROQ_API_KEY` | LLM secrets must stay **server-only** on the API host. Never `VITE_` (exposes keys in the browser). |
+| `DATABASE_URL` (`mongodb+srv://…` or any DB URL) | DB belongs on **Render**, and HexaCV needs **MySQL** (`mysql://…`), not Mongo. |
+| `PAYU_KEY` / `PAYU_SALT` | Payments are **Razorpay**. |
+| `VITE_OPENAI_API_KEY` / `VITE_GEMINI_*` / `VITE_GROQ_*` | Exposes secrets in the browser bundle. |
 
-### KEEP / ADD on Vercel (public client only)
-
-| Key | Example / notes |
-|---|---|
-| `VITE_APP_ID` | OAuth / app id if used |
-| `VITE_OAUTH_PORTAL_URL` | OAuth portal URL if used |
-| `VITE_ANALYTICS_ENDPOINT` | Optional |
-| `VITE_ANALYTICS_WEBSITE_ID` | Optional |
-
-**Do not set `VITE_API_URL` on Vercel** when using the rewrite in `vercel.json` (browser keeps calling `/api/trpc` on `hexacv.online`, Vercel proxies to EC2).
-
-Optional override (only if rewrite fails):  
-`VITE_API_URL=http://16.171.240.226:3001` — then client calls that host directly (CORS/cookies harder).
+**Do not set `VITE_API_URL` on Vercel** when using the rewrite in `vercel.json`.
 
 ---
 
-## Backend host (not Vercel) — env key/value
+## Render API env (source of truth)
 
-On **`http://16.171.240.226:3001`** (or your API VPS), create a **local `.env`** (never commit):
+Service: **hexacv-app** → https://hexacv-app.onrender.com  
+
+Synced from local `.env` (MCP): JWT, owner/admin, Razorpay, OpenRouter / OpenCode / Bynara / TokenRouter / OpenAI / Gemini / Groq, `AI_PAUSED`.
+
+**Not synced:** local `DATABASE_URL` was `postgresql://…` — app only accepts `mysql://` / `mysql2://` ([`server/db.ts`](../../server/db.ts)). Until a real MySQL URL is set on Render, the API uses the in-memory mock DB fallback.
+
+Set on Render Dashboard when you have MySQL:
 
 ```env
-NODE_ENV=production
-PORT=3001
 DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/hexacv
-JWT_SECRET=generate-a-long-random-secret
-PAYMENT_PROVIDER=razorpay
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
-OWNER_OPEN_ID=
-AI_PAUSED=false
-OPENROUTER_API_KEY=
-OPENAI_API_KEY=
 ```
 
-Then: `npm run build && npm run start`  
-Check: `GET http://16.171.240.226:3001/api/health` → `{ "ok": true }`
+---
+
+## Dashboard check (frontend)
+
+1. Vercel → **hexacv-admin-web** → Environments → confirm **no** DB/AI secrets  
+2. Output Directory: **`dist/public`**  
+3. After API env changes: wait for Render deploy, then `GET https://www.hexacv.online/api/health` → `{ "ok": true, "service": "hexacv" }`
 
 ---
 
-## Dashboard redeploy (required for hexacv.online)
+## Mongo note
 
-1. Vercel → **hexacv-admin-web** → **Settings → Build and Deployment**
-2. Framework Preset: **Other**
-3. Output Directory: **`dist/public`** (override if dashboard still says `dist`)
-4. Build Command: `npx vite build` (or blank to use `vercel.json`)
-5. **Environments**: remove Mongo `DATABASE_URL` / PayU / `VITE_*` AI secrets
-6. **Deployments → Redeploy** latest `main` with **Clear cache**
-
-After deploy: homepage must be HTML (HexaCv UI), not JavaScript schema text.
-
----
-
-## Mongo connection string you pasted
-
-That `mongodb+srv://…` string is **not compatible** with this codebase. Do **not** put it on Vercel for HexaCV.
-
-**Security:** you posted the DB password in chat — **rotate that MongoDB Atlas password** in Atlas immediately.
+`mongodb+srv://…` is **not compatible** with this codebase. Never set it as `DATABASE_URL` for HexaCV.
