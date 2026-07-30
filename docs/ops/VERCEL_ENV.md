@@ -1,97 +1,70 @@
-# Vercel environment variables — HexaCV
+# Vercel — HexaCV (primary production)
 
 **Project ID:** `prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`  
-**Domain (current):** https://www.hexacv.online  
-**Repo (after push):** https://github.com/ANANDU-2000/HexaCV.git  
-**Production app (Render):** https://hexacv-app.onrender.com — service `srv-d9lenj710e5c73di93h0` (primary)  
-**Alt service:** https://hexacv.onrender.com — `srv-d9lekem417fc73coh0n0` (older build cmd; prefer hexacv-app)  
-**Webhook:** `https://hexacv-app.onrender.com/api/webhooks/razorpay`
+**Domain:** https://www.hexacv.online  
+**Repo:** https://github.com/ANANDU-2000/HexaCV.git  
 
-Add these in Vercel → Project → Settings → Environment Variables  
-(Production + Preview + Development unless noted). **Do not put secrets in git.**
+## Why production showed raw `drizzle/schema.ts` code
 
-## Auth (Clerk — future; keys ready locally)
+Vercel was serving the **server esbuild bundle** (`dist/index.js`) as the site root instead of the **Vite SPA** (`dist/public`). That bundle inlines schema source — so the homepage looked like database code.
+
+**Fix (in repo now):** [`vercel.json`](../../vercel.json)
+
+- `buildCommand`: `npx vite build` (client only)
+- `outputDirectory`: `dist/public` (real UI)
+- `/api/*` → serverless Express in [`api/index.ts`](../../api/index.ts)
+- SPA fallback → `index.html`
+
+## Dashboard settings (must match)
+
+In Vercel → Project → Settings → General / Build & Development:
+
+| Setting | Value |
+|---|---|
+| Framework Preset | Other |
+| Root Directory | `.` (repo root) |
+| Install Command | `npm install --include=dev` (or leave blank — vercel.json sets it) |
+| Build Command | leave blank to use vercel.json **or** `npx vite build` |
+| Output Directory | `dist/public` |
+| Node.js | 22.x |
+
+Then **Redeploy** Production (Deployments → … → Redeploy). Domain `hexacv.online` should already be attached to this project.
+
+## Environment variables
+
+Add for Production (and Preview as needed). **Never commit secrets.**
 
 | Key | Notes |
 |---|---|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | If project is Next-based (`pk_test_…`) |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Same publishable key for Vite client builds |
-| `CLERK_SECRET_KEY` | Server only — never `NEXT_PUBLIC_` / `VITE_` |
-| `CLERK_FRONTEND_API` | e.g. `https://daring-crab-29.clerk.accounts.dev` |
-
-Clerk Dashboard → allowed origins / redirect URLs:
-
-- `http://localhost:3000`
-- `https://www.hexacv.online`
-
-## Payments (Razorpay primary — set live secrets before real charges)
-
-| Key | Notes |
-|---|---|
-| `PAYMENT_PROVIDER` | `razorpay` |
-| `RAZORPAY_KEY_ID` | Live `rzp_live_…` or test `rzp_test_…` — **required for real Checkout** |
-| `RAZORPAY_KEY_SECRET` | Server only — **required before live charges** |
-| `RAZORPAY_WEBHOOK_SECRET` | Dashboard → Webhooks → `https://www.hexacv.online/api/webhooks/razorpay` (or your host) |
-| `SUBSCRIPTION_GRACE_DAYS` | Default `3` (F4 grace after period end / payment failure) |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Legacy only |
-
-## App / safety
-
-| Key | Notes |
-|---|---|
-| `AUTH_PROVIDER` | `clerk` (marker; runtime still Manus until migration) |
-| `OWNER_OPEN_ID` | Server owner OpenID (keep in sync with `VITE_OWNER_OPEN_ID`) |
-| `AI_PAUSED` | Production: `false` |
-| `AI_RPM_LIMIT` | Default `60` (A3 failover at 80%) |
-| `AI_RPD_LIMIT` | Default `2000` (A3 failover at 90%) |
-| `AI_FALLBACK_MODELS` | Optional comma-separated model ids |
-| `DATABASE_URL` | Real MySQL URL when backend is hosted |
+| `DATABASE_URL` | **External MySQL** (TiDB Cloud / PlanetScale / Railway / Aiven). Vercel does **not** host MySQL; app dialect is MySQL. |
 | `JWT_SECRET` | Long random secret |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | CRM mock login targets until Clerk |
+| `PAYMENT_PROVIDER` | `razorpay` |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | Webhook URL: `https://www.hexacv.online/api/webhooks/razorpay` |
+| `OWNER_OPEN_ID` | Admin owner openId |
+| `AI_PAUSED` | `false` for live AI |
+| LLM keys | See [`docs/ai/MODELS_AND_KEYS.md`](../ai/MODELS_AND_KEYS.md) |
+| `VITE_OAUTH_PORTAL_URL` / `VITE_APP_ID` | Client OAuth (build-time) |
 
-## LLM (as needed for production)
+Apply SQL migrations against that MySQL (`drizzle/*.sql`, including `g2_evaluation_opt_out.sql`).
 
-Copy from local `.env` via Dashboard or `vercel env add` — prefer host secret store, never commit.
+## Architecture on Vercel
 
-| Key | Category |
-|---|---|
-| `OPENROUTER_API_KEY` (+ URL/MODEL) | Cheap / free |
-| `OPENCODE_API_KEY`, `BYNARA_API_KEY`, `TOKENROUTER_API_KEY` | Rewrite |
-| `OPENAI_API_KEY` | Premium |
-| `OPENAI_MODEL` | e.g. `gpt-4o-mini` (stable API id only) |
-| `OPENAI_API_URL` | `https://api.openai.com/v1` |
-| `GEMINI_API_KEY`, `GEMINI_API_KEY_2`, `GROK_API_KEY` | Failover |
+```
+Browser → hexacv.online
+  ├── static files from dist/public  (Landing, Pricing, Terms, app shell)
+  └── /api/* → api/index.ts → Express (tRPC, webhooks, OAuth, health)
+       └── DATABASE_URL → your MySQL host
+```
 
-Full map: [`docs/ai/MODELS_AND_KEYS.md`](../ai/MODELS_AND_KEYS.md).
+AI / long requests: Hobby plan has short serverless timeouts; Pro allows up to 60s (`vercel.json` `maxDuration`).
 
-## Stack note
-
-This monorepo is **Vite + Express**, not Next.js. **Production host for the full app is Render** (`render.yaml` — `npm run build` / `npm run start`, health `/api/health`, bind `0.0.0.0:$PORT`).
-
-The Vercel project (`prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`, hexacv.online) stays linked to `ANANDU-2000/HexaCV` for env continuity; long-running Express is not a natural Vercel Free fit. Point live DNS / webhooks at the Render service URL unless you run a split frontend/API setup.
-
-Suggested build (this repo / Render):
-
-- Install: `npm install` (or `pnpm install`)
-- Build: `npm run build`
-- Start: `npm run start`
-- Health: `GET /api/health`
-- Node: 22.x
-
-Webhook: `https://<render-host>/api/webhooks/razorpay`
-
-## CLI (if logged in)
+## CLI deploy (after `vercel login`)
 
 ```bash
 vercel link --project prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY
-vercel env add CLERK_SECRET_KEY production
-# …repeat per key
+vercel --prod
 ```
 
-## After deploy checklist
+## Render note
 
-- [ ] Git connected to `ANANDU-2000/HexaCV`
-- [ ] Env keys set (table above)
-- [ ] Clerk redirect URLs include production domain
-- [ ] Razorpay dashboard website includes checkout domain if different from hexastacksolutions.com
-- [ ] `AI_PAUSED=false` in production
+Render (`hexacv-app.onrender.com`) was a temporary Node host while Vercel output was misconfigured. **Canonical production is Vercel + hexacv.online** once the redeploy above succeeds.

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:vercel": "vite build",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
@@ -88,7 +89,8 @@
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "vite": "^7.1.7",
-    "vite-plugin-manus-runtime": "^0.0.58"
+    "vite-plugin-manus-runtime": "^0.0.58",
+    "@vercel/node": "^5.3.6"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
