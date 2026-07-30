@@ -45,11 +45,18 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Resume, TemplateId, ParsedResume, ResumeSection } from "@shared/types";
 import { PRESET_JOBS, matchPresetJobByTitle } from "@/lib/jobDescriptions";
 import { ensureStandardResumeSections } from "@/lib/resumeSections";
+import {
+  markBulletEdits,
+  mergeBulletsAi,
+  mergeSummaryAi,
+} from "@/lib/userEditedMerge";
 import ResumePreview from "./ResumePreview";
 import CountryLocationFields from "./CountryLocationFields";
 import { exportResumeToPDF, exportResumeToDOCX } from "@/lib/pdfExport";
@@ -93,8 +100,28 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   const [activeEditTab, setActiveEditTab] = useState<string>("header");
   const [isRewritingSummary, setIsRewritingSummary] = useState<boolean>(false);
   const [rewritingExpId, setRewritingExpId] = useState<string | null>(null);
+  const [feedbackTarget, setFeedbackTarget] = useState<
+    "summary" | "bullets" | null
+  >(null);
   const improveSummaryMutation = trpc.ai.improveSummary.useMutation();
   const improveBulletsMutation = trpc.ai.improveBullets.useMutation();
+  const submitEvaluationMutation = trpc.ai.submitEvaluation.useMutation();
+
+  const sendAiFeedback = async (rating: "up" | "down") => {
+    try {
+      await submitEvaluationMutation.mutateAsync({
+        resumeId: localResume.id,
+        stage: "rewrite",
+        rating,
+      });
+      toast.success(
+        rating === "up" ? "Thanks — feedback recorded." : "Thanks — we'll use this to improve."
+      );
+      setFeedbackTarget(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not save feedback");
+    }
+  };
 
   // Auto-select target job from parsed job title / target role when not already set
   useEffect(() => {
@@ -821,8 +848,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     updateResumeData({ ...localResume, sections: updated });
   };
 
-  const handleRewriteSummary = async () => {
-    const currentSummary = getSectionContent("summary").summary || "";
+  const handleRewriteSummary = async (force = false) => {
+    const summaryContent = getSectionContent("summary");
+    const currentSummary = summaryContent.summary || "";
     const activeJob = PRESET_JOBS.find(j => j.id === selectedJob);
     const jobDescription = activeJob ? activeJob.description : "";
 
@@ -840,6 +868,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       return;
     }
 
+    if (summaryContent.summaryUserEdited && !force) {
+      const overwrite = window.confirm(
+        "Your summary was edited manually and is protected. Overwrite with AI?"
+      );
+      if (!overwrite) {
+        toast.message("Protected — summary kept (edited by you).");
+        return;
+      }
+      force = true;
+    }
+
     setIsRewritingSummary(true);
     try {
       const headerSec = localResume.sections.find(s => s.type === "header");
@@ -855,7 +894,21 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       });
 
       if (rewritten) {
-        updateSection("summary", { summary: rewritten });
+        const merged = mergeSummaryAi(
+          currentSummary,
+          rewritten,
+          summaryContent.summaryUserEdited,
+          force
+        );
+        if (merged.blocked) {
+          toast.message("Protected — summary kept (edited by you).");
+          return;
+        }
+        updateSection("summary", {
+          summary: merged.text,
+          summaryUserEdited: merged.summaryUserEdited,
+        });
+        setFeedbackTarget("summary");
         toast.success("Summary rewritten and optimized with AI!");
       }
     } catch (err: any) {
@@ -866,7 +919,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     }
   };
 
-  const handleRewriteExperienceBullets = async (expIndex: number) => {
+  const handleRewriteExperienceBullets = async (
+    expIndex: number,
+    force = false
+  ) => {
     const activeJob = PRESET_JOBS.find(j => j.id === selectedJob);
     const jobDescription = activeJob ? activeJob.description : "";
 
@@ -882,6 +938,18 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     if (!exp || !exp.description?.length) {
       toast.error("Add at least one bullet point before rewriting.");
       return;
+    }
+
+    const hasProtected = (exp.descriptionEdited || []).some(Boolean);
+    if (hasProtected && !force) {
+      const overwrite = window.confirm(
+        "Some bullets were edited manually and are protected. Overwrite all with AI?"
+      );
+      if (!overwrite) {
+        toast.message("Protected — your edited bullets were kept.");
+        return;
+      }
+      force = true;
     }
 
     const headerSec = localResume.sections.find(s => s.type === "header");
@@ -900,12 +968,36 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
         targetCountryCode: headerVal.targetCountryCode || "",
       });
 
-      const list = [...experiences];
-      list[expIndex] = { ...exp, description: improved };
-      updateSection("experience", { experiences: list });
-      toast.success(
-        "Experience bullets rewritten using your job title and target role."
+      const merged = mergeBulletsAi(
+        exp.description,
+        improved,
+        exp.descriptionEdited,
+        force
       );
+      if (merged.blockedCount > 0 && merged.appliedCount === 0) {
+        toast.message("Protected — your edited bullets were kept.");
+        return;
+      }
+      if (merged.blockedCount > 0) {
+        toast.message(
+          `Protected ${merged.blockedCount} edited bullet(s); updated ${merged.appliedCount}.`
+        );
+      } else {
+        toast.success(
+          "Experience bullets rewritten using your job title and target role."
+        );
+      }
+
+      const list = [...experiences];
+      list[expIndex] = {
+        ...exp,
+        description: merged.bullets,
+        descriptionEdited: merged.flags,
+      };
+      updateSection("experience", { experiences: list });
+      if (merged.appliedCount > 0 || force) {
+        setFeedbackTarget("bullets");
+      }
     } catch (err: any) {
       console.error("Error rewriting bullets:", err);
       toast.error(err?.message || "Failed to rewrite experience bullets.");
@@ -1632,7 +1724,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleRewriteSummary}
+                        onClick={() => handleRewriteSummary()}
                         disabled={isRewritingSummary}
                         className="bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200 gap-1.5 h-8 font-bold text-xs"
                       >
@@ -1654,11 +1746,43 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       placeholder="Write a brief professional summary highlighting your key skills, experience, and achievements..."
                       value={getSectionContent("summary").summary || ""}
                       onChange={e =>
-                        updateSection("summary", { summary: e.target.value })
+                        updateSection("summary", {
+                          summary: e.target.value,
+                          summaryUserEdited: true,
+                        })
                       }
                       rows={8}
                       className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm leading-relaxed"
                     />
+                    {feedbackTarget === "summary" && (
+                      <div className="flex items-center gap-2 pt-2">
+                        <span className="text-xs text-slate-500">
+                          Was this AI rewrite helpful?
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1"
+                          disabled={submitEvaluationMutation.isPending}
+                          onClick={() => sendAiFeedback("up")}
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                          Yes
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1"
+                          disabled={submitEvaluationMutation.isPending}
+                          onClick={() => sendAiFeedback("down")}
+                        >
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                          No
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -1996,15 +2120,55 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   ...getSectionContent("experience")
                                     .experiences,
                                 ];
-                                list[idx].description = e.target.value
+                                const prev = list[idx];
+                                const nextDesc = e.target.value
                                   .split("\n")
                                   .filter(Boolean);
+                                list[idx] = {
+                                  ...prev,
+                                  description: nextDesc,
+                                  descriptionEdited: markBulletEdits(
+                                    prev.description || [],
+                                    nextDesc,
+                                    prev.descriptionEdited
+                                  ),
+                                };
                                 updateSection("experience", {
                                   experiences: list,
                                 });
                               }}
                               rows={3}
                             />
+                            {feedbackTarget === "bullets" &&
+                              rewritingExpId === null && (
+                              <div className="flex items-center gap-2 pt-2">
+                                <span className="text-xs text-slate-500">
+                                  Was this AI rewrite helpful?
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1"
+                                  disabled={submitEvaluationMutation.isPending}
+                                  onClick={() => sendAiFeedback("up")}
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" />
+                                  Yes
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1"
+                                  disabled={submitEvaluationMutation.isPending}
+                                  onClick={() => sendAiFeedback("down")}
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" />
+                                  No
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )

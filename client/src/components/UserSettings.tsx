@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronRight, Check, RefreshCw, Moon, Sun, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 const T = {
   surface: '#131b33',
@@ -90,9 +91,23 @@ function ProfileForm() {
 }
 
 function PreferencesForm() {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [lang, setLang] = useState('en');
   const [selectedProvider, setSelectedProvider] = useState('openai');
+  const optOut = !!(user as { evaluationOptOut?: boolean } | null)?.evaluationOptOut;
+  const setOptOut = trpc.auth.setEvaluationOptOut.useMutation({
+    onSuccess: async (data) => {
+      toast.success(
+        data.evaluationOptOut
+          ? "Evaluation logging off — thumbs will not be stored"
+          : "Evaluation logging on"
+      );
+      await utils.auth.me.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Could not update preference"),
+  });
 
   const providers = FALLBACK_PROVIDERS;
 
@@ -104,7 +119,7 @@ function PreferencesForm() {
         <div className="flex gap-2">
           {(['dark', 'light'] as const).map((t) => (
             <button key={t} onClick={() => setTheme(t)}
-              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold capitalize transition"
+              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold capitalize transition min-h-[44px]"
               style={{
                 borderColor: theme === t ? T.primary : T.outlineVariant,
                 backgroundColor: theme === t ? `${T.primary}20` : T.elevated,
@@ -121,13 +136,45 @@ function PreferencesForm() {
       <div>
         <p className="text-sm font-bold mb-2" style={{ color: T.text }}>Language</p>
         <select value={lang} onChange={(e) => setLang(e.target.value)}
-          className="rounded-lg border px-3 py-2 text-sm outline-none"
+          className="rounded-lg border px-3 py-2 text-sm outline-none min-h-[44px]"
           style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
           <option value="en">English</option>
           <option value="es">Español</option>
           <option value="fr">Français</option>
           <option value="de">Deutsch</option>
         </select>
+      </div>
+
+      {/* G2 evaluation opt-out */}
+      <div>
+        <p className="text-sm font-bold mb-2" style={{ color: T.text }}>AI evaluation dataset</p>
+        <label
+          className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px]"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}
+        >
+          <div>
+            <p className="text-sm" style={{ color: T.text }}>Opt out of evaluation logging</p>
+            <p className="text-xs mt-0.5" style={{ color: T.muted }}>
+              When on, thumbs up/down on AI rewrites are not stored. See{" "}
+              <a href="/privacy#evaluation-opt-out" className="underline" style={{ color: T.primaryText }}>
+                Privacy
+              </a>
+              .
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label={optOut ? "Turn evaluation logging on" : "Opt out of evaluation logging"}
+            disabled={setOptOut.isPending}
+            onClick={() => setOptOut.mutate({ optOut: !optOut })}
+            className="relative h-5 w-9 shrink-0 rounded-full transition"
+            style={{ backgroundColor: optOut ? T.primary : T.outlineVariant }}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition ${optOut ? "translate-x-4" : ""}`}
+            />
+          </button>
+        </label>
       </div>
 
       {/* AI Provider picker */}

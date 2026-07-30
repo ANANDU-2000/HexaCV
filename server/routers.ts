@@ -6,13 +6,41 @@ import { z } from "zod";
 import * as db from "./db";
 import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
 import { nanoid } from "nanoid";
-import { invokeLLM } from "./_core/llm";
 import { extractText, parseResumeWithLLM } from "./fileParser";
-import { validateGeneratedResume, isPlaceholderText, isAiGeneratedPhrase } from "./contentValidation";
 import Stripe from "stripe";
-import { getAllApiKeys, saveApiKey, testApiKey as testApiKeyFunc, isAiPaused } from "./apiKeyManager";
+import { getAllApiKeys, saveApiKey, testApiKey as testApiKeyFunc, isAiPaused, upsertModelRoute } from "./apiKeyManager";
 import { TRPCError } from "@trpc/server";
+import { buildAdminUsageStats } from "./usageTracker";
+import { runResumePipeline } from "./ai/pipelineOrchestrator";
+import {
+  createRazorpayOrder,
+  getPaymentProvider,
+  verifyAndFulfillCheckout,
+  listPaymentOrders,
+  adminRefundPaymentOrder,
+} from "./payments/razorpay";
+import { isEffectivelyPaid } from "./subscriptionGrace";
 
+async function resolveTrackedAiOpts(ctx: {
+  user?: { id: number } | null;
+}): Promise<{
+  userId: number | null;
+  planTier: "guest" | "free" | "paid";
+  guestKey?: string;
+}> {
+  let planTier: "guest" | "free" | "paid" = "guest";
+  let userId: number | null = null;
+  if (ctx.user?.id) {
+    userId = ctx.user.id;
+    const sub = await db.getSubscription(ctx.user.id);
+    planTier = isEffectivelyPaid(sub) ? "paid" : "free";
+  }
+  return {
+    userId,
+    planTier,
+    guestKey: userId == null ? "anonymous-web" : undefined,
+  };
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -30,6 +58,12 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    setEvaluationOptOut: protectedProcedure
+      .input(z.object({ optOut: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.setUserEvaluationOptOut(ctx.user.id, input.optOut);
+        return { success: true as const, evaluationOptOut: input.optOut };
+      }),
     convertGuest: protectedProcedure
       .input(z.object({ guestSessionId: z.string() }))
       .mutation(async ({ input, ctx }) => {
@@ -192,193 +226,19 @@ export const appRouter = router({
         market: z.string().optional(),
         jobDescription: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         try {
-          const response = await invokeLLM({
-            messages: [
-              {
-                role: "system",
-                content:
-            "CRITICAL RULES — you MUST follow all of these:\n" +
-            "1. ONLY use facts from the user's 'Background/Highlights' input. Do NOT invent achievements, metrics, companies, degrees, tools, or responsibilities.\n" +
-            "2. Preserve all company names, dates, technologies, and numbers exactly as stated by the user.\n" +
-            "3. Do NOT use generic AI filler phrases (e.g. 'results-driven', 'synergy', 'leveraged', 'spearheaded').\n" +
-            "4. Tailor wording to the job title and job description, but never fabricate experience.\n" +
-            "5. If the user provides no background details for a section, leave it as an empty array or empty string.\n" +
-            "6. NEVER add skills, experiences, education, or sentences not grounded in the user's input.\n" +
-            "7. Return empty strings or empty arrays rather than inventing placeholder content.\n" +
-            "Generate a fully completed professional resume JSON structure matching the schema. Return only the JSON object.",
-              },
-              {
-                role: "user",
-                content: `Job Title: ${input.jobTitle}
-Experience Level: ${input.experienceLevel || "Not specified"}
-Target Market: ${input.market || "Global"}
-User Background/Highlights: ${input.experienceDetails || "Not specified"}
-${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}`,
-              },
-            ],
-            response_format: {
-              type: "json_schema",
-              json_schema: {
-                name: "parsed_resume",
-                strict: true,
-                schema: {
-                  type: "object",
-                  properties: {
-                    header: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        email: { type: "string" },
-                        phone: { type: "string" },
-                        location: { type: "string" },
-                        links: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              label: { type: "string" },
-                              url: { type: "string" },
-                            },
-                            required: ["label", "url"],
-                          },
-                        },
-                      },
-                      required: ["name", "email", "phone", "location", "links"],
-                    },
-                    summary: { type: "string" },
-                    skills: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          category: { type: "string" },
-                          skills: { type: "array", items: { type: "string" } },
-                        },
-                        required: ["category", "skills"],
-                      },
-                    },
-                    experiences: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          company: { type: "string" },
-                          role: { type: "string" },
-                          startDate: { type: "string" },
-                          endDate: { type: "string" },
-                          current: { type: "boolean" },
-                          description: { type: "array", items: { type: "string" } },
-                        },
-                        required: ["id", "company", "role", "startDate", "endDate", "current", "description"],
-                      },
-                    },
-                    projects: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          name: { type: "string" },
-                          description: { type: "string" },
-                          technologies: { type: "array", items: { type: "string" } },
-                          link: { type: "string" },
-                          date: { type: "string" },
-                        },
-                        required: ["id", "name", "description", "technologies", "link", "date"],
-                      },
-                    },
-                    educations: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          institution: { type: "string" },
-                          degree: { type: "string" },
-                          field: { type: "string" },
-                          graduationDate: { type: "string" },
-                          gpa: { type: "string" },
-                        },
-                        required: ["id", "institution", "degree", "field", "graduationDate", "gpa"],
-                      },
-                    },
-                    certifications: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          name: { type: "string" },
-                          issuer: { type: "string" },
-                          date: { type: "string" },
-                          link: { type: "string" },
-                        },
-                        required: ["id", "name", "issuer", "date", "link"],
-                      },
-                    },
-                    languages: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          language: { type: "string" },
-                          proficiency: { type: "string" },
-                        },
-                        required: ["language", "proficiency"],
-                      },
-                    },
-                    achievements: { type: "array", items: { type: "string" } },
-                    publications: { type: "array", items: { type: "string" } },
-                    references: { type: "array", items: { type: "string" } },
-                  },
-                  required: [
-                    "header",
-                    "summary",
-                    "skills",
-                    "experiences",
-                    "projects",
-                    "educations",
-                    "certifications",
-                    "languages",
-                    "achievements",
-                    "publications",
-                    "references"
-                  ],
-                },
-              },
-          },
-          model: "gpt-4o",
-          temperature: 0.6,
-        });
-
-          const content = response.choices[0]?.message.content;
-          if (!content || typeof content !== "string") throw new Error("Failed to generate content from AI");
-
-          const parsed = JSON.parse(content);
-
-          // Validate the generated content — strip AI hallucinations, placeholders, and empty data
-          const validated = validateGeneratedResume(parsed);
-
-          // If after validation the resume has no real content, throw a clear error
-          const hasRealContent =
-            validated.header?.name ||
-            validated.summary ||
-            validated.skills?.length > 0 ||
-            validated.experiences?.length > 0 ||
-            validated.projects?.length > 0 ||
-            validated.educations?.length > 0;
-
-          if (!hasRealContent) {
-            throw new Error(
-              "AI generation produced no valid content from your background details. " +
-              "Please provide more specific information about your experience, skills, and background."
-            );
-          }
-
-          return validated;
+          const opts = await resolveTrackedAiOpts(ctx);
+          return await runResumePipeline(
+            {
+              sourceText: input.experienceDetails || "",
+              jobTitle: input.jobTitle,
+              jobDescription: input.jobDescription,
+              market: input.market,
+              experienceLevel: input.experienceLevel,
+            },
+            opts
+          );
         } catch (error: any) {
           console.error("AI Generation error:", error);
           // NEVER return fabricated data — throw a real error instead
@@ -424,7 +284,8 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
         jobTitle: z.string().optional(),
         targetRole: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const opts = await resolveTrackedAiOpts(ctx);
         return improveBulletPoints(
           input.role,
           input.company,
@@ -433,7 +294,8 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
           input.countryCode,
           input.targetCountryCode,
           input.jobTitle,
-          input.targetRole
+          input.targetRole,
+          opts
         );
       }),
 
@@ -446,14 +308,16 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
         countryCode: z.string().optional(),
         targetCountryCode: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const opts = await resolveTrackedAiOpts(ctx);
         return improveSummary(
           input.currentSummary,
           input.jobDescription,
           input.jobTitle,
           input.countryCode,
           input.targetCountryCode,
-          input.targetRole
+          input.targetRole,
+          opts
         );
       }),
 
@@ -465,13 +329,15 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
         jobDescription: z.string(),
         targetRole: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const opts = await resolveTrackedAiOpts(ctx);
         return improveProjectBullets(
           input.projectName,
           input.stack,
           input.currentBullets,
           input.jobDescription,
-          input.targetRole
+          input.targetRole,
+          opts
         );
       }),
 
@@ -539,6 +405,34 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
       }))
       .mutation(async ({ input }) => {
         return generateRecruiterOutreach(input);
+      }),
+
+    /** C5 — thumbs up/down on AI rewrite quality */
+    submitEvaluation: aiProcedure
+      .input(z.object({
+        resumeId: z.string().optional(),
+        stage: z.string().default("rewrite"),
+        rating: z.enum(["up", "down"]),
+        note: z.string().optional(),
+        overallScore: z.number().int().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.evaluationOptOut) {
+          return { skipped: true as const, reason: "evaluation_opt_out" as const };
+        }
+        const { insertResumeEvaluation, getActivePrompt } = await import(
+          "./promptVersions"
+        );
+        const active = await getActivePrompt(input.stage);
+        return insertResumeEvaluation({
+          userId: ctx.user?.id ?? null,
+          resumeId: input.resumeId ?? null,
+          stage: input.stage,
+          promptVersionId: active?.id ?? null,
+          rating: input.rating,
+          note: input.note ?? null,
+          overallScore: input.overallScore ?? null,
+        });
       }),
   });
   })(),
@@ -770,15 +664,52 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
       })
   }),
 
-  // SaaS: Billing & Support Router
+  // SaaS: Billing & Support Router (Razorpay primary; Stripe legacy emergency)
   billing: router({
     getSubscription: protectedProcedure.query(async ({ ctx }) => {
       return db.getSubscription(ctx.user.id);
+    }),
+
+    getPaymentProvider: protectedProcedure.query(async () => {
+      return { provider: getPaymentProvider() };
     }),
     
     createCheckoutSession: protectedProcedure
       .input(z.object({ tier: z.string() }))
       .mutation(async ({ input, ctx }) => {
+        const provider = getPaymentProvider();
+        const tier = input.tier.toLowerCase();
+        if (tier === "free") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot checkout free tier" });
+        }
+
+        if (provider === "razorpay") {
+          try {
+            const order = await createRazorpayOrder({
+              userId: ctx.user.id,
+              tier,
+            });
+            return {
+              provider: "razorpay" as const,
+              keyId: order.keyId,
+              orderId: order.orderId,
+              amount: order.amount,
+              currency: order.currency,
+              tier: order.tier,
+              paymentOrderId: order.paymentOrderId,
+              sandbox: order.sandbox,
+              url: null as string | null,
+            };
+          } catch (e: any) {
+            console.error("Razorpay order creation error:", e);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Razorpay order failed: ${e.message}`,
+            });
+          }
+        }
+
+        // Legacy Stripe emergency path only when PAYMENT_PROVIDER=stripe
         if (process.env.STRIPE_SECRET_KEY) {
           try {
             const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" as any });
@@ -805,14 +736,61 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
                 tier: input.tier,
               }
             });
-            return { url: session.url };
+            return {
+              provider: "stripe" as const,
+              url: session.url,
+              keyId: null as string | null,
+              orderId: null as string | null,
+              amount: null as number | null,
+              currency: null as string | null,
+              tier: input.tier,
+              paymentOrderId: null as string | null,
+              sandbox: false,
+            };
           } catch (e: any) {
             console.error("Stripe session creation error:", e);
             throw new Error(`Stripe session creation failed: ${e.message}`);
           }
-        } else {
-          // Fall back to simulated checkout simulation page
-          return { url: `/dashboard/billing/checkout?tier=${input.tier}` };
+        }
+        return {
+          provider: "stripe" as const,
+          url: `/dashboard/billing/checkout?tier=${input.tier}`,
+          keyId: null as string | null,
+          orderId: null as string | null,
+          amount: null as number | null,
+          currency: null as string | null,
+          tier: input.tier,
+          paymentOrderId: null as string | null,
+          sandbox: true,
+        };
+      }),
+
+    verifyRazorpayPayment: protectedProcedure
+      .input(
+        z.object({
+          orderId: z.string().min(1),
+          paymentId: z.string().min(1),
+          signature: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        try {
+          const result = await verifyAndFulfillCheckout({
+            userId: ctx.user.id,
+            orderId: input.orderId,
+            paymentId: input.paymentId,
+            signature: input.signature,
+          });
+          return {
+            ok: true,
+            duplicate: result.duplicate,
+            tier: result.order?.tier,
+          };
+        } catch (e: any) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: e.message || "Payment verification failed",
+          });
         }
       }),
   }),
@@ -881,6 +859,37 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
         return testApiKeyFunc(input.keyName);
       }),
 
+    getUsageStats: adminProcedure.query(async () => {
+      return buildAdminUsageStats();
+    }),
+
+    setModelRoute: adminProcedure
+      .input(
+        z.object({
+          id: z.string().optional(),
+          stage: z.string().min(1),
+          tier: z.string().min(1),
+          provider: z.string().min(1),
+          model: z.string().min(1),
+          rpmLimit: z.number().int().positive(),
+          rpdLimit: z.number().int().positive(),
+          priority: z.number().int(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const updatedBy =
+          ctx.user.email || ctx.user.openId || `user-${ctx.user.id}`;
+        const row = await upsertModelRoute({ ...input, updatedBy });
+        return { success: true as const, route: row };
+      }),
+
+    setAiPaused: adminProcedure
+      .input(z.object({ paused: z.boolean() }))
+      .mutation(async ({ input }) => {
+        saveApiKey("AI_PAUSED", input.paused ? "true" : "false");
+        return { success: true as const, aiPaused: isAiPaused() };
+      }),
+
     /** Manual tier grant — admin only. Non-admin path is Stripe webhook only. */
     manualGrantSubscription: adminProcedure
       .input(
@@ -905,6 +914,60 @@ ${input.jobDescription ? `Target Job Description: ${input.jobDescription}` : ""}
           }
         }
         return sub;
+      }),
+
+    setUserRole: adminProcedure
+      .input(
+        z.object({
+          userId: z.number().int().positive(),
+          role: z.enum(["user", "admin"]),
+          reason: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        if (input.userId === ctx.user.id && input.role === "user") {
+          const adminCount = await db.countAdmins();
+          if (adminCount <= 1) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Cannot demote the only remaining admin",
+            });
+          }
+        }
+        console.log(
+          `[Admin] setUserRole by user=${ctx.user.id} target=${input.userId} role=${input.role} reason=${input.reason}`
+        );
+        const updated = await db.setUserRole(input.userId, input.role);
+        if (!updated) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        return updated;
+      }),
+
+    listPaymentOrders: adminProcedure.query(async () => {
+      return listPaymentOrders(100);
+    }),
+
+    refundPayment: adminProcedure
+      .input(
+        z.object({
+          paymentOrderId: z.string().min(1),
+          reason: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        try {
+          return await adminRefundPaymentOrder({
+            paymentOrderId: input.paymentOrderId,
+            reason: input.reason,
+            adminUserId: ctx.user.id,
+          });
+        } catch (e: any) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: e?.message || "Refund failed",
+          });
+        }
       }),
   }),
 });

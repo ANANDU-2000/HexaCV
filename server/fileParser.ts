@@ -2,7 +2,8 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse");
 import mammoth from "mammoth";
-import { invokeLLM } from "./_core/llm";
+import { trackedInvokeLLM } from "./usageTracker";
+import { EXTRACT_PARSE_RULES } from "./ai/grounding";
 import { ParsedResume } from "../shared/types";
 import { nanoid } from "nanoid";
 import {
@@ -842,12 +843,13 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
   }
 
   try {
-    const response = await invokeLLM({
+    const response = await trackedInvokeLLM("extract", {
       messages: [
         {
           role: "system",
           content:
             "You are an expert resume parsing and structuring system. Parse the following resume raw text into a clean, structured JSON object matching the schema. Follow these strict rules:\n" +
+            EXTRACT_PARSE_RULES +
             "1. GENUINE CONTENT ONLY — never invent achievements, metrics, or duties.\n" +
             "2. NO DUPLICATES — dedupe experience, projects, skills, bullets.\n" +
             "3. NO MISMATCHES — keep names/dates/titles exactly as stated.\n" +
@@ -1060,7 +1062,6 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
           },
         },
       },
-      model: "gpt-4o",
       temperature: 0.1,
     });
 
@@ -1079,11 +1080,12 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
 
   // Attempt 2: JSON Object mode with LLM
   try {
-    const response = await invokeLLM({
+    const response = await trackedInvokeLLM("extract", {
       messages: [
         {
           role: "system",
           content:
+            EXTRACT_PARSE_RULES +
             "You are an expert resume parser. Parse raw resume text into a structured JSON object with keys: header (name, email, phone, location, jobTitle, targetRole, links[{label, url}]), summary (string), skills [{category, skills[]}], experiences [{id, company, role, startDate, endDate, current, description[]}], projects [{id, name, description, technologies[], link, date}], educations [{id, institution, degree, field, graduationDate, gpa}], certifications [{id, name, issuer, date, link}], achievements [], languages [{language, proficiency}], references [{id, name, company, title, email, phone, availableOnRequest}]. Return STRICT VALID JSON ONLY. Education field must ONLY contain degree field of study (e.g. Computer Science), never project descriptions.",
         },
         {
@@ -1092,7 +1094,6 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
         },
       ],
       response_format: { type: "json_object" },
-      model: "gpt-4o",
       temperature: 0.1,
     });
 

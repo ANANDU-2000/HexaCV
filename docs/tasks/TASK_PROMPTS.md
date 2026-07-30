@@ -174,38 +174,130 @@ failure.
 
 ---
 
-## Phase F/G â€” Payments & Legal (V6_PAYMENTS_LEGAL_REFERRAL.md)
+## Phase C — Real pipeline (thin orchestrator)
 
-### F-decide (do this before F2 â€” a decision, not code)
+### C1
 ```
-Not a coding task: confirm explicitly whether HexaCV keeps Stripe
-(already integrated and working per server/stripeWebhook.ts) or
-migrates to Razorpay (per the original V3 roadmap, likely for
-India/Gulf UPI support). Do not start building a second payment
-provider in parallel with Stripe "just in case" â€” pick one. If
-keeping Stripe, treat V6_PAYMENTS_LEGAL_REFERRAL.md Â§F2's "Razorpay
-Order/webhook" instructions as already satisfied by the existing
-stripeWebhook.ts pattern (signature verify, idempotent status
-check) â€” just harden that file per F3 below instead of building new.
+Context: Resume AI is feature-shaped LLM calls only (aiSuggestions,
+fileParser, generateFullResume). There is no Extract→Target→Rewrite
+runner. TASK_PROMPTS previously skipped Phase C; NEXT points here.
+
+Task: add a thin orchestrator that runs three named stages via
+trackedInvokeLLM, then contentValidation — no 5-stage fantasy,
+no evaluator, no prompt_versions.
+
+1. Extract — strict JSON facts from source text (background or
+   upload text). Stage string: "extract". Do not invent facts.
+2. Target — structured JD keywords + mustHaves + countryAtsNotes
+   from job title / JD / market. Stage: "target".
+3. Rewrite — one resume JSON rewrite using Extract+Target output.
+   Stage: "rewrite". Then validateGeneratedResume.
+
+Wire ai.generateFullResume to runResumePipeline. Pass B3 opts
+(userId, planTier, guestKey). Do NOT hardcode model: "gpt-4o";
+let model_routing + trackedInvokeLLM choose. Seed model_routing
+rows for extract / target / rewrite if missing.
+
+Scope: server/ai/pipelineOrchestrator.ts (new), server/routers.ts
+(generateFullResume), shared/types.ts (pipeline stage types),
+server/apiKeyManager.ts (stage seeds only).
+
+Out of scope: Polish, C3 evaluator retry, C5 tables, Clerk, Razorpay.
+
+Validate: one end-to-end generateFullResume (or script calling
+runResumePipeline) returns grounded JSON; usage_logs shows
+extract, target, rewrite stages; npm run check / tsc --noEmit.
 ```
 
-### F3 (hardening existing Stripe webhook for idempotency)
+### C2 (after C1)
 ```
-Context: server/stripeWebhook.ts handles subscription events but
-does not yet check whether an event was already processed (Stripe
-retries webhooks, so a handler must be idempotent).
+Context: C1 ships Extract→Target→Rewrite for generateFullResume only.
 
-Task: add a check â€” before applying a webhook event's effect, look
-up whether that Stripe event ID has already been processed (a
-simple processedStripeEvents table keyed on event.id is enough; 
-Stripe events include a unique `id` field). Skip if already
-processed, log a no-op.
+Task: route upload→tailor / editor improve paths through the same
+orchestrator modules where it reduces duplication — without adding
+Polish or evaluator. Prefer reuse over new UI.
 
-Scope: server/stripeWebhook.ts, drizzle/schema.ts (new small table).
+Scope: server/ai/pipelineOrchestrator.ts, server/fileParser.ts
+and/or aiSuggestions rewrite entry points as needed.
 
-Validate: manually re-POST the same webhook payload twice to
-/api/webhooks/stripe, confirm the subscription only updates once
-and the second call logs as a skipped duplicate.
+Validate: upload parse still works; at least one rewrite path uses
+named stages in usage_logs; no fabricated resume content.
+```
+
+### C3 (after C2)
+```
+Context: C2 routes editor improve through stageTarget + rewrite.
+There is still no evaluator retry loop.
+
+Task: add a deterministic + light evaluator pass after Rewrite
+(score/banned phrases). On fail, retry Rewrite once only.
+Log outcome; do not invent prompt_versions yet (that is C5).
+
+Scope: server/ai/pipelineOrchestrator.ts, contentValidation.ts
+extensions as needed. No new UI required beyond clear errors.
+
+Out of scope: Polish, prompt_versions table, Clerk, Razorpay.
+
+Validate: a known bad rewrite triggers one retry; second failure
+surfaces a clear error; npm run check.
+```
+
+### C4 (after C3)
+```
+Context: C3 evaluator + one rewrite retry exists on generateFullResume.
+Editor AI improve can still overwrite user-edited fields.
+
+Task: preserve fields marked userEdited when merging AI output —
+never silently clobber user text. Scope editor merge helpers and
+any AI apply paths; no new tables.
+
+Out of scope: Polish, prompt_versions, Razorpay, Clerk.
+
+Validate: edit a bullet manually, run improve, confirm that field
+stays unless user opts in to overwrite; npm run check.
+```
+
+### C5 (after C4)
+```
+Context: C4 preserves userEdited on summary/bullets. There is still
+no prompt_versions or resume_evaluations table.
+
+Task: add prompt_versions (active prompt by stage; never edit
+active in place) and resume_evaluations (thumbs / bad-output log).
+Wire reads of active Stage 3 rewrite prompt where practical.
+No Polish stage. No Clerk/Razorpay.
+
+Scope: drizzle/schema.ts, migration, server read path, minimal
+thumbs UI or API stub as specified in BACKLOG.
+
+Validate: insert v2 prompt without promoting; v1 stays active;
+evaluation row writes on feedback; npm run check.
+```
+
+---
+
+## Phase F/G — Payments & Legal (V6_PAYMENTS_LEGAL_REFERRAL.md)
+
+### F-decide (DECIDED — Razorpay primary)
+```
+Decision locked: HexaCV uses Razorpay as primary
+(server/payments/razorpay.ts + billing.createCheckoutSession /
+verifyRazorpayPayment + /api/webhooks/razorpay). Stripe is legacy
+webhook-only for existing customers. Do NOT dual-live Stripe+Razorpay
+Checkout UIs. F4 grace done. Next: G1–G3 legal pages, then F5 refund.
+```
+
+### F-decide (historical — superseded)
+```
+Earlier decision kept Stripe; superseded by Razorpay primary migration.
+F3 Stripe webhook idempotency remains for legacy Stripe retries.
+```
+
+
+### F3 (DONE — Stripe webhook idempotency, legacy)
+```
+Done: processed_stripe_events + server/stripeEvents.ts.
+Kept for legacy Stripe webhooks only.
 ```
 
 ### G1â€“G3 (legal pages â€” content, not logic)

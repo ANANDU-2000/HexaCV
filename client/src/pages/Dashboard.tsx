@@ -122,7 +122,7 @@ export default function Dashboard() {
           <BillingPortal resumesCount={resumes.length} />
         </Route>
 
-        {/* Stripe simulated checkout session */}
+        {/* Legacy Stripe sim — only when PAYMENT_PROVIDER=stripe fallback URL is used */}
         <Route path="/dashboard/billing/checkout">
           <StripeCheckoutSimulation />
         </Route>

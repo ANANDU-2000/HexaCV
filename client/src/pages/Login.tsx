@@ -199,7 +199,11 @@ export default function Login() {
       </div>
 
       <p className="text-center mt-6" style={{ color: T.border, fontSize: 10, lineHeight: 1.4 }}>
-        By continuing, you agree to HexaCv's Terms of Service and Privacy Policy. Secured by HexaStack Solutions.
+        By continuing, you agree to HexaCv's{" "}
+        <Link href="/terms" className="underline no-underline hover:underline" style={{ color: T.muted }}>Terms of Service</Link>
+        {" "}and{" "}
+        <Link href="/privacy" className="underline no-underline hover:underline" style={{ color: T.muted }}>Privacy Policy</Link>
+        . Secured by HexaStack Solutions.
       </p>
     </div>
   );

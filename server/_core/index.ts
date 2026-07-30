@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { configureSecurity } from "../middleware/security";
 import { registerStripeWebhook } from "../stripeWebhook";
+import { registerRazorpayWebhook } from "../razorpayWebhook";
 import { registerCountryRoutes } from "../countryRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -54,8 +55,9 @@ async function startServer() {
   // Configure security headers and rate limits
   configureSecurity(app);
 
-  // Register Stripe webhook before body parsers to access raw request streams
-  registerStripeWebhook(app);
+  // Register payment webhooks before body parsers (raw body for signatures)
+  registerRazorpayWebhook(app);
+  registerStripeWebhook(app); // legacy Stripe customers only
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
@@ -65,6 +67,11 @@ async function startServer() {
   
   // Register Global Country Management System REST APIs
   registerCountryRoutes(app);
+
+  // Lightweight health for Render / load balancers (not tRPC)
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ ok: true, service: "hexacv" });
+  });
 
   // tRPC API
   app.use(
@@ -81,15 +88,19 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const preferredPort = parseInt(process.env.PORT || "3000", 10);
+  // On Render/cloud, bind exactly to PORT on all interfaces (do not hop ports).
+  const isCloud = Boolean(process.env.RENDER || process.env.PORT);
+  const port = isCloud && process.env.PORT
+    ? preferredPort
+    : await findAvailablePort(preferredPort);
 
-  if (port !== preferredPort) {
+  if (port !== preferredPort && !process.env.RENDER) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }
 

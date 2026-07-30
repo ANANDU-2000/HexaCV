@@ -20,6 +20,8 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  /** G2: when true, do not persist resume_evaluations for this user */
+  evaluationOptOut: boolean("evaluationOptOut").default(false).notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -65,6 +67,8 @@ export const subscriptions = mysqlTable("subscriptions", {
   referenceId: varchar("referenceId", { length: 255 }),
   startDate: timestamp("startDate").defaultNow().notNull(),
   endDate: timestamp("endDate"),
+  /** F4: when status=grace, paid access until this timestamp */
+  graceUntil: timestamp("graceUntil"),
 }, (table) => ({
   userIdx: index("subscriptions_user_idx").on(table.userId),
 }));
@@ -348,3 +352,128 @@ export const cloudBackups = mysqlTable("cloud_backups", {
 
 export type CloudBackupDb = typeof cloudBackups.$inferSelect;
 export type InsertCloudBackupDb = typeof cloudBackups.$inferInsert;
+
+// ==========================================
+// AI USAGE LOGGING (Phase A2)
+// ==========================================
+
+export const usageLogs = mysqlTable("usage_logs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  stage: varchar("stage", { length: 64 }).notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  model: varchar("model", { length: 128 }).notNull(),
+  userId: int("userId"),
+  tokensIn: int("tokensIn").notNull().default(0),
+  tokensOut: int("tokensOut").notNull().default(0),
+  costUsd: varchar("costUsd", { length: 32 }).notNull().default("0"),
+  latencyMs: int("latencyMs").notNull(),
+  status: varchar("status", { length: 32 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("usage_logs_user_idx").on(table.userId),
+  stageIdx: index("usage_logs_stage_idx").on(table.stage),
+  createdIdx: index("usage_logs_created_idx").on(table.createdAt),
+}));
+
+export type UsageLogDb = typeof usageLogs.$inferSelect;
+export type InsertUsageLogDb = typeof usageLogs.$inferInsert;
+
+// ==========================================
+// AI MODEL ROUTING (Phase B1)
+// ==========================================
+
+export const modelRouting = mysqlTable("model_routing", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  stage: varchar("stage", { length: 64 }).notNull(),
+  tier: varchar("tier", { length: 32 }).notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  model: varchar("model", { length: 128 }).notNull(),
+  rpmLimit: int("rpmLimit").notNull().default(60),
+  rpdLimit: int("rpdLimit").notNull().default(2000),
+  priority: int("priority").notNull().default(100),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedBy: varchar("updatedBy", { length: 128 }),
+}, (table) => ({
+  stagePriorityIdx: index("model_routing_stage_priority_idx").on(table.stage, table.priority),
+}));
+
+export type ModelRoutingDb = typeof modelRouting.$inferSelect;
+export type InsertModelRoutingDb = typeof modelRouting.$inferInsert;
+
+// ==========================================
+// C5 — PROMPT VERSIONS + RESUME EVALUATIONS
+// ==========================================
+
+export const promptVersions = mysqlTable("prompt_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  stage: varchar("stage", { length: 64 }).notNull(),
+  version: int("version").notNull(),
+  body: text("body").notNull(),
+  isActive: boolean("isActive").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdBy: varchar("createdBy", { length: 128 }),
+}, (table) => ({
+  stageIdx: index("prompt_versions_stage_idx").on(table.stage),
+  stageActiveIdx: index("prompt_versions_stage_active_idx").on(
+    table.stage,
+    table.isActive
+  ),
+}));
+
+export type PromptVersionDb = typeof promptVersions.$inferSelect;
+export type InsertPromptVersionDb = typeof promptVersions.$inferInsert;
+
+export const resumeEvaluations = mysqlTable("resume_evaluations", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId"),
+  resumeId: varchar("resumeId", { length: 64 }),
+  stage: varchar("stage", { length: 64 }).notNull(),
+  promptVersionId: varchar("promptVersionId", { length: 36 }),
+  rating: varchar("rating", { length: 16 }).notNull(),
+  note: text("note"),
+  overallScore: int("overallScore"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("resume_evaluations_user_idx").on(table.userId),
+  resumeIdx: index("resume_evaluations_resume_idx").on(table.resumeId),
+  stageIdx: index("resume_evaluations_stage_idx").on(table.stage),
+}));
+
+export type ResumeEvaluationDb = typeof resumeEvaluations.$inferSelect;
+export type InsertResumeEvaluationDb = typeof resumeEvaluations.$inferInsert;
+
+// ==========================================
+// F3 — PROCESSED STRIPE EVENTS (webhook idempotency)
+// ==========================================
+
+export const processedStripeEvents = mysqlTable("processed_stripe_events", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  type: varchar("type", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProcessedStripeEventDb = typeof processedStripeEvents.$inferSelect;
+export type InsertProcessedStripeEventDb = typeof processedStripeEvents.$inferInsert;
+
+// ==========================================
+// RAZORPAY PRIMARY — payment_orders
+// ==========================================
+
+export const paymentOrders = mysqlTable("payment_orders", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull(),
+  tier: varchar("tier", { length: 50 }).notNull(),
+  amountPaise: int("amountPaise").notNull(),
+  currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+  razorpayOrderId: varchar("razorpayOrderId", { length: 128 }).notNull(),
+  razorpayPaymentId: varchar("razorpayPaymentId", { length: 128 }),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdx: index("payment_orders_user_idx").on(table.userId),
+  orderIdx: index("payment_orders_rzp_order_idx").on(table.razorpayOrderId),
+}));
+
+export type PaymentOrderDb = typeof paymentOrders.$inferSelect;
+export type InsertPaymentOrderDb = typeof paymentOrders.$inferInsert;

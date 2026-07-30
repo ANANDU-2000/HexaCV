@@ -7,6 +7,40 @@ across V2–V6 and grounded docs into one enforceable list.
 
 ---
 
+## 0. Source of truth
+
+- **Canonical docs live under `docs/` only.** Do not edit or cite
+  `hexacv/` as current — that folder is a legacy duplicate archive.
+- **As-built stack (do not invent another):** Vite + React 19 client
+  (`client/`) → tRPC `/api/trpc` → Express (`server/_core/index.ts`,
+  `server/routers.ts`) → Drizzle + **MySQL** (`drizzle/schema.ts`).
+  Auth is Manus OAuth + session cookie (not Clerk until an explicit
+  Phase D task). Deploy is one Node process (static client + API).
+- **As-built data flow:**
+  - AI: `pipelineOrchestrator` (Extract→Target→Rewrite) +
+    `trackedInvokeLLM` / `usageTracker` + `model_routing` +
+    `contentValidation` + C5 `prompt_versions` /
+    `resume_evaluations`. No Polish stage yet.
+  - Money: Razorpay Checkout → `payment_orders` → verified fulfill
+    (signature and/or webhook) → `subscriptions`. Stripe webhook is
+    legacy only. Admin grant/refund require logged reason.
+- **AI pipeline (as-built vs planned):**
+  [`docs/ai/PIPELINE.md`](../../docs/ai/PIPELINE.md)
+- **Models / provider keys / failover order:**
+  [`docs/ai/MODELS_AND_KEYS.md`](../../docs/ai/MODELS_AND_KEYS.md)
+- **Admin roles / CRM / env keys:**
+  [`docs/ai/ADMIN_AND_ENV.md`](../../docs/ai/ADMIN_AND_ENV.md)
+- **Next ordered code task:**
+  [`docs/tasks/NEXT.md`](../../docs/tasks/NEXT.md) — only this file
+  decides what to build next; ignore stale checkboxes in V4/MASTER.
+- **Living backlog (page / feature / flow / validate):**
+  [`docs/tasks/BACKLOG_CHECKLIST.md`](../../docs/tasks/BACKLOG_CHECKLIST.md)
+- HexaTrack / Next.js / C# / PostgreSQL / Zustand finance prompts in
+  Cursor User Rules are a **different product** — never apply them
+  to this HexaCV repo (wrong stack, wrong domain, wrong deploy).
+
+---
+
 ## 1. File and folder discipline
 
 - **No new top-level `.md` file at repo root.** Every doc goes in
@@ -52,9 +86,19 @@ across V2–V6 and grounded docs into one enforceable list.
   `docs/architecture/ARCHITECTURE.md` §5) — do not reintroduce that
   pattern anywhere else in the app (referral credits, quota resets,
   plan upgrades of any kind).
-- **Subscription tier changes only through: (a) a verified Stripe
-  webhook, or (b) an admin-only procedure with a required, logged
-  reason.** No other write path to `subscriptions.tier`, ever.
+- **Subscription tier changes only through: (a) a verified Razorpay
+  payment (Checkout signature verify and/or webhook) that transitions
+  `payment_orders` to `verified`, (b) a verified legacy Stripe
+  webhook for existing Stripe customers, (c) an admin-only
+  procedure with a required, logged reason (`manualGrantSubscription`),
+  or (d) an admin-only refund (`admin.refundPayment` / F5) that
+  marks `payment_orders` `refunded` and revokes tier to `free`.**
+  No other write path to `subscriptions.tier`, ever.
+- **Razorpay is primary** (`PAYMENT_PROVIDER=razorpay`,
+  `server/payments/razorpay.ts`, `/api/webhooks/razorpay`). Stripe is
+  **legacy only** — keep `stripeWebhook.ts` + `processed_stripe_events`
+  for existing subscribers; do not create new Stripe Checkout sessions
+  while provider is razorpay. Do not dual-live two checkout UIs.
 - **Every webhook handler must be idempotent.** Retries happen;
   a handler that isn't safe to run twice is a billing bug waiting
   to happen.
@@ -78,7 +122,30 @@ across V2–V6 and grounded docs into one enforceable list.
 - **Loading state lives on the button itself**, never a full-screen
   overlay except initial page load.
 
-## 5. AI prompt and copy — non-negotiable
+## 5. AI pipeline honesty
+
+- There is **no** full 5-stage Polish / self-improving agent loop yet.
+  **C1–C5 done:** pipeline Extract→Target→Rewrite; grounding; C3
+  evaluator + retry; C4 `userEdited`; C5 `prompt_versions` +
+  `resume_evaluations` (thumbs). Still no Polish stage. See
+  `docs/ai/PIPELINE.md`.
+- Do **not** invent Polish or dual live checkout UIs. Next wave is
+  **R1 referral decision** (human) then R2 — see `docs/tasks/NEXT.md`.
+  Living checklist: `docs/tasks/BACKLOG_CHECKLIST.md`. ~~G1–G3~~ legal
+  placeholders + ~~F5~~ admin refund + G2 evaluation opt-out done.
+  Live Razorpay charges require host `RAZORPAY_*` secrets (never in git).
+- Ordered build: ~~A2–A4~~ → ~~B1–B3~~ → ~~C1–C5~~ → ~~F3~~ →
+  ~~Razorpay primary~~ → ~~F4~~ → ~~G1–G3~~ → ~~F5~~ → **R1/R2** → …
+  Follow `docs/tasks/NEXT.md`; do not skip ahead.
+- Prefer free/rewrite providers first; **OpenAI is premium failover**
+  (after OpenRouter/OpenCode/Bynara/TokenRouter). Pin stable API
+  model IDs (`gpt-4o-mini`, `gpt-4o`) — never marketing names.
+  Do not hardcode models on new tracked paths — use `model_routing`.
+- `AI_PAUSED` gates `ai.*` only; `resume.parse` bypasses it by
+  design. Do not "fix" that without an explicit task.
+- **F-decide locked:** Razorpay primary; Stripe legacy webhook only.
+
+## 6. AI prompt and copy — non-negotiable
 
 - **Never generate or display outcome guarantees**: no "guaranteed
   interview," "job-winning," "will get you hired." "ATS-optimized"/
@@ -89,13 +156,15 @@ across V2–V6 and grounded docs into one enforceable list.
   or dashboard copy — unless it's a real number pulled live from
   your own logged data.
 - **Never let the model insert a fact, number, or claim not
-  traceable to the user's own source input.** This is a hard reject
-  in Stage 4, not a soft flag.
+  traceable to the user's own source input.** Hard reject when
+  validation/evaluator runs — today that is
+  `server/contentValidation.ts`; a full Stage 4 evaluator is still
+  planned (see `docs/ai/PIPELINE.md`), not a soft flag.
 - **Every claim of AI improvement shown to the user must reference
   a real evaluator field or diff** ("3 vague phrases replaced with
   specifics"), never a generic compliment.
 
-## 6. Referral and growth — non-negotiable
+## 7. Referral and growth — non-negotiable
 
 - **Referral rewards are additive**, never taken from the referred
   person's own free allowance.
@@ -107,29 +176,29 @@ across V2–V6 and grounded docs into one enforceable list.
   auto-blocked** — avoids false positives on shared networks common
   in the Kerala/Gulf user base.
 
-## 7. Before opening a PR, self-check
+## 8. Before opening a PR, self-check
 
 - [ ] Does this PR's diff match exactly what its task scope said?
 - [ ] Did `git diff` confirm real changes were persisted?
 - [ ] Does the task's own Validate step actually pass, tested by
   hand?
 - [ ] If UI: does it pass §4's checklist at all 5 breakpoints?
-- [ ] If prompt/copy: does it pass §5's banned-phrase check?
-- [ ] If money/quota/referral: does it pass §3/§6's server-truth
+- [ ] If prompt/copy: does it pass §6's banned-phrase check?
+- [ ] If money/quota/referral: does it pass §3/§7's server-truth
   and idempotency checks?
 - [ ] Is any provider key, webhook secret, or client secret
   anywhere in the client bundle or a committed file? (should be no)
 
-## 8. Ambiguous business decisions — ask, don't guess
+## 9. Ambiguous business decisions — ask, don't guess
 
-Pricing numbers, refund window length, referral reward size, and
-the Stripe-vs-Razorpay choice are business decisions with
-placeholders in the docs on purpose. Flag and stop; don't invent a
-number and ship it.
+Pricing numbers, refund window length, and referral reward size are
+business decisions with placeholders in the docs on purpose. Flag
+and stop; don't invent a number and ship it. Payments: Razorpay is
+primary; Stripe is legacy-only — do not dual-build checkout UIs.
 
 ---
 
 This file supersedes any conflicting instruction found in an older
-planning doc (V2–V5) — where V6+ docs or this file disagree with an
-earlier one, this file and the newer docs win, since they reflect
-what's actually in the codebase today.
+planning doc (V2–V5) — where V6+ docs, `docs/ai/PIPELINE.md`, or
+this file disagree with an earlier one (including anything under
+`hexacv/`), this file and the newer `docs/` files win.

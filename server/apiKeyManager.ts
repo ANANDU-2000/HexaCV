@@ -1,6 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
 import { ENV } from "./_core/env";
+import { getDb, mockDb } from "./db";
+import { modelRouting, type ModelRoutingDb } from "../drizzle/schema";
 
 export type ApiKeyMeta = {
   keyName: string;
@@ -39,29 +43,36 @@ export const API_KEYS_SCHEMA: Omit<ApiKeyMeta, "isConfigured" | "maskedValue" | 
     keyName: "OPENROUTER_API_KEY",
     label: "OpenRouter Multi-Model Key",
     category: "AI & LLM",
-    description: "Unified OpenRouter API key routing to Claude 3.5, GPT-4o, and open-source models.",
+    description: "Cheap/free-tier OpenRouter key (first in failover). Default model via OPENROUTER_MODEL.",
     providerUrl: "https://openrouter.ai/keys",
   },
   {
     keyName: "OPENCODE_API_KEY",
     label: "OpenCode AI API Key",
     category: "AI & LLM",
-    description: "OpenCode high-throughput AI engine key for instant resume formatting and tailoring.",
+    description: "Rewrite-tier OpenCode key. Default model via OPENCODE_MODEL (e.g. glm-5.2).",
     providerUrl: "https://opencode.ai",
   },
   {
     keyName: "BYNARA_API_KEY",
     label: "Bynara AI Router Key",
     category: "AI & LLM",
-    description: "Bynara enterprise router key for high-speed AI completions.",
+    description: "Rewrite-tier Bynara router key for high-speed AI completions.",
     providerUrl: "https://router.bynara.id",
   },
   {
     keyName: "TOKENROUTER_API_KEY",
     label: "TokenRouter AI Key",
     category: "AI & LLM",
-    description: "TokenRouter model engine key for fallback LLM completions.",
+    description: "Rewrite-tier TokenRouter fallback for LLM completions.",
     providerUrl: "https://tokenrouter.com",
+  },
+  {
+    keyName: "OPENAI_API_KEY",
+    label: "OpenAI API Key",
+    category: "AI & LLM",
+    description: "Premium OpenAI key (gpt-4o-mini / gpt-4o). Tried after free/rewrite providers. Set OPENAI_MODEL.",
+    providerUrl: "https://platform.openai.com/api-keys",
   },
   {
     keyName: "BUILT_IN_FORGE_API_KEY",
@@ -74,14 +85,28 @@ export const API_KEYS_SCHEMA: Omit<ApiKeyMeta, "isConfigured" | "maskedValue" | 
     keyName: "HUGGINGFACE_API_KEY",
     label: "HuggingFace API Token",
     category: "AI & LLM",
-    description: "HuggingFace Hub token for NLP embeddings and specialized AI models.",
+    description: "HuggingFace Hub token (not used by invokeLLM chat path today).",
     providerUrl: "https://huggingface.co/settings/tokens",
+  },
+  {
+    keyName: "RAZORPAY_KEY_ID",
+    label: "Razorpay Key ID",
+    category: "Payments",
+    description: "Razorpay test/live Key ID (primary payments provider).",
+    providerUrl: "https://dashboard.razorpay.com/app/keys",
+  },
+  {
+    keyName: "RAZORPAY_KEY_SECRET",
+    label: "Razorpay Key Secret",
+    category: "Payments",
+    description: "Razorpay Key Secret — server only.",
+    providerUrl: "https://dashboard.razorpay.com/app/keys",
   },
   {
     keyName: "STRIPE_SECRET_KEY",
     label: "Stripe Secret Key",
     category: "Payments",
-    description: "Secret Key (sk_live_... or sk_test_...) for payment processing and plan checkout.",
+    description: "Legacy Stripe secret (demoted — Razorpay is primary; Stripe webhook only for legacy subs).",
     providerUrl: "https://dashboard.stripe.com/apikeys",
   },
   {
@@ -106,24 +131,31 @@ export const API_KEYS_SCHEMA: Omit<ApiKeyMeta, "isConfigured" | "maskedValue" | 
     providerUrl: "",
   },
   {
-    keyName: "VITE_OWNER_OPEN_ID",
-    label: "Owner OpenID",
+    keyName: "OWNER_OPEN_ID",
+    label: "Owner OpenID (server)",
     category: "Security & Auth",
-    description: "System Owner OpenID identifier granting superadministrator privileges.",
+    description: "Server-side owner OpenID — promotes user to admin on upsert. Keep in sync with VITE_OWNER_OPEN_ID.",
+    providerUrl: "",
+  },
+  {
+    keyName: "VITE_OWNER_OPEN_ID",
+    label: "Owner OpenID (client)",
+    category: "Security & Auth",
+    description: "Client-facing owner OpenID; mirror OWNER_OPEN_ID.",
     providerUrl: "",
   },
   {
     keyName: "ADMIN_EMAIL",
     label: "Admin Portal Email",
     category: "Security & Auth",
-    description: "Administrator login email address for administrative authentication.",
+    description: "CRM mock admin email until Clerk migration — not a full auth system.",
     providerUrl: "",
   },
   {
     keyName: "ADMIN_PASSWORD",
     label: "Admin Portal Password",
     category: "Security & Auth",
-    description: "Administrator login password credential.",
+    description: "CRM mock admin password until Clerk migration.",
     providerUrl: "",
   },
 ];
@@ -160,11 +192,15 @@ export function saveApiKey(keyName: string, value: string): void {
     OPENCODE_API_KEY: "opencodeApiKey",
     BYNARA_API_KEY: "bynaraApiKey",
     TOKENROUTER_API_KEY: "tokenrouterApiKey",
+    OPENAI_API_KEY: "openaiApiKey",
+    OPENAI_MODEL: "openaiModel",
+    OPENAI_API_URL: "openaiApiUrl",
     BUILT_IN_FORGE_API_KEY: "forgeApiKey",
     HUGGINGFACE_API_KEY: "huggingfaceApiKey",
     JWT_SECRET: "cookieSecret",
     VITE_APP_ID: "appId",
     VITE_OWNER_OPEN_ID: "ownerOpenId",
+    OWNER_OPEN_ID: "ownerOpenId",
     ADMIN_EMAIL: "adminEmail",
     ADMIN_PASSWORD: "adminPassword",
   };
@@ -249,4 +285,275 @@ export async function testApiKey(keyName: string): Promise<{ success: boolean; m
 export function isAiPaused(): boolean {
   const v = (process.env.AI_PAUSED ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
+}
+
+// ==========================================
+// B1 — model_routing cache (5 min)
+// ==========================================
+
+const MODEL_ROUTING_CACHE_MS = 5 * 60_000;
+
+type ModelRoutingCache = {
+  loadedAt: number;
+  rows: ModelRoutingDb[];
+};
+
+let modelRoutingCache: ModelRoutingCache | null = null;
+
+function buildDefaultSeedRows(): ModelRoutingDb[] {
+  const now = new Date();
+  const specs: Array<{
+    provider: string;
+    model: string;
+    tier: string;
+    priority: number;
+  }> = [
+    { provider: "openrouter", model: ENV.openrouterModel || "google/gemma-4-31b-it:free", tier: "cheap", priority: 10 },
+    { provider: "opencode", model: ENV.opencodeModel || "glm-5.2", tier: "rewrite", priority: 20 },
+    { provider: "bynara", model: ENV.bynaraModel || "glm-5.2-free", tier: "rewrite", priority: 30 },
+    { provider: "tokenrouter", model: ENV.tokenrouterModel || "z-ai/glm-5.2-free", tier: "rewrite", priority: 40 },
+    { provider: "openai", model: ENV.openaiModel || "gpt-4o-mini", tier: "premium", priority: 50 },
+    { provider: "gemini", model: "gemini-2.0-flash", tier: "cheap", priority: 60 },
+    { provider: "groq", model: "llama-3.3-70b-versatile", tier: "cheap", priority: 70 },
+  ];
+
+  const stages: Array<{ stage: string; tiers: string[] }> = [
+    { stage: "default", tiers: ["cheap", "rewrite", "premium"] },
+    { stage: "extract", tiers: ["cheap", "rewrite"] },
+    { stage: "target", tiers: ["cheap", "rewrite"] },
+    { stage: "rewrite", tiers: ["rewrite", "cheap", "premium"] },
+  ];
+
+  const seen = new Set<string>();
+  const rows: ModelRoutingDb[] = [];
+  for (const stageSpec of stages) {
+    for (const s of specs) {
+      if (!s.model || !stageSpec.tiers.includes(s.tier)) continue;
+      const key = `${stageSpec.stage}::${s.model}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({
+        id: randomUUID(),
+        stage: stageSpec.stage,
+        tier: s.tier,
+        provider: s.provider,
+        model: s.model,
+        rpmLimit: Number(ENV.aiRpmLimit) || 60,
+        rpdLimit: Number(ENV.aiRpdLimit) || 2000,
+        priority: s.priority,
+        updatedAt: now,
+        updatedBy: "system-seed",
+      });
+    }
+  }
+  return rows;
+}
+
+/** Ensure C1 stage rows exist when DB already has default-only seeds. */
+async function ensurePipelineStageRoutingRows(
+  existing: ModelRoutingDb[]
+): Promise<ModelRoutingDb[]> {
+  const needed = ["extract", "target", "rewrite"] as const;
+  const missing = needed.filter(
+    (st) => !existing.some((r) => r.stage === st)
+  );
+  if (missing.length === 0) return existing;
+
+  const defaults = existing.filter((r) => r.stage === "default");
+  const now = new Date();
+  const toInsert: ModelRoutingDb[] = [];
+  for (const stage of missing) {
+    const allowPremium = stage === "rewrite";
+    const source = defaults.filter((r) =>
+      allowPremium ? true : r.tier !== "premium" && r.provider !== "openai"
+    );
+    const pool = source.length > 0 ? source : defaults;
+    for (const d of pool) {
+      toInsert.push({
+        ...d,
+        id: randomUUID(),
+        stage,
+        updatedAt: now,
+        updatedBy: "system-c1-seed",
+      });
+    }
+  }
+
+  if (toInsert.length === 0) return existing;
+
+  const db = await getDb();
+  if (!db) {
+    mockDb.modelRouting = [...existing, ...toInsert];
+    return [...existing, ...toInsert];
+  }
+  try {
+    await db.insert(modelRouting).values(toInsert);
+  } catch (error) {
+    console.warn("[model_routing] C1 stage seed insert failed:", error);
+  }
+  return [...existing, ...toInsert];
+}
+
+async function seedDefaultModelRouting(): Promise<ModelRoutingDb[]> {
+  const rows = buildDefaultSeedRows();
+  const db = await getDb();
+  if (!db) {
+    mockDb.modelRouting = [...rows];
+    return rows;
+  }
+  try {
+    await db.insert(modelRouting).values(rows);
+  } catch (error) {
+    console.warn("[model_routing] seed insert failed:", error);
+  }
+  return rows;
+}
+
+async function fetchAllModelRoutingRows(): Promise<ModelRoutingDb[]> {
+  const db = await getDb();
+  if (!db) {
+    return [...(mockDb.modelRouting || [])] as ModelRoutingDb[];
+  }
+  try {
+    return (await db.select().from(modelRouting)) as ModelRoutingDb[];
+  } catch (error) {
+    console.warn("[model_routing] select failed, using mock/seed:", error);
+    return [...(mockDb.modelRouting || [])] as ModelRoutingDb[];
+  }
+}
+
+/** Invalidate cache so next ensure reloads from DB/mock. */
+export function clearModelRoutingCache(): void {
+  modelRoutingCache = null;
+}
+
+export function getModelRoutingCacheMeta(): {
+  loadedAt: number | null;
+  rowCount: number;
+} {
+  return {
+    loadedAt: modelRoutingCache?.loadedAt ?? null,
+    rowCount: modelRoutingCache?.rows.length ?? 0,
+  };
+}
+
+/**
+ * Load model_routing into memory (≤5 min TTL). Seeds defaults when empty.
+ */
+export async function ensureModelRoutingLoaded(): Promise<void> {
+  const now = Date.now();
+  if (
+    modelRoutingCache &&
+    now - modelRoutingCache.loadedAt < MODEL_ROUTING_CACHE_MS &&
+    modelRoutingCache.rows.length > 0
+  ) {
+    return;
+  }
+
+  let rows = await fetchAllModelRoutingRows();
+  if (rows.length === 0) {
+    rows = await seedDefaultModelRouting();
+  } else {
+    rows = await ensurePipelineStageRoutingRows(rows);
+  }
+  modelRoutingCache = { loadedAt: now, rows };
+}
+
+/**
+ * Ordered unique model ids for a stage (priority ASC).
+ * Falls back to stage "default" when stage has no rows.
+ */
+export function getOrderedModelsForStage(stage: string): string[] {
+  const rows = modelRoutingCache?.rows ?? [];
+  const target = stage || "default";
+  let matched = rows.filter((r) => r.stage === target);
+  if (matched.length === 0) {
+    matched = rows.filter((r) => r.stage === "default");
+  }
+  matched = [...matched].sort((a, b) => a.priority - b.priority);
+  const out: string[] = [];
+  for (const r of matched) {
+    if (r.model && !out.includes(r.model)) out.push(r.model);
+  }
+  return out;
+}
+
+/** Test/admin helper: replace mock rows and clear cache. */
+export function setMockModelRoutingForTests(rows: ModelRoutingDb[]): void {
+  mockDb.modelRouting = [...rows];
+  clearModelRoutingCache();
+}
+
+export type UpsertModelRouteInput = {
+  id?: string;
+  stage: string;
+  tier: string;
+  provider: string;
+  model: string;
+  rpmLimit: number;
+  rpdLimit: number;
+  priority: number;
+  updatedBy?: string | null;
+};
+
+/** Insert or update a model_routing row and invalidate cache. */
+export async function upsertModelRoute(
+  input: UpsertModelRouteInput
+): Promise<ModelRoutingDb> {
+  const now = new Date();
+  const row: ModelRoutingDb = {
+    id: input.id || randomUUID(),
+    stage: input.stage,
+    tier: input.tier,
+    provider: input.provider,
+    model: input.model,
+    rpmLimit: input.rpmLimit,
+    rpdLimit: input.rpdLimit,
+    priority: input.priority,
+    updatedAt: now,
+    updatedBy: input.updatedBy ?? null,
+  };
+
+  const dbConn = await getDb();
+  if (!dbConn) {
+    const list = [...(mockDb.modelRouting || [])] as ModelRoutingDb[];
+    const idx = list.findIndex((r) => r.id === row.id);
+    if (idx >= 0) list[idx] = row;
+    else list.push(row);
+    mockDb.modelRouting = list;
+    clearModelRoutingCache();
+    return row;
+  }
+
+  try {
+    if (input.id) {
+      await dbConn
+        .update(modelRouting)
+        .set({
+          stage: row.stage,
+          tier: row.tier,
+          provider: row.provider,
+          model: row.model,
+          rpmLimit: row.rpmLimit,
+          rpdLimit: row.rpdLimit,
+          priority: row.priority,
+          updatedAt: row.updatedAt,
+          updatedBy: row.updatedBy,
+        })
+        .where(eq(modelRouting.id, input.id));
+    } else {
+      await dbConn.insert(modelRouting).values(row);
+    }
+  } catch (error) {
+    console.warn("[model_routing] upsert failed:", error);
+    throw error;
+  }
+
+  clearModelRoutingCache();
+  return row;
+}
+
+/** Snapshot of cached routes (call ensureModelRoutingLoaded first). */
+export function getCachedModelRoutingRows(): ModelRoutingDb[] {
+  return [...(modelRoutingCache?.rows ?? [])];
 }

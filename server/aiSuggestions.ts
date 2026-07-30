@@ -1,22 +1,12 @@
-import { invokeLLM } from "./_core/llm";
 import { Resume } from "@shared/types";
 import * as db from "./db";
+import { trackedInvokeLLM, type TrackedInvokeOptions } from "./usageTracker";
+import { STRICT_REWRITE_RULES } from "./ai/grounding";
 import {
-  filterGroundedBullets,
-  filterGroundedRewrite,
-  isAiGeneratedPhrase,
-} from "./contentValidation";
-
-const STRICT_REWRITE_RULES =
-  "CRITICAL RULES — you MUST follow all of these:\n" +
-  "1. ONLY rephrase existing facts from the candidate's content. Do NOT invent achievements, metrics, companies, degrees, tools, or responsibilities.\n" +
-  "2. Do NOT add new bullet points. Rewrite only the bullets provided — same count, same underlying facts.\n" +
-  "3. Do NOT use generic AI filler phrases (e.g. 'results-driven', 'synergy', 'leveraged', 'spearheaded' unless the original used similar language).\n" +
-  "4. Preserve all company names, dates, technologies, and numbers exactly as stated.\n" +
-  "5. Tailor wording to the candidate's job title and target role using keywords from the job description, but never fabricate experience.\n" +
-  "6. If a bullet cannot be improved without inventing facts, return it nearly unchanged.\n" +
-  "7. NEVER add skills, experiences, education, or sentences that are not in the source material.\n" +
-  "8. Return empty strings or empty arrays rather than inventing placeholder content.\n";
+  rewriteBulletsViaPipeline,
+  rewriteProjectBulletsViaPipeline,
+  rewriteSummaryViaPipeline,
+} from "./ai/pipelineOrchestrator";
 
 export interface BulletSuggestion {
   original: string;
@@ -104,7 +94,7 @@ REGIONAL TARGETING AND ATS CONTEXT (${countryCode || "IN"} to ${targetCountryCod
   );
 
   try {
-    const response = await invokeLLM({
+    const response = await trackedInvokeLLM("suggestions", {
       messages: [
         {
           role: "system",
@@ -228,7 +218,7 @@ export async function calculateKeywordAlignment(
 
   const resumeText = extractResumeText(resume);
 
-  const response = await invokeLLM({
+  const response = await trackedInvokeLLM("keyword_alignment", {
     messages: [
       {
         role: "system",
@@ -286,7 +276,7 @@ export async function calculateKeywordAlignment(
 }
 
 /**
- * Generate improved bullet points for a specific experience entry
+ * Generate improved bullet points for a specific experience entry (C2 via pipeline).
  */
 export async function improveBulletPoints(
   role: string,
@@ -296,88 +286,26 @@ export async function improveBulletPoints(
   countryCode?: string,
   targetCountryCode?: string,
   jobTitle?: string,
-  targetRole?: string
+  targetRole?: string,
+  opts?: TrackedInvokeOptions
 ): Promise<string[]> {
-  let regionalInstructions = "";
-  if (targetCountryCode) {
-    try {
-      const rules = await db.getCountryAtsRules(countryCode || "IN", targetCountryCode);
-      if (rules) {
-        regionalInstructions = `
-REGIONAL OPTIMIZATION INSTRUCTIONS (${countryCode || "IN"} -> ${targetCountryCode}):
-- Target country formatting style details: ${rules.preferredFormatting}
-- Target country keywords: ${Array.isArray(rules.keywords) ? rules.keywords.join(", ") : rules.keywords}
-- Regional Terminology conversions (prefer target terms): ${JSON.stringify(rules.regionalTerminology)}
-`;
-      }
-    } catch (e) {
-      console.warn("Failed to load regional rules for bullet improvement:", e);
-    }
-  }
-
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content:
-          STRICT_REWRITE_RULES +
-          "You are an expert resume writer. Rephrase bullet points to be clearer and better aligned with the target job — without adding new facts." +
-          (regionalInstructions ? `\n${regionalInstructions}` : ""),
-      },
-      {
-        role: "user",
-        content: `Candidate Job Title: ${jobTitle || role || "(Not specified)"}
-Target Role: ${targetRole || jobTitle || "(Not specified)"}
-Role: ${role} at ${company}
-Current Bullet Points (${currentBullets.length} total — return exactly ${currentBullets.length} rephrased bullets):
-${currentBullets.map((b) => `- ${b}`).join("\n")}
-
-Target Job Description:
-${jobDescription}
-
-Rephrase each bullet to:
-1. Use stronger action verbs while keeping the same facts
-2. Incorporate relevant JD keywords only where they match existing experience
-3. Stay concise and impactful
-4. NEVER add metrics, tools, or achievements not in the original bullets
-5. Return exactly ${currentBullets.length} bullets in the same order
-
-Return JSON: { "bullets": string[] }`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "improved_bullets",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            bullets: {
-              type: "array",
-              items: { type: "string" },
-              description: "Improved bullet points",
-            },
-          },
-          required: ["bullets"],
-        },
-      },
+  return rewriteBulletsViaPipeline(
+    {
+      role,
+      company,
+      currentBullets,
+      jobDescription,
+      countryCode,
+      targetCountryCode,
+      jobTitle,
+      targetRole,
     },
-    temperature: 0.2,
-  });
-
-  const content = response.choices[0]?.message.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("No response from LLM");
-  }
-
-  const result = JSON.parse(content);
-  const rawBullets: string[] = Array.isArray(result.bullets) ? result.bullets : [];
-  return filterGroundedBullets(currentBullets, rawBullets);
+    opts
+  );
 }
 
 /**
- * Generate improved/tailored professional summary
+ * Generate improved/tailored professional summary (C2 via pipeline).
  */
 export async function improveSummary(
   currentSummary: string,
@@ -385,90 +313,20 @@ export async function improveSummary(
   jobTitle?: string,
   countryCode?: string,
   targetCountryCode?: string,
-  targetRole?: string
+  targetRole?: string,
+  opts?: TrackedInvokeOptions
 ): Promise<string> {
-  if (!currentSummary.trim()) {
-    return "";
-  }
-
-  let regionalInstructions = "";
-  if (targetCountryCode) {
-    try {
-      const rules = await db.getCountryAtsRules(countryCode || "IN", targetCountryCode);
-      if (rules) {
-        regionalInstructions = `
-REGIONAL OPTIMIZATION INSTRUCTIONS (${countryCode || "IN"} -> ${targetCountryCode}):
-- Target country formatting style details: ${rules.preferredFormatting}
-- Target country keywords: ${Array.isArray(rules.keywords) ? rules.keywords.join(", ") : rules.keywords}
-- Regional Terminology conversions (prefer target terms): ${JSON.stringify(rules.regionalTerminology)}
-`;
-      }
-    } catch (e) {
-      console.warn("Failed to load regional rules for summary improvement:", e);
-    }
-  }
-
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content:
-          STRICT_REWRITE_RULES +
-          "You are an expert resume writer. Rewrite the professional summary to be compelling and aligned with the target job — using only facts from the current summary." +
-          (regionalInstructions ? `\n${regionalInstructions}` : ""),
-      },
-      {
-        role: "user",
-        content: `Current Summary: ${currentSummary || "(Not provided)"}
-Candidate Job Title: ${jobTitle || "(Not specified)"}
-Target Role: ${targetRole || jobTitle || "(Not specified)"}
-Target Job Description:
-${jobDescription}
-
-Rewrite to:
-1. Highlight skills/experience already stated
-2. Incorporate JD keywords only where they match existing experience
-3. Align tone with target role/job title
-4. Be concise (2-4 sentences, ~50-80 words)
-5. Do NOT invent credentials, degrees, years of experience, or companies
-6. Empty input → empty output, never fabricate
-
-Return JSON: { "summary": string }`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "improved_summary",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            summary: {
-              type: "string",
-              description: "The rewritten professional summary",
-            },
-          },
-          required: ["summary"],
-        },
-      },
+  return rewriteSummaryViaPipeline(
+    {
+      currentSummary,
+      jobDescription,
+      jobTitle,
+      countryCode,
+      targetCountryCode,
+      targetRole,
     },
-    temperature: 0.2,
-  });
-
-  const content = response.choices[0]?.message.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("No response from LLM");
-  }
-
-  const result = JSON.parse(content);
-  const rewritten = (result.summary || "").trim();
-
-  if (!rewritten || isAiGeneratedPhrase(rewritten)) {
-    return currentSummary;
-  }
-
-  return filterGroundedRewrite(currentSummary, rewritten, 0.15);
+    opts
+  );
 }
 
 export async function improveProjectBullets(
@@ -476,66 +334,19 @@ export async function improveProjectBullets(
   stack: string[],
   currentBullets: string[],
   jobDescription: string,
-  targetRole?: string
+  targetRole?: string,
+  opts?: TrackedInvokeOptions
 ): Promise<string[]> {
-  if (!currentBullets.length) return [];
-
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content:
-          STRICT_REWRITE_RULES +
-          "You are an expert resume writer. Rephrase project description bullets to better highlight technical impact and relevance to the target role — without adding new facts, tools, or metrics.",
-      },
-      {
-        role: "user",
-        content: `Project: ${projectName}
-Tech Stack: ${stack.join(", ")}
-Target Role: ${targetRole || "(Not specified)"}
-Current Bullets (${currentBullets.length} total — return exactly ${currentBullets.length}):
-${currentBullets.map((b) => `- ${b}`).join("\n")}
-
-Target Job Description:
-${jobDescription}
-
-Rephrase each bullet to:
-1. Lead with the technical action taken, not the tool name alone
-2. Surface JD-relevant keywords only where the underlying work already covers them
-3. Keep every tool/library/number exactly as stated
-4. Return exactly ${currentBullets.length} bullets, same order
-
-Return JSON: { "bullets": string[] }`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "improved_project_bullets",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            bullets: {
-              type: "array",
-              items: { type: "string" },
-            },
-          },
-          required: ["bullets"],
-        },
-      },
+  return rewriteProjectBulletsViaPipeline(
+    {
+      projectName,
+      stack,
+      currentBullets,
+      jobDescription,
+      targetRole,
     },
-    temperature: 0.2,
-  });
-
-  const content = response.choices[0]?.message.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("No response from LLM");
-  }
-
-  const result = JSON.parse(content);
-  const rawBullets: string[] = Array.isArray(result.bullets) ? result.bullets : [];
-  return filterGroundedBullets(currentBullets, rawBullets);
+    opts
+  );
 }
 
 export async function generateCoverLetter(input: {
@@ -548,7 +359,7 @@ export async function generateCoverLetter(input: {
   skills: string;
   jobDescription: string;
 }): Promise<string> {
-  const response = await invokeLLM({
+  const response = await trackedInvokeLLM("cover_letter", {
     messages: [
       {
         role: "system",
@@ -602,7 +413,7 @@ export async function generateLinkedInAbout(input: {
   skills: string;
   experienceHighlights: string;
 }): Promise<string> {
-  const response = await invokeLLM({
+  const response = await trackedInvokeLLM("linkedin", {
     messages: [
       {
         role: "system",
@@ -650,7 +461,7 @@ export async function atsAudit(resumeText: string, jobDescription: string): Prom
   weakBullets: { original: string; why: string }[];
   topFixes: string[];
 }> {
-  const response = await invokeLLM({
+  const response = await trackedInvokeLLM("ats_audit", {
     messages: [
       {
         role: "system",
@@ -707,7 +518,7 @@ export async function generateInterviewQuestions(
   gapQuestions: string[];
   suggestedTalkingPoints: string[];
 }> {
-  const response = await invokeLLM({
+  const response = await trackedInvokeLLM("interview", {
     messages: [
       {
         role: "system",
@@ -751,7 +562,7 @@ export async function generateRecruiterOutreach(input: {
   companyName: string;
   roleSummary: string;
 }): Promise<string> {
-  const response = await invokeLLM({
+  const response = await trackedInvokeLLM("outreach", {
     messages: [
       {
         role: "system",

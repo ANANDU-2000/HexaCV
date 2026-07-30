@@ -28,6 +28,8 @@ export interface Experience {
   endDate?: string;
   current: boolean;
   description: string[];
+  /** C4 — per-bullet manual-edit flags (parallel to description). */
+  descriptionEdited?: boolean[];
 }
 
 export interface Project {
@@ -92,6 +94,8 @@ export interface ResumeSection {
   content: {
     header?: ResumeHeader;
     summary?: string;
+    /** C4 — true when user manually edited the summary. */
+    summaryUserEdited?: boolean;
     skills?: SkillCategory[];
     experiences?: Experience[];
     projects?: Project[];
@@ -176,3 +180,81 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
 }
+
+// ==========================================
+// B3 — AI quotas / spend ceiling
+// ==========================================
+
+export type AiPlanTier = "guest" | "free" | "paid";
+
+export type AiQuotaConfig = {
+  guestDailyCalls: number;
+  freeDailyCalls: number;
+  paidDailyCalls: number;
+  dailySpendCeilingUsd: number;
+};
+
+export type AiQuotaStatus = {
+  planTier: AiPlanTier;
+  usedToday: number;
+  limit: number;
+  remaining: number;
+  globalSpendUsdToday: number;
+  globalSpendCeilingUsd: number;
+  premiumBlockedBySpend: boolean;
+};
+
+// ==========================================
+// C1 — thin pipeline stages
+// ==========================================
+
+export type AiPipelineStage = "extract" | "target" | "rewrite";
+
+export type PipelineTargetProfile = {
+  keywords: string[];
+  mustHaves: string[];
+  countryAtsNotes: string[];
+};
+
+export type PipelineExtractFacts = {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  roles: Array<{
+    company: string;
+    title: string;
+    startDate: string;
+    endDate: string;
+    bullets: string[];
+  }>;
+  skills: string[];
+  education: Array<{
+    institution: string;
+    degree: string;
+    field: string;
+    graduationDate: string;
+  }>;
+  otherFacts: string[];
+};
+
+export type ResumePipelineInput = {
+  sourceText: string;
+  jobTitle: string;
+  jobDescription?: string;
+  market?: string;
+  experienceLevel?: string;
+};
+
+// ==========================================
+// C3 — deterministic rewrite evaluation
+// ==========================================
+
+export type RewriteEvaluation = {
+  overall: number;
+  passed: boolean;
+  bannedHits: string[];
+  groundingScore: number;
+  hasRealContent: boolean;
+  reasons: string[];
+};

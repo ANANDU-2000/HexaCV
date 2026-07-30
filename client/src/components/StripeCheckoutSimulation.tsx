@@ -48,7 +48,7 @@ export default function StripeCheckoutSimulation() {
     setTimeout(() => {
       setIsProcessing(false);
       toast.error(
-        "Test checkout cannot change your plan. Configure Stripe for real payments, or ask an admin to grant a subscription."
+        "Legacy Stripe test checkout cannot change your plan. Use Billing → Upgrade (Razorpay), or ask an admin to grant a subscription."
       );
     }, 800);
   };

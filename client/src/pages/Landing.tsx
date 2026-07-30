@@ -152,9 +152,19 @@ const plans = [
 ];
 
 const footerLinks = {
-  product: ['Resume Builder', 'ATS Scanner', 'Pricing', 'Templates'],
+  product: [
+    { label: 'Resume Builder', href: '/builder' },
+    { label: 'ATS Scanner', href: '/dashboard/ats' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'Templates', href: '/builder' },
+  ],
   company: ['About Us', 'Blog', 'Careers', 'Contact'],
-  legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
+  legal: [
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms of Service', href: '/terms' },
+    { label: 'Cookie Policy', href: '/cookies' },
+    { label: 'Refund Policy', href: '/refund' },
+  ],
 };
 
 // ──────────────────────────── Component ────────────────────────────
@@ -176,7 +186,7 @@ export default function Landing() {
     { label: 'How It Works', href: '#how-it-works' },
     { label: 'Features', href: '#features' },
     { label: 'Testimonials', href: '#testimonials' },
-    { label: 'Pricing', href: '#pricing' },
+    { label: 'Pricing', href: '/pricing' },
   ];
 
   const handleSubscribe = () => {
@@ -214,10 +224,17 @@ export default function Landing() {
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
           {navLinks.map(link => (
-            <a key={link.label} href={link.href}
-              style={{ color: T.muted, fontSize: 14 }}
-              className="hover:text-orange-500 transition-colors font-medium no-underline"
-            >{link.label}</a>
+            link.href.startsWith('/') ? (
+              <Link key={link.label} href={link.href}
+                style={{ color: T.muted, fontSize: 14 }}
+                className="hover:text-orange-500 transition-colors font-medium no-underline"
+              >{link.label}</Link>
+            ) : (
+              <a key={link.label} href={link.href}
+                style={{ color: T.muted, fontSize: 14 }}
+                className="hover:text-orange-500 transition-colors font-medium no-underline"
+              >{link.label}</a>
+            )
           ))}
         </nav>
 
@@ -783,10 +800,10 @@ export default function Landing() {
                   <h4 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: '#f97316' }}>Product</h4>
                   <div className="flex flex-col gap-3">
                     {footerLinks.product.map(link => (
-                      <Link key={link} href={link === 'Resume Builder' ? '/builder' : link === 'Pricing' ? '#pricing' : '#'}
+                      <Link key={link.label} href={link.href}
                         style={{ color: '#94a3b8' }}
                         className="text-sm hover:text-orange-400 transition-all font-medium no-underline"
-                      >{link}</Link>
+                      >{link.label}</Link>
                     ))}
                   </div>
                 </div>
@@ -847,10 +864,10 @@ export default function Landing() {
               </div>
               <div className="flex gap-6">
                 {footerLinks.legal.map(link => (
-                  <a key={link} href="#"
+                  <Link key={link.label} href={link.href}
                     className="hover:text-orange-400 transition-colors no-underline"
                     style={{ color: '#64748b' }}
-                  >{link}</a>
+                  >{link.label}</Link>
                 ))}
               </div>
             </div>

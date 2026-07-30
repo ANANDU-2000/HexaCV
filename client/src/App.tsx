@@ -10,6 +10,11 @@ import ResumeBuilder from "./pages/ResumeBuilder";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Refund from "./pages/Refund";
+import CookiePolicy from "./pages/Cookie";
+import Pricing from "./pages/Pricing";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -18,6 +23,11 @@ function Router() {
       <Route path={"/"} component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/refund" component={Refund} />
+      <Route path="/cookies" component={CookiePolicy} />
+      <Route path="/pricing" component={Pricing} />
       <Route path="/builder/upload" component={ResumeBuilder} />
       <Route path="/builder/scratch" component={ResumeBuilder} />
       <Route path="/builder/ai" component={ResumeBuilder} />

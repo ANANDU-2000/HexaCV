@@ -48,7 +48,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(true);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
   const redirectParam = params.get('redirect') || '/';
@@ -206,8 +206,8 @@ export default function Register() {
             style={{ marginTop: 2, width: 16, height: 16, accentColor: T.accent, cursor: 'pointer' }} />
           <label htmlFor="terms" style={{ color: T.muted, fontSize: 12, lineHeight: 1.4, cursor: 'pointer' }}>
             I agree to HexaCv's{' '}
-            <span style={{ color: T.primaryText }} className="hover:underline font-medium">Terms of Service</span> and{' '}
-            <span style={{ color: T.primaryText }} className="hover:underline font-medium">Privacy Policy</span>
+            <Link href="/terms" style={{ color: T.primaryText }} className="hover:underline font-medium no-underline">Terms of Service</Link> and{' '}
+            <Link href="/privacy" style={{ color: T.primaryText }} className="hover:underline font-medium no-underline">Privacy Policy</Link>
           </label>
         </div>
 

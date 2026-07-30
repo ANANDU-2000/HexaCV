@@ -21,44 +21,61 @@ Clerk Dashboard → allowed origins / redirect URLs:
 - `http://localhost:3000`
 - `https://www.hexacv.online`
 
-## Payments (Razorpay — future; keys ready locally)
+## Payments (Razorpay primary — set live secrets before real charges)
 
 | Key | Notes |
 |---|---|
-| `RAZORPAY_KEY_ID` | Test: `rzp_test_…` |
-| `RAZORPAY_KEY_SECRET` | Server only |
-| `RAZORPAY_WEBHOOK_SECRET` | After webhook endpoint exists (Production first) |
 | `PAYMENT_PROVIDER` | `razorpay` |
+| `RAZORPAY_KEY_ID` | Live `rzp_live_…` or test `rzp_test_…` — **required for real Checkout** |
+| `RAZORPAY_KEY_SECRET` | Server only — **required before live charges** |
+| `RAZORPAY_WEBHOOK_SECRET` | Dashboard → Webhooks → `https://www.hexacv.online/api/webhooks/razorpay` (or your host) |
+| `SUBSCRIPTION_GRACE_DAYS` | Default `3` (F4 grace after period end / payment failure) |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Legacy only |
 
 ## App / safety
 
 | Key | Notes |
 |---|---|
 | `AUTH_PROVIDER` | `clerk` (marker; runtime still Manus until migration) |
+| `OWNER_OPEN_ID` | Server owner OpenID (keep in sync with `VITE_OWNER_OPEN_ID`) |
 | `AI_PAUSED` | Production: `false` |
+| `AI_RPM_LIMIT` | Default `60` (A3 failover at 80%) |
+| `AI_RPD_LIMIT` | Default `2000` (A3 failover at 90%) |
+| `AI_FALLBACK_MODELS` | Optional comma-separated model ids |
 | `DATABASE_URL` | Real MySQL URL when backend is hosted |
 | `JWT_SECRET` | Long random secret |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Current admin portal |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | CRM mock login targets until Clerk |
 
 ## LLM (as needed for production)
 
 Copy from local `.env` via Dashboard or `vercel env add` — prefer host secret store, never commit.
 
-`OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `BYNARA_API_KEY`, `TOKENROUTER_API_KEY`, `GEMINI_API_KEY`, `GEMINI_API_KEY_2`, `GROK_API_KEY`, `HUGGINGFACE_API_KEY`, etc.
+| Key | Category |
+|---|---|
+| `OPENROUTER_API_KEY` (+ URL/MODEL) | Cheap / free |
+| `OPENCODE_API_KEY`, `BYNARA_API_KEY`, `TOKENROUTER_API_KEY` | Rewrite |
+| `OPENAI_API_KEY` | Premium |
+| `OPENAI_MODEL` | e.g. `gpt-4o-mini` (stable API id only) |
+| `OPENAI_API_URL` | `https://api.openai.com/v1` |
+| `GEMINI_API_KEY`, `GEMINI_API_KEY_2`, `GROK_API_KEY` | Failover |
+
+Full map: [`docs/ai/MODELS_AND_KEYS.md`](../ai/MODELS_AND_KEYS.md).
 
 ## Stack note
 
-This monorepo is **Vite + Express**, not Next.js. The existing Vercel project (`hexacv-admin-web`) may not match this app’s build/start commands. Options:
+This monorepo is **Vite + Express**, not Next.js. **Production host for the full app is Render** (`render.yaml` — `npm run build` / `npm run start`, health `/api/health`, bind `0.0.0.0:$PORT`).
 
-1. Keep `hexacv-admin-web` separate; create a new Vercel or **Render** web service for this Express app.
-2. Or retarget this Vercel project’s Git + Build settings after connecting `ANANDU-2000/HexaCV`.
+The Vercel project (`prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`, hexacv.online) stays linked to `ANANDU-2000/HexaCV` for env continuity; long-running Express is not a natural Vercel Free fit. Point live DNS / webhooks at the Render service URL unless you run a split frontend/API setup.
 
-Suggested build (this repo):
+Suggested build (this repo / Render):
 
-- Install: `pnpm install`
-- Build: `pnpm run build`
-- Start: `pnpm run start`
+- Install: `npm install` (or `pnpm install`)
+- Build: `npm run build`
+- Start: `npm run start`
+- Health: `GET /api/health`
 - Node: 22.x
+
+Webhook: `https://<render-host>/api/webhooks/razorpay`
 
 ## CLI (if logged in)
 

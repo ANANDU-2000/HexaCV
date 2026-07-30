@@ -34,13 +34,6 @@ function StatMini({ icon: Icon, label, value }: { icon: any; label: string; valu
   );
 }
 
-const RECENT_RESUMES_MOCK = [
-  { id: 'r1', name: 'Software Engineer - Google', updated: '2 hours ago' },
-  { id: 'r2', name: 'Full Stack Developer', updated: 'Yesterday' },
-  { id: 'r3', name: 'Frontend Lead - Stripe', updated: '3 days ago' },
-  { id: 'r4', name: 'Product Manager', updated: '1 week ago' },
-];
-
 export default function DashboardHome() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -48,19 +41,18 @@ export default function DashboardHome() {
   const listResumesQuery = trpc.resume.list.useQuery(undefined, { enabled: !!user });
   const resumes = listResumesQuery.data || [];
 
+  // Live counts only — ATS/applications counters until dedicated APIs exist.
   const stats = [
-    { icon: FileText, label: 'Resumes Created', value: resumes.length || 0 },
-    { icon: Zap, label: 'ATS Scans Run', value: 12 },
-    { icon: Briefcase, label: 'Applications Tracked', value: 5 },
+    { icon: FileText, label: 'Resumes Created', value: resumes.length },
+    { icon: Zap, label: 'ATS Scans Run', value: 0 },
+    { icon: Briefcase, label: 'Applications Tracked', value: 0 },
   ];
 
-  const recentResumes = resumes.length > 0
-    ? resumes.slice(0, 4).map((r: any) => ({
-        id: r.id,
-        name: r.title || r.name || 'Untitled Resume',
-        updated: r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : 'Recently',
-      }))
-    : RECENT_RESUMES_MOCK;
+  const recentResumes = resumes.slice(0, 4).map((r: any) => ({
+    id: r.id,
+    name: r.title || r.name || 'Untitled Resume',
+    updated: r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : 'Recently',
+  }));
 
   const continueResume = resumes[0] || null;
 
@@ -111,8 +103,8 @@ export default function DashboardHome() {
               <Clock className="h-4.5 w-4.5" style={{ color: T.accent }} />
             </div>
             <div>
-              <p className="text-xs font-medium" style={{ color: T.accent }}>Last login</p>
-              <p className="text-xs" style={{ color: T.muted }}>Today, 9:42 AM</p>
+              <p className="text-xs font-medium" style={{ color: T.accent }}>Account</p>
+              <p className="text-xs" style={{ color: T.muted }}>{user?.email || 'Signed in'}</p>
             </div>
           </div>
         )}
@@ -128,16 +120,22 @@ export default function DashboardHome() {
             </button>
           </div>
           <div className="divide-y" style={{ borderColor: T.outlineVariant }}>
-            {recentResumes.map((r: any) => (
-              <button key={r.id} onClick={() => setLocation('/dashboard/builder/edit')}
-                className="flex items-center justify-between w-full px-4 py-3 text-left transition">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold truncate" style={{ color: T.text }}>{r.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: T.muted }}>{r.updated}</p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0" style={{ color: T.muted }} />
-              </button>
-            ))}
+            {recentResumes.length === 0 ? (
+              <p className="px-4 py-6 text-center text-xs" style={{ color: T.muted }}>
+                No resumes yet. Create one from Quick Actions.
+              </p>
+            ) : (
+              recentResumes.map((r: any) => (
+                <button key={r.id} onClick={() => setLocation('/dashboard/builder/edit')}
+                  className="flex items-center justify-between w-full px-4 py-3 text-left transition">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: T.text }}>{r.name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: T.muted }}>{r.updated}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0" style={{ color: T.muted }} />
+                </button>
+              ))
+            )}
           </div>
         </div>
       ) : (
@@ -147,18 +145,25 @@ export default function DashboardHome() {
           <div>
             <h2 className="text-sm font-bold mb-3" style={{ color: T.text }}>Recent Resumes</h2>
             <div className="grid grid-cols-2 gap-3">
-              {recentResumes.map((r: any) => (
-                <button key={r.id} onClick={() => setLocation('/dashboard/builder/edit')}
-                  className="rounded-xl border p-4 text-left transition hover:opacity-90"
-                  style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-                  <div className="flex h-16 w-full items-center justify-center rounded-lg mb-3"
-                    style={{ backgroundColor: T.elevated }}>
-                    <FileText className="h-6 w-6" style={{ color: T.primaryText }} />
-                  </div>
-                  <p className="text-sm font-bold truncate" style={{ color: T.text }}>{r.name}</p>
-                  <p className="text-xs mt-1" style={{ color: T.muted }}>{r.updated}</p>
-                </button>
-              ))}
+              {recentResumes.length === 0 ? (
+                <p className="col-span-2 rounded-xl border px-4 py-8 text-center text-xs"
+                  style={{ borderColor: T.outlineVariant, backgroundColor: T.surface, color: T.muted }}>
+                  No resumes yet. Use Quick Actions to create your first one.
+                </p>
+              ) : (
+                recentResumes.map((r: any) => (
+                  <button key={r.id} onClick={() => setLocation('/dashboard/builder/edit')}
+                    className="rounded-xl border p-4 text-left transition hover:opacity-90"
+                    style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+                    <div className="flex h-16 w-full items-center justify-center rounded-lg mb-3"
+                      style={{ backgroundColor: T.elevated }}>
+                      <FileText className="h-6 w-6" style={{ color: T.primaryText }} />
+                    </div>
+                    <p className="text-sm font-bold truncate" style={{ color: T.text }}>{r.name}</p>
+                    <p className="text-xs mt-1" style={{ color: T.muted }}>{r.updated}</p>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 

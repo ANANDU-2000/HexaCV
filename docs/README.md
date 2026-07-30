@@ -16,10 +16,10 @@ how to start work in Cursor.
 | 4 | [`ops/CI_CD.md`](./ops/CI_CD.md) | Pipeline review + gaps | Reference when touching `.github/workflows` |
 | 5 | [`product/roadmap/V2_ROADMAP_v1.md`](./product/roadmap/V2_ROADMAP_v1.md) | Original reality-check | Historical, still true in spirit |
 | 6 | [`product/roadmap/V2_ROADMAP.md`](./product/roadmap/V2_ROADMAP.md) | Pipeline + quality layers | Check ARCHITECTURE §1 before trusting code-location claims |
-| 7 | [`product/roadmap/V3_ADMIN_LIMITS_AND_LONGTERM.md`](./product/roadmap/V3_ADMIN_LIMITS_AND_LONGTERM.md) | Usage/budget safety plan | Still the plan, not yet built |
-| 8 | [`product/roadmap/V4_MASTER_BUILD_PLAN.md`](./product/roadmap/V4_MASTER_BUILD_PLAN.md) | Ordered Phase A–E task list | Still the plan |
+| 7 | [`product/roadmap/V3_ADMIN_LIMITS_AND_LONGTERM.md`](./product/roadmap/V3_ADMIN_LIMITS_AND_LONGTERM.md) | Usage/budget safety plan | **B1–B3 shipped** — treat as historical design notes |
+| 8 | [`product/roadmap/V4_MASTER_BUILD_PLAN.md`](./product/roadmap/V4_MASTER_BUILD_PLAN.md) | Ordered Phase A–E task list | Historical — status lives in BACKLOG_CHECKLIST |
 | 9–10 | [`design/WIREFRAMES.md`](./design/WIREFRAMES.md) | Part A = existing pages; Part B = planned pages | Part A matches `client/src/pages/*` |
-| 11 | [`payments/PAYMENTS_LEGAL_REFERRAL.md`](./payments/PAYMENTS_LEGAL_REFERRAL.md) | Payment/legal/referral design | **Assumes Razorpay — resolve Stripe-vs-Razorpay (ARCHITECTURE §1) before treating F2 as literal** |
+| 11 | [`payments/PAYMENTS_LEGAL_REFERRAL.md`](./payments/PAYMENTS_LEGAL_REFERRAL.md) | Payment/legal/referral design | **Razorpay primary** (F-decide locked); G1–G3 legal pages + F5 refund |
 | 12 | [`product/roadmap/V6_MARKETING_ADMIN.md`](./product/roadmap/V6_MARKETING_ADMIN.md) | SEO/GA/GSC/blog CRM plan | Plan, not built |
 | 13 | [`design/DESIGN_STRICT.md`](./design/DESIGN_STRICT.md) | UI/UX enforceable rules | Always active (also in project rules §4) |
 | 14 | [`ai/PROMPT_AND_FEEDBACK_RULES.md`](./ai/PROMPT_AND_FEEDBACK_RULES.md) | Honest-copy rules + feedback loop | Always active (also in project rules §5) |
@@ -33,19 +33,22 @@ how to start work in Cursor.
 
 | File | Purpose |
 |---|---|
+| [`ai/PIPELINE.md`](./ai/PIPELINE.md) | **AI stages as-built vs planned + feedback roadmap** |
+| [`ai/MODELS_AND_KEYS.md`](./ai/MODELS_AND_KEYS.md) | Provider order, env keys, model IDs |
+| [`ai/ADMIN_AND_ENV.md`](./ai/ADMIN_AND_ENV.md) | Admin / owner / CRM env map |
 | [`architecture/DATA_MODEL.md`](./architecture/DATA_MODEL.md) | App-level shapes + illustrative SQL (live schema = `drizzle/schema.ts`) |
 | [`ops/BUILD_AND_DEPLOYMENT.md`](./ops/BUILD_AND_DEPLOYMENT.md) | Build + deploy |
 | [`ops/VERCEL_ENV.md`](./ops/VERCEL_ENV.md) | Vercel env key checklist (Clerk / Razorpay / AI) |
 | [`ops/PRODUCTION_CHECKLIST.md`](./ops/PRODUCTION_CHECKLIST.md) | Production checklist |
 | [`ai/AI_PROMPT_GUIDE.md`](./ai/AI_PROMPT_GUIDE.md) | AI prompt guide |
+| [`tasks/NEXT.md`](./tasks/NEXT.md) | Next coding task pointer — **always current** |
+| [`tasks/BACKLOG_CHECKLIST.md`](./tasks/BACKLOG_CHECKLIST.md) | Living page/feature/flow/validate matrix |
 | [`user/USER_GUIDE.md`](./user/USER_GUIDE.md) | End-user guide |
 | [`design/DESIGN_AND_PROMPTS.md`](./design/DESIGN_AND_PROMPTS.md) | Design values & prompts |
 | [`design/TEMPLATE_REFERENCE.md`](./design/TEMPLATE_REFERENCE.md) | Template reference |
 | [`design/DOCUMENTATION_LEGACY.md`](./design/DOCUMENTATION_LEGACY.md) | Historical mega-doc — superseded |
 
-**The short version:** #1 and #3 you read now. #19 is what you paste
-into Cursor, one block at a time, starting with P1. Everything else
-is reference you open when the task prompt tells you to.
+**The short version:** #1 and #3 you read now. Then follow [`tasks/NEXT.md`](./tasks/NEXT.md) only. Track status in [`tasks/BACKLOG_CHECKLIST.md`](./tasks/BACKLOG_CHECKLIST.md). A–C + Razorpay + F4 are done.
 
 ---
 

@@ -11,7 +11,9 @@ is buying "keep this / download this," not "unlock a preview."
 
 ---
 
-## F. Payments (Razorpay)
+## F. Payments — **Razorpay primary (F-decide flipped)**
+
+> **Decision (2026):** HexaCV uses **Razorpay** as primary checkout + webhook (`server/payments/razorpay.ts`, `billing.createCheckoutSession` / `verifyRazorpayPayment`, `POST /api/webhooks/razorpay`, `payment_orders`). Stripe is **legacy** (`stripeWebhook.ts` + F3 `processed_stripe_events`) for existing subscribers only. `PAYMENT_PROVIDER=razorpay` in `.env.example`. Do **not** dual-live two checkout UIs. **F4 grace shipped** (3 days). Next: **G1–G3** legal placeholders before live KYC; then F5 refund.
 
 ### F0. What triggers a payment prompt (single source of truth)
 Only these three moments ever show a payment screen — never
@@ -36,30 +38,16 @@ the single fastest way to lose trust built up over the free flow.
 | Monthly | ₹199–399 | Unlimited downloads | Standard unlocked | Main plan |
 | Pro | ₹499–799 | Unlimited + Premium (Polish stage) | Standard + Premium | For senior/leadership profiles, JD-heavy iteration |
 
-Exact prices are a pricing decision, not an engineering one — the
-table above is the *shape* (one-time free, then pay-per-use OR
-subscribe), not the final numbers. Confirm numbers before building
-F3.
+Exact prices locked for engineering (Orders path): **Pro ₹399**, **Enterprise ₹799** (paise in `server/payments/razorpay.ts`). Other rows in the table remain product-shape notes.
 
-### F2. Razorpay setup — scope
-- Scope: new `server/payments/razorpay.ts`, `payment_orders` table,
-  webhook route `server/routes/webhooks/razorpay.ts`
-- Task: standard Razorpay Orders API flow —
-  1. Client requests a checkout → server creates a Razorpay Order
-     (server-side, amount never trusted from client)
-  2. Razorpay Checkout.js opens client-side with that order ID
-  3. On success, Razorpay returns `razorpay_payment_id`,
-     `razorpay_order_id`, `razorpay_signature` to the client
-  4. **Client-reported success is never trusted alone** — server
-     verifies the signature (HMAC with key secret) AND/OR waits for
-     the webhook before unlocking the download. Both paths write to
-     `payment_orders` with status; download unlocks only when status
-     = `verified`.
-- Validate: force a client-side "fake success" (edit the JS response
-  in devtools to claim success without a real payment) — confirm
-  server still shows the download as locked because the webhook/
-  signature check never fired. This is the direct fix for "fake
-  payment" edge case.
+### F2. Razorpay setup — **shipped (Orders path)**
+- Scope: `server/payments/razorpay.ts`, `payment_orders` table,
+  webhook `server/razorpayWebhook.ts` → `POST /api/webhooks/razorpay`
+- Flow: server creates Order (amount never from client) → Checkout.js
+  → `verifyRazorpayPayment` HMAC **and/or** webhook → status
+  `verified` → `updateSubscription(..., provider: razorpay)`
+- Idempotent: re-verify / re-webhook on already-`verified` order is a no-op
+- Validate: `npx tsx scripts/validate-razorpay-orders.mts`
 
 ### F3. Idempotency + race conditions
 - Scope: `payment_orders` table, unique constraint on
@@ -71,20 +59,13 @@ F3.
 - Validate: manually re-send the same webhook payload twice, confirm
   the user's unlocked-downloads count only increases once
 
-### F4. Subscription lifecycle (Monthly/Pro tiers)
-- Scope: `subscriptions` table (userId, tier, razorpaySubId, status,
-  currentPeriodEnd)
-- Task: handle Razorpay subscription webhooks — `activated`,
-  `charged` (renewal), `cancelled`, `paused`, `halted` (payment
-  failed) — map each to the user's `planTier` and `quotaResetAt`
-  from V3 §4
-- Task: on `halted` (card declined on renewal), **do not hard-cut**
-  access mid-session — grace period of 3 days with a visible banner
-  ("payment failed, update your card by [date] to keep Pro access")
-  before downgrading to Free
-- Validate: simulate a `halted` event in Razorpay's test mode,
-  confirm banner appears and access persists through the grace
-  window, then downgrades correctly after it expires
+### F4. Subscription lifecycle / grace — **shipped (Orders + endDate path)**
+- Scope: `subscriptions.graceUntil`, `server/subscriptionGrace.ts`,
+  BillingPortal grace banner, webhook `payment.failed` /
+  `subscription.halted` → enter grace (no hard-cut)
+- Grace: **3 days** (`SUBSCRIPTION_GRACE_DAYS`, default 3)
+- Validate: `npx tsx scripts/validate-f4-grace.mts`
+- Full Razorpay Subscriptions product still out of scope
 
 ### F5. Refund handling
 - Scope: admin panel (Page 9) new action, `payment_orders` status
