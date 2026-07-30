@@ -13,6 +13,8 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+# Never commit MCP configs that may hold merchant tokens
+.cursor/mcp.json
 
 # IDE and editor files
 .vscode/
@@ -106,9 +108,13 @@ temp/
 *.sqlite
 *.sqlite3
 
-# Webdev artifacts (checkpoint zips, migrations, etc.)
-.webdev/
+# Legacy duplicate archive — canonical docs live under docs/
+hexacv/
+
 
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
 .project-config.json
+
+scripts/_render-env-payload.json
+scripts/_sync-render-env-tmp.mjs

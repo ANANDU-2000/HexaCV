@@ -1,18 +1,15 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Card, CardContent } from "./ui/card";
-import { Check, ShieldCheck, Lock, CreditCard, ArrowLeft, RefreshCw, Sparkles, Building } from "lucide-react";
+import { Check, ShieldCheck, Lock, CreditCard, ArrowLeft, RefreshCw, Sparkles } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 
 export default function StripeCheckoutSimulation() {
   const { user } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -21,8 +18,6 @@ export default function StripeCheckoutSimulation() {
   const [cardCVC, setCardCVC] = useState("");
   const [cardName, setCardName] = useState("");
   const [zipCode, setZipCode] = useState("");
-
-  const upgradePlanMutation = trpc.billing.upgradePlan.useMutation();
 
   // Extract tier from query parameters
   const params = new URLSearchParams(window.location.search);
@@ -48,46 +43,15 @@ export default function StripeCheckoutSimulation() {
     }
 
     setIsProcessing(true);
-    
-    // Simulate stripe auth processing
-    setTimeout(async () => {
-      try {
-        await upgradePlanMutation.mutateAsync({ tier });
-        setSuccess(true);
-        toast.success(`Welcome to the ${planName} Plan!`);
-      } catch (err: any) {
-        toast.error(err?.message || "Stripe authorization failed.");
-      } finally {
-        setIsProcessing(false);
-      }
-    }, 2000);
+    // Simulated checkout must not write subscription tiers — that was a free-upgrade hole.
+    // Real upgrades go through Stripe webhook; manual grants are admin-only.
+    setTimeout(() => {
+      setIsProcessing(false);
+      toast.error(
+        "Legacy Stripe test checkout cannot change your plan. Use Billing → Upgrade (Razorpay), or ask an admin to grant a subscription."
+      );
+    }, 800);
   };
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full border border-slate-200 shadow-xl rounded-2xl bg-white p-8 text-center animate-scale-in">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-8 h-8 text-green-600 animate-bounce" />
-          </div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Payment Successful!</h2>
-          <p className="text-slate-600 mt-2">
-            Your workspace has been successfully upgraded to the <strong className="uppercase text-blue-600 font-bold">{tier}</strong> plan.
-          </p>
-          <div className="border-t border-slate-100 my-6 pt-6 text-sm text-slate-500">
-            A confirmation invoice has been sent to <strong>{email || user?.email}</strong>.
-          </div>
-          <Button
-            onClick={() => setLocation("/dashboard/billing")}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md transition"
-            size="lg"
-          >
-            Go to Billing Dashboard
-          </Button>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">

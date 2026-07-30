@@ -14,56 +14,22 @@ const USERS_STORAGE_KEY = "hexacv_users";
 const CURRENT_USER_KEY = "hexacv_current_user";
 const RUNTIME_USER_INFO_KEY = "manus-runtime-user-info";
 
-const DEFAULT_USERS: LocalUser[] = [
-  {
-    id: 1,
-    openId: "admin-key-owner",
-    name: "Surag (Admin)",
-    email: "admin@hexacv.com",
-    password: "1234@hexaCv",
-    role: "admin",
-    loginMethod: "email",
-    createdAt: new Date().toISOString(),
-    lastSignedIn: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    openId: "mock-google-test-candidate",
-    name: "Google Candidate",
-    email: "google.candidate@gmail.com",
-    role: "user",
-    loginMethod: "google",
-    createdAt: new Date().toISOString(),
-    lastSignedIn: new Date().toISOString(),
-  },
-];
-
 /**
- * Get all registered users from browser localStorage
+ * Get users from browser localStorage. No seeded fake accounts.
  */
 export function getStoredUsers(): LocalUser[] {
-  if (typeof window === "undefined") return DEFAULT_USERS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
-      return DEFAULT_USERS;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
-      return DEFAULT_USERS;
-    }
-    return parsed;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.error("[LocalStorageDb] Failed to parse users:", err);
-    return DEFAULT_USERS;
+    return [];
   }
 }
 
-/**
- * Save user list to localStorage
- */
 export function saveStoredUsers(users: LocalUser[]): void {
   if (typeof window === "undefined") return;
   try {
@@ -73,9 +39,31 @@ export function saveStoredUsers(users: LocalUser[]): void {
   }
 }
 
-/**
- * Register a new user in browser localStorage DB
- */
+/** Clear legacy mock seeds (Google Candidate, hardcoded admin) once. */
+export function purgeLegacyMockUsers(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const users = getStoredUsers().filter(
+      (u) =>
+        !u.openId?.startsWith("mock-") &&
+        u.email !== "google.candidate@gmail.com" &&
+        u.email !== "candidate@hexacv.local"
+    );
+    saveStoredUsers(users);
+    const current = getCurrentLocalUser();
+    if (
+      current &&
+      (current.openId?.startsWith("mock-") ||
+        current.email === "google.candidate@gmail.com" ||
+        current.name === "Google Candidate")
+    ) {
+      logoutLocalUser();
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function registerLocalUser(
   name: string,
   email: string,
@@ -83,12 +71,14 @@ export function registerLocalUser(
 ): { success: boolean; user?: LocalUser; message?: string } {
   const users = getStoredUsers();
   const normalizedEmail = email.toLowerCase().trim();
+  if (!normalizedEmail.includes("@")) {
+    return { success: false, message: "Valid email required." };
+  }
 
   const existing = users.find(
     (u) => u.email.toLowerCase().trim() === normalizedEmail
   );
   if (existing) {
-    // User already registered - automatically log them in
     setCurrentLocalUser(existing);
     return {
       success: true,
@@ -97,18 +87,13 @@ export function registerLocalUser(
     };
   }
 
-  const isAdmin = normalizedEmail === "admin@hexacv.com" || normalizedEmail.includes("admin");
-  const openId = isAdmin
-    ? "admin-key-owner"
-    : `local-user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
   const newUser: LocalUser = {
     id: users.length + 1,
-    openId,
-    name: name.trim() || "Candidate User",
+    openId: `local-user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    name: name.trim() || normalizedEmail.split("@")[0] || "User",
     email: normalizedEmail,
     password: password || undefined,
-    role: isAdmin ? "admin" : "user",
+    role: "user",
     loginMethod: "email",
     createdAt: new Date().toISOString(),
     lastSignedIn: new Date().toISOString(),
@@ -125,98 +110,52 @@ export function registerLocalUser(
   };
 }
 
-/**
- * Login user against local storage database
- */
 export function loginLocalUser(
   email: string,
   password?: string
 ): { success: boolean; user?: LocalUser; message?: string } {
   const users = getStoredUsers();
   const normalizedEmail = email.toLowerCase().trim();
-
-  // Admin special fallback check
-  if (normalizedEmail === "admin@hexacv.com") {
-    if (password && password !== "1234@hexaCv") {
-      return { success: false, message: "Invalid credentials for admin account." };
-    }
-    const adminUser = users.find((u) => u.email === "admin@hexacv.com") || DEFAULT_USERS[0];
-    adminUser.lastSignedIn = new Date().toISOString();
-    setCurrentLocalUser(adminUser);
-    return { success: true, user: adminUser };
-  }
-
   const found = users.find(
     (u) => u.email.toLowerCase().trim() === normalizedEmail
   );
 
   if (!found) {
-    // Create new account automatically if user is logging in with a new email
-    return registerLocalUser(
-      email.split("@")[0] || "User",
-      email,
-      password
-    );
+    return { success: false, message: "No account found for that email." };
   }
 
-  if (found.password && password && found.password !== password) {
-    return { success: false, message: "Incorrect password. Please try again." };
+  if (found.password && password !== undefined && found.password !== password) {
+    return { success: false, message: "Invalid credentials." };
   }
 
   found.lastSignedIn = new Date().toISOString();
   saveStoredUsers(users);
   setCurrentLocalUser(found);
-
   return { success: true, user: found };
 }
 
-/**
- * Set the currently authenticated user in localStorage
- */
-export function setCurrentLocalUser(user: LocalUser | null): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (user) {
-      const sanitizedUser = {
-        id: user.id,
-        openId: user.openId,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        loginMethod: user.loginMethod || "email",
-        lastSignedIn: user.lastSignedIn || new Date().toISOString(),
-      };
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(sanitizedUser));
-      localStorage.setItem(RUNTIME_USER_INFO_KEY, JSON.stringify(sanitizedUser));
-      localStorage.removeItem("hexacv_logged_out");
-    } else {
-      localStorage.removeItem(CURRENT_USER_KEY);
-      localStorage.removeItem(RUNTIME_USER_INFO_KEY);
-      localStorage.setItem("hexacv_logged_out", "true");
-    }
-  } catch (err) {
-    console.error("[LocalStorageDb] Failed to set current user:", err);
-  }
-}
-
-/**
- * Get current active user from localStorage
- */
 export function getCurrentLocalUser(): LocalUser | null {
   if (typeof window === "undefined") return null;
-  if (localStorage.getItem("hexacv_logged_out") === "true") return null;
   try {
+    if (localStorage.getItem("hexacv_logged_out") === "true") return null;
     const raw = localStorage.getItem(CURRENT_USER_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (err) {
+    return JSON.parse(raw) as LocalUser;
+  } catch {
     return null;
   }
 }
 
-/**
- * Logout current active user from localStorage
- */
+export function setCurrentLocalUser(user: LocalUser): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("hexacv_logged_out");
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  localStorage.setItem(RUNTIME_USER_INFO_KEY, JSON.stringify(user));
+}
+
 export function logoutLocalUser(): void {
-  setCurrentLocalUser(null);
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(CURRENT_USER_KEY);
+  localStorage.removeItem(RUNTIME_USER_INFO_KEY);
+  localStorage.setItem("hexacv_logged_out", "true");
 }

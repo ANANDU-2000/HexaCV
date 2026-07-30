@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import type { RewriteEvaluation } from "@shared/types";
 
 /** Shared validation helpers for parsing and AI rewrite — keeps only genuine document content */
 
@@ -279,5 +280,119 @@ export function validateGeneratedResume(resume: any): any {
     achievements,
     languages,
     references,
+  };
+}
+
+function collectResumeTextSnippets(resume: any): string[] {
+  const out: string[] = [];
+  if (resume?.summary) out.push(String(resume.summary));
+  if (resume?.header?.name) out.push(String(resume.header.name));
+  for (const exp of Array.isArray(resume?.experiences) ? resume.experiences : []) {
+    if (exp?.company) out.push(String(exp.company));
+    if (exp?.role) out.push(String(exp.role));
+    for (const b of Array.isArray(exp?.description) ? exp.description : []) {
+      if (b) out.push(String(b));
+    }
+  }
+  for (const proj of Array.isArray(resume?.projects) ? resume.projects : []) {
+    if (proj?.description) out.push(String(proj.description));
+    if (proj?.name) out.push(String(proj.name));
+  }
+  for (const a of Array.isArray(resume?.achievements) ? resume.achievements : []) {
+    if (a) out.push(String(a));
+  }
+  return out.filter((t) => t.trim().length > 0);
+}
+
+export function resumeHasRealContent(resume: any): boolean {
+  return !!(
+    resume?.header?.name ||
+    resume?.summary ||
+    (Array.isArray(resume?.skills) && resume.skills.length > 0) ||
+    (Array.isArray(resume?.experiences) && resume.experiences.length > 0) ||
+    (Array.isArray(resume?.projects) && resume.projects.length > 0) ||
+    (Array.isArray(resume?.educations) && resume.educations.length > 0)
+  );
+}
+
+/**
+ * C3 — deterministic evaluator (no LLM judge).
+ * Fail if overall < 70, no real content, or banned filler still present.
+ */
+export function evaluateRewriteDeterministic(
+  resume: any,
+  sourceText: string
+): RewriteEvaluation {
+  const reasons: string[] = [];
+  const bannedHits: string[] = [];
+  const snippets = collectResumeTextSnippets(resume);
+
+  for (const snippet of snippets) {
+    for (const pattern of AI_GENERATED_PHRASES) {
+      if (pattern.test(snippet)) {
+        const hit = snippet.slice(0, 80);
+        if (!bannedHits.includes(hit)) bannedHits.push(hit);
+      }
+    }
+  }
+  if (bannedHits.length > 0) {
+    reasons.push(
+      `Remove banned/filler phrases (e.g. "${bannedHits[0].slice(0, 40)}…")`
+    );
+  }
+
+  const hasRealContent = resumeHasRealContent(resume);
+  if (!hasRealContent) {
+    reasons.push("Resume has no usable grounded content after validation");
+  }
+
+  const source = (sourceText || "").trim();
+  let groundingScore = 100;
+  if (!source) {
+    groundingScore = hasRealContent ? 50 : 0;
+    if (!source && hasRealContent) {
+      reasons.push("No source text provided for grounding check");
+    }
+  } else {
+    const checkable = snippets.filter((s) => s.length >= 8);
+    if (checkable.length === 0) {
+      groundingScore = 0;
+      reasons.push("No text snippets available to ground against source");
+    } else {
+      const groundedCount = checkable.filter((s) =>
+        textGroundedInSource(s, source, 0.4)
+      ).length;
+      groundingScore = Math.round((groundedCount / checkable.length) * 100);
+      if (groundingScore < 50) {
+        reasons.push(
+          `Weak grounding vs source (${groundingScore}% of snippets match)`
+        );
+      }
+    }
+  }
+
+  const contentScore = hasRealContent ? 100 : 0;
+  const bannedPenalty =
+    bannedHits.length === 0 ? 100 : Math.max(0, 100 - bannedHits.length * 25);
+
+  // content 40 + grounding 40 + banned 20
+  const overall = Math.round(
+    contentScore * 0.4 + groundingScore * 0.4 + bannedPenalty * 0.2
+  );
+
+  const passed =
+    overall >= 70 && hasRealContent && bannedHits.length === 0;
+
+  if (!passed && overall < 70 && reasons.length === 0) {
+    reasons.push(`Overall quality score ${overall} is below 70`);
+  }
+
+  return {
+    overall,
+    passed,
+    bannedHits,
+    groundingScore,
+    hasRealContent,
+    reasons,
   };
 }

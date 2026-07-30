@@ -75,10 +75,10 @@ const steps = [
 ];
 
 const stats = [
-  { icon: BarChart3, value: '10,000+', label: 'Resumes Built' },
-  { icon: Star, value: '4.8/5', label: 'User Rating' },
-  { icon: Clock, value: '< 5 min', label: 'Time to First Resume' },
-  { icon: Globe, value: '95%', label: 'ATS Pass Rate' },
+  { icon: BarChart3, value: 'ATS-first', label: 'Templates designed for scanners' },
+  { icon: Clock, value: '< 5 min', label: 'Time to first draft' },
+  { icon: Shield, value: 'Private', label: 'Your file stays in your session' },
+  { icon: Globe, value: 'Multi-country', label: 'Region-aware formatting' },
 ];
 
 const testimonials = [
@@ -152,9 +152,19 @@ const plans = [
 ];
 
 const footerLinks = {
-  product: ['Resume Builder', 'ATS Scanner', 'Pricing', 'Templates'],
+  product: [
+    { label: 'Resume Builder', href: '/builder' },
+    { label: 'ATS Scanner', href: '/dashboard/ats' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'Templates', href: '/builder' },
+  ],
   company: ['About Us', 'Blog', 'Careers', 'Contact'],
-  legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
+  legal: [
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms of Service', href: '/terms' },
+    { label: 'Cookie Policy', href: '/cookies' },
+    { label: 'Refund Policy', href: '/refund' },
+  ],
 };
 
 // ──────────────────────────── Component ────────────────────────────
@@ -176,7 +186,7 @@ export default function Landing() {
     { label: 'How It Works', href: '#how-it-works' },
     { label: 'Features', href: '#features' },
     { label: 'Testimonials', href: '#testimonials' },
-    { label: 'Pricing', href: '#pricing' },
+    { label: 'Pricing', href: '/pricing' },
   ];
 
   const handleSubscribe = () => {
@@ -214,31 +224,49 @@ export default function Landing() {
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
           {navLinks.map(link => (
-            <a key={link.label} href={link.href}
-              style={{ color: T.muted, fontSize: 14 }}
-              className="hover:text-orange-500 transition-colors font-medium no-underline"
-            >{link.label}</a>
+            link.href.startsWith('/') ? (
+              <Link key={link.label} href={link.href}
+                style={{ color: T.muted, fontSize: 14 }}
+                className="hover:text-orange-500 transition-colors font-medium no-underline"
+              >{link.label}</Link>
+            ) : (
+              <a key={link.label} href={link.href}
+                style={{ color: T.muted, fontSize: 14 }}
+                className="hover:text-orange-500 transition-colors font-medium no-underline"
+              >{link.label}</a>
+            )
           ))}
         </nav>
 
         {/* Desktop right */}
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated ? (
-            <Button variant="outline" size="sm" onClick={() => logout()}
-              style={{ borderRadius: 8, borderColor: T.border, color: T.text, fontSize: 13 }}
-              className="font-medium"
-            >Log out</Button>
+            <>
+              <Link href="/dashboard/settings">
+                <Button variant="ghost" size="sm"
+                  style={{ color: T.text, fontSize: 13, minHeight: 44 }}
+                  className="font-medium no-underline max-w-[180px] truncate"
+                  aria-label="Account settings"
+                >
+                  {user?.name || user?.email || "Account"}
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={() => logout()}
+                style={{ borderRadius: 8, borderColor: T.border, color: T.text, fontSize: 13, minHeight: 44 }}
+                className="font-medium"
+              >Log out</Button>
+            </>
           ) : (
             <Link href="/login">
               <Button variant="ghost" size="sm"
-                style={{ color: T.muted, fontSize: 13 }}
+                style={{ color: T.muted, fontSize: 13, minHeight: 44 }}
                 className="font-medium no-underline"
               >Log in</Button>
             </Link>
           )}
           <Link href="/builder">
             <Button size="sm"
-              style={{ backgroundColor: T.accent, color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+              style={{ backgroundColor: T.accent, color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, minHeight: 44 }}
               className="hover:bg-orange-600 transition-all px-4 no-underline"
             >
               Build Your Resume
@@ -275,16 +303,24 @@ export default function Landing() {
         ))}
         <div className="flex flex-col gap-3 mt-8">
           {isAuthenticated ? (
-            <Button variant="outline" className="w-full" onClick={() => logout()}
-              style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log out</Button>
+            <>
+              <Link href="/dashboard/settings">
+                <Button variant="outline" className="w-full min-h-11"
+                  style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>
+                  {user?.name || "Account"} — Settings
+                </Button>
+              </Link>
+              <Button variant="outline" className="w-full min-h-11" onClick={() => logout()}
+                style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log out</Button>
+            </>
           ) : (
             <Link href="/login">
-              <Button variant="outline" className="w-full"
+              <Button variant="outline" className="w-full min-h-11"
                 style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log in</Button>
             </Link>
           )}
           <Link href="/builder">
-            <Button className="w-full"
+            <Button className="w-full min-h-11"
               style={{ backgroundColor: T.accent, color: '#fff', borderRadius: 8 }}>Build Your Resume</Button>
           </Link>
         </div>
@@ -355,7 +391,7 @@ export default function Landing() {
 
                 {/* Trust indicators */}
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-5 mt-8 text-sm font-medium" style={{ color: T.muted }}>
-                  <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> No sign-up needed</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> {isAuthenticated ? "Signed in — builds sync when saved" : "Guest mode available"}</span>
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> 100% private</span>
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> Free PDF export</span>
                 </div>
@@ -430,7 +466,7 @@ export default function Landing() {
                       alignSelf: 'flex-start',
                     }}>
                       <CheckCircle2 className="w-3.5 h-3.5" style={{ color: T.success }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: T.success }}>ATS Score: 92%</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: T.success }}>ATS-oriented layout</span>
                     </div>
                   </div>
                 </div>
@@ -783,10 +819,10 @@ export default function Landing() {
                   <h4 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: '#f97316' }}>Product</h4>
                   <div className="flex flex-col gap-3">
                     {footerLinks.product.map(link => (
-                      <Link key={link} href={link === 'Resume Builder' ? '/builder' : link === 'Pricing' ? '#pricing' : '#'}
+                      <Link key={link.label} href={link.href}
                         style={{ color: '#94a3b8' }}
                         className="text-sm hover:text-orange-400 transition-all font-medium no-underline"
-                      >{link}</Link>
+                      >{link.label}</Link>
                     ))}
                   </div>
                 </div>
@@ -847,10 +883,10 @@ export default function Landing() {
               </div>
               <div className="flex gap-6">
                 {footerLinks.legal.map(link => (
-                  <a key={link} href="#"
+                  <Link key={link.label} href={link.href}
                     className="hover:text-orange-400 transition-colors no-underline"
                     style={{ color: '#64748b' }}
-                  >{link}</a>
+                  >{link.label}</Link>
                 ))}
               </div>
             </div>

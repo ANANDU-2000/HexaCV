@@ -52,35 +52,55 @@ export function registerOAuthRoutes(app: Express) {
     }
   });
 
-  // Mock login for local sandbox / dev testing
+  // Mock login — OFF unless ALLOW_MOCK_LOGIN=true (emergency only; never invent Google users)
   app.get("/api/mock/login", async (req: Request, res: Response) => {
-    const email = (req.query.email as string) || "test.candidate@gmail.com";
-    const password = (req.query.password as string) || "";
-    const name = (req.query.name as string) || (email.toLowerCase() === "admin@hexacv.com" ? "Admin User" : "Test Candidate");
-    const provider = (req.query.provider as string) || "google";
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Verify admin credentials if logging in as admin@hexacv.com
-    if (normalizedEmail === "admin@hexacv.com" && password && password !== "1234@hexaCv") {
-      res.status(401).json({ error: "Invalid credentials for admin account." });
+    if (process.env.ALLOW_MOCK_LOGIN !== "true") {
+      res.status(403).json({
+        error:
+          "Mock login is disabled. Use live OAuth (/api/oauth/callback). Set ALLOW_MOCK_LOGIN=true only for emergency admin recovery.",
+      });
       return;
     }
 
-    const isAdmin = normalizedEmail === "admin@hexacv.com" || normalizedEmail.includes("admin");
-    const openId = isAdmin ? "admin-key-owner" : `mock-${provider}-${normalizedEmail.replace("@", "-")}`;
+    const email = (req.query.email as string) || "";
+    const password = (req.query.password as string) || "";
+    const name = (req.query.name as string) || "";
+    const provider = (req.query.provider as string) || "email";
+    const normalizedEmail = email.toLowerCase().trim();
+    const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
+    const adminPassword = process.env.ADMIN_PASSWORD || "";
+
+    if (!normalizedEmail || !normalizedEmail.includes("@") || !name.trim()) {
+      res.status(400).json({ error: "name and email query params required." });
+      return;
+    }
+
+    if (
+      !adminEmail ||
+      !adminPassword ||
+      normalizedEmail !== adminEmail ||
+      password !== adminPassword
+    ) {
+      res.status(403).json({
+        error: "Mock login only allowed for ADMIN_EMAIL with ADMIN_PASSWORD.",
+      });
+      return;
+    }
+
+    const openId = "admin-key-owner";
 
     try {
       await db.upsertUser({
         openId,
-        name: name || (isAdmin ? "Admin User" : "Test Candidate"),
+        name: name.trim(),
         email: normalizedEmail,
         loginMethod: provider,
         lastSignedIn: new Date(),
-        role: isAdmin ? "admin" : "user",
+        role: "admin",
       });
 
       const sessionToken = await sdk.createSessionToken(openId, {
-        name: name || (isAdmin ? "Admin User" : "Test Candidate"),
+        name: name.trim(),
         expiresInMs: ONE_YEAR_MS,
       });
 
@@ -88,8 +108,7 @@ export function registerOAuthRoutes(app: Express) {
       res.clearCookie("hexacv_logout", { ...cookieOptions });
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
       
-      const defaultRedirect = isAdmin ? "/admin" : "/";
-      const redirect = (req.query.redirect as string) || defaultRedirect;
+      const redirect = (req.query.redirect as string) || "/admin";
       res.redirect(302, redirect);
     } catch (error) {
       console.error("[Mock Auth] Login failed", error);

@@ -1,0 +1,42 @@
+# HexaCV — Render Blueprint (Vite + Express monorepo)
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: hexacv
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.13.0"
+      - key: PAYMENT_PROVIDER
+        value: razorpay
+      - key: AI_PAUSED
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      # Prefer Render Postgres internal URL:
+      # postgresql://USER:PASS@dpg-xxxxx/hexacv
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OWNER_OPEN_ID
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: VITE_APP_ID
+        sync: false
+      - key: VITE_OAUTH_PORTAL_URL
+        sync: false

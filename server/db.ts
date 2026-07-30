@@ -1,5 +1,6 @@
 import { eq, and, desc, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { 
   InsertUser, users, resumes, InsertResumeDb, jobDescriptions, InsertJobDescriptionDb, subscriptions, supportTickets,
   organizations, InsertOrganizationDb, organizationMembers, InsertOrganizationMemberDb,
@@ -10,16 +11,29 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+const { Pool } = pg;
+
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: pg.Pool | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       const url = process.env.DATABASE_URL;
-      if (url.startsWith("mysql://") || url.startsWith("mysql2://")) {
-        _db = drizzle(url);
+      if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
+        _pool = new Pool({
+          connectionString: url,
+          ssl:
+            url.includes("render.com") || url.includes("dpg-")
+              ? { rejectUnauthorized: false }
+              : undefined,
+        });
+        _db = drizzle(_pool);
       } else {
+        console.warn(
+          "[Database] DATABASE_URL must be postgres/postgresql:// (Render Postgres)."
+        );
         _db = null;
       }
     } catch (error) {
@@ -38,15 +52,21 @@ export async function getDb() {
 // ==========================================
 export const mockDb = {
   users: [
-    { id: 1, openId: "admin-key-owner", name: "Admin User", email: "admin@hexacv.com", loginMethod: "oauth", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
-    { id: 2, openId: "user-2", name: "Anandu Krishna", email: "anandu@hexastacksolutions.com", loginMethod: "oauth", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
-    { id: 3, openId: "user-3", name: "John Doe", email: "john@example.com", loginMethod: "oauth", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }
+    { id: 1, openId: "admin-key-owner", name: "Admin User", email: "admin@hexacv.com", loginMethod: "oauth", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(), evaluationOptOut: false },
+    { id: 2, openId: "user-2", name: "Anandu Krishna", email: "anandu@hexastacksolutions.com", loginMethod: "oauth", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(), evaluationOptOut: false },
+    { id: 3, openId: "user-3", name: "John Doe", email: "john@example.com", loginMethod: "oauth", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(), evaluationOptOut: false }
   ] as any[],
   resumes: [] as any[],
   jobDescriptions: [
     { id: "preset-1", userId: null, title: "Full-Stack Developer", description: "Looking for a full stack engineer with expertise in React, Node.js, and databases.", keywords: JSON.stringify(["React", "Node.js", "databases", "TypeScript", "SQL"]), isCustom: false, createdAt: new Date() },
     { id: "preset-2", userId: null, title: "Frontend Engineer", description: "Seeking a frontend developer specialized in UI animations, React, CSS, and web responsiveness.", keywords: JSON.stringify(["React", "CSS", "animations", "HTML", "Figma"]), isCustom: false, createdAt: new Date() }
   ] as any[],
+  modelRouting: [] as any[],
+  usageLogs: [] as any[],
+  promptVersions: [] as any[],
+  resumeEvaluations: [] as any[],
+  processedStripeEvents: [] as any[],
+  paymentOrders: [] as any[],
   organizations: [
     { id: "org-1", name: "HexaStack Solutions", slug: "hexastack", logoUrl: "https://www.hexastacksolutions.com/logo.png", primaryColor: "#1e40af", secondaryColor: "#0d9488", customDomain: "hexastack.hexacv.com", createdAt: new Date(), updatedAt: new Date() }
   ] as any[],
@@ -119,7 +139,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
         role: user.openId === ENV.ownerOpenId ? "admin" : (user.role || "user"),
         createdAt: new Date(),
         updatedAt: new Date(),
-        lastSignedIn: new Date()
+        lastSignedIn: new Date(),
+        evaluationOptOut: false,
       });
     }
     return;
@@ -164,7 +185,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -180,6 +202,46 @@ export async function getUserByOpenId(openId: string) {
   }
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function setUserEvaluationOptOut(
+  userId: number,
+  optOut: boolean
+): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    const u = mockDb.users.find((user) => user.id === userId);
+    if (u) {
+      u.evaluationOptOut = optOut;
+      u.updatedAt = new Date();
+    }
+    return;
+  }
+  await db
+    .update(users)
+    .set({ evaluationOptOut: optOut, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
+export async function updateUserProfile(
+  userId: number,
+  data: { name?: string; email?: string }
+): Promise<typeof users.$inferSelect | undefined> {
+  const db = await getDb();
+  if (!db) {
+    const u = mockDb.users.find((user) => user.id === userId);
+    if (!u) return undefined;
+    if (data.name !== undefined) u.name = data.name;
+    if (data.email !== undefined) u.email = data.email;
+    u.updatedAt = new Date();
+    return u as any;
+  }
+  const patch: Partial<InsertUser> = { updatedAt: new Date() };
+  if (data.name !== undefined) patch.name = data.name;
+  if (data.email !== undefined) patch.email = data.email;
+  await db.update(users).set(patch).where(eq(users.id, userId));
+  const rows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return rows[0];
 }
 
 export async function createResume(data: InsertResumeDb) {
@@ -682,41 +744,31 @@ export async function updateApplicationStatus(id: string, status: string) {
 // ==========================================
 
 export async function getSubscription(userId: number) {
-  const db = await getDb();
-  if (!db) {
-    return mockDb.subscriptions.find(s => s.userId === userId && s.status === "active") || {
-      id: "free",
-      userId,
-      tier: "free",
-      status: "active",
-      provider: "local",
-      startDate: new Date()
-    };
-  }
-  const result = await db.select().from(subscriptions).where(
-    and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active"))
-  ).limit(1);
-  return result.length > 0 ? result[0] : {
-    id: "free",
-    userId,
-    tier: "free",
-    status: "active",
-    provider: "local",
-    startDate: new Date()
-  };
+  const { resolveSubscriptionWithGrace } = await import("./subscriptionGrace");
+  return resolveSubscriptionWithGrace(userId);
 }
 
-export async function updateSubscription(userId: number, tier: string) {
+export async function updateSubscription(
+  userId: number,
+  tier: string,
+  opts?: { provider?: string; referenceId?: string }
+) {
   const db = await getDb();
+  const isFree = tier === "free";
   const subData = {
     id: Math.random().toString(36).substr(2, 9),
     userId,
     tier,
-    status: "active",
-    provider: "stripe",
-    referenceId: "sub_" + Math.random().toString(36).substr(2, 9),
+    status: "active" as string,
+    provider: opts?.provider || "razorpay",
+    referenceId:
+      opts?.referenceId ||
+      "sub_" + Math.random().toString(36).substr(2, 9),
     startDate: new Date(),
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    endDate: isFree
+      ? null
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    graceUntil: null as Date | null,
   };
 
   if (!db) {
@@ -729,7 +781,7 @@ export async function updateSubscription(userId: number, tier: string) {
     return subData;
   }
 
-  // Deactivate old active subscriptions first
+  // Deactivate old active/grace subscriptions first
   await db.update(subscriptions).set({ status: "cancelled" }).where(eq(subscriptions.userId, userId));
   await db.insert(subscriptions).values(subData);
   return subData;
@@ -883,6 +935,38 @@ export async function getCRMUsersList() {
     });
   }
   return detailed;
+}
+
+export async function countAdmins(): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    return getAdminVisibleMockUsers().filter((u) => u.role === "admin").length;
+  }
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(eq(users.role, "admin"));
+  return Number(rows[0]?.count || 0);
+}
+
+export async function setUserRole(
+  userId: number,
+  role: "user" | "admin"
+): Promise<{ id: number; role: string } | null> {
+  const db = await getDb();
+  if (!db) {
+    const u = mockDb.users.find((user) => user.id === userId);
+    if (!u) return null;
+    u.role = role;
+    u.updatedAt = new Date();
+    return { id: u.id, role: u.role };
+  }
+  await db
+    .update(users)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+  const rows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return rows[0] ? { id: rows[0].id, role: rows[0].role } : null;
 }
 
 // ============================================================================

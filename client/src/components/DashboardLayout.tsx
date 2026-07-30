@@ -23,7 +23,7 @@ import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
   FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
-  BarChart3, Globe, KeyRound, Receipt, LifeBuoy
+  BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -48,6 +48,7 @@ const adminMenuItems = [
   { icon: Users, label: "Logged-in Users", path: "/admin?tab=users", tab: "users" },
   { icon: Globe, label: "Guest Users", path: "/admin?tab=guests", tab: "guests" },
   { icon: KeyRound, label: "API Key Usage", path: "/admin?tab=api", tab: "api" },
+  { icon: Activity, label: "Model routing & usage", path: "/admin?tab=routing", tab: "routing" },
   { icon: Receipt, label: "Payments Received", path: "/admin?tab=payments", tab: "payments" },
   { icon: ShieldCheck, label: "Audit Logs", path: "/admin?tab=audit", tab: "audit" },
   { icon: LifeBuoy, label: "Support Tickets", path: "/admin?tab=tickets", tab: "tickets" },
@@ -226,7 +227,7 @@ function DashboardLayoutContent({
                         {user?.name || "Admin User"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-1.5">
-                        {user?.email || "admin@hexacv.com"}
+                        {user?.email || "No email"}
                       </p>
                     </div>
                   </button>

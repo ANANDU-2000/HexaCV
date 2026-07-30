@@ -95,6 +95,7 @@ hexacv-app/
 │   │   │   ├── Documentation.tsx   # Developer and end-user guide
 │   │   │   └── ComponentShowcase.tsx # Live style guide and sandbox
 │   │   ├── components/             # Reusable UI components
+│   │   │   ├── templates/          # Reference ResumeTemplate (not wired into app)
 │   │   │   ├── ResumeUploader.tsx  # Document upload parser hook UI
 │   │   │   ├── ResumeScratchBuilder.tsx # Multi-step builder wizard
 │   │   │   ├── ResumeEditor.tsx    # Live edit form (with summary AI rewriting)
@@ -149,12 +150,19 @@ hexacv-app/
 ├── shared/                          # Cross-boundary parameters
 │   ├── types.ts                    # Shared types
 │   └── const.ts                    # Global shared consts
-├── BUILD_AND_DEPLOYMENT.md         # Deployment logs
-├── DESIGN_AND_PROMPTS.md           # Visual design values & TTS prompts
-├── USER_GUIDE.md                   # End-user tutorials
-├── ARCHITECTURE.md                 # Design decisions and schema charts
-└── README.md                        # This documentation file
+├── stitch-assets/                   # Design system + HTML mockups
+├── references/                      # SDK refs + template reference assets
+├── docs/                            # All planning & ops documentation
+│   └── README.md                    # Docs index (start here)
+├── .cursor/rules/project.md         # Always-on Cursor project rules
+└── README.md                        # This file
 ```
+
+## Documentation
+
+All product, architecture, design, ops, and task docs live under
+[`docs/`](./docs/README.md). Start with that index. Do not add new
+Markdown files at the repo root.
 
 ---
 

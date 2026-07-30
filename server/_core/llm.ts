@@ -214,8 +214,20 @@ const normalizeToolChoice = (
 };
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey && !ENV.grokApiKey && !ENV.geminiApiKey && !ENV.geminiApiKey2 && !ENV.bynaraApiKey && !ENV.tokenrouterApiKey && !ENV.opencodeApiKey && !ENV.openrouterApiKey) {
-    throw new Error("No API key is configured. Please set BUILT_IN_FORGE_API_KEY, GEMINI_API_KEY, GEMINI_API_KEY_2, GROK_API_KEY, BYNARA_API_KEY, TOKENROUTER_API_KEY, OPENCODE_API_KEY, or OPENROUTER_API_KEY in .env");
+  if (
+    !ENV.forgeApiKey &&
+    !ENV.grokApiKey &&
+    !ENV.geminiApiKey &&
+    !ENV.geminiApiKey2 &&
+    !ENV.bynaraApiKey &&
+    !ENV.tokenrouterApiKey &&
+    !ENV.opencodeApiKey &&
+    !ENV.openrouterApiKey &&
+    !ENV.openaiApiKey
+  ) {
+    throw new Error(
+      "No API key is configured. Please set OPENROUTER_API_KEY, OPENCODE_API_KEY, BYNARA_API_KEY, TOKENROUTER_API_KEY, OPENAI_API_KEY, BUILT_IN_FORGE_API_KEY, GEMINI_API_KEY, GEMINI_API_KEY_2, or GROK_API_KEY in .env"
+    );
   }
 };
 
@@ -252,6 +264,15 @@ const getApiKeyConfigs = (): ApiKeyConfig[] => {
       defaultModel: ENV.tokenrouterModel || "z-ai/glm-5.2-free",
     });
   }
+  // Premium: after free/rewrite tiers so cost stays low when cheaper keys work
+  if (ENV.openaiApiKey) {
+    configs.push({
+      apiKey: ENV.openaiApiKey,
+      url: `${ENV.openaiApiUrl.replace(/\/$/, "")}/chat/completions`,
+      defaultModel: ENV.openaiModel || "gpt-4o-mini",
+      isOpenAI: true,
+    });
+  }
   if (ENV.forgeApiKey) {
     configs.push({
       apiKey: ENV.forgeApiKey,
@@ -285,9 +306,6 @@ const getApiKeyConfigs = (): ApiKeyConfig[] => {
 
   return configs;
 };
-
-const hasOpenAIConfig = (configs: ApiKeyConfig[]): boolean =>
-  configs.some((c) => !!c.isOpenAI);
 
 const normalizeResponseFormat = ({
   responseFormat,
@@ -469,19 +487,18 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const configs = getApiKeyConfigs();
-  const openAIConfigured = hasOpenAIConfig(configs);
   let lastError: Error | null = null;
 
   for (const config of configs) {
     const requestPayload = { ...payload };
-    
-    // Map OpenAI model names (like gpt-4o) to the provider's defaultModel
-    // when no OpenAI credentials are configured.
+
+    // Remap OpenAI-style model names for non-OpenAI providers only.
+    // When config.isOpenAI, pass through gpt-* (or fall back to OPENAI_MODEL).
     let resolvedModel = model;
-    if (!openAIConfigured && config.defaultModel && model?.startsWith("gpt-")) {
+    if (!config.isOpenAI && config.defaultModel && model?.startsWith("gpt-")) {
       resolvedModel = config.defaultModel;
     }
-    
+
     requestPayload.model = resolvedModel || config.defaultModel || requestPayload.model;
 
     try {

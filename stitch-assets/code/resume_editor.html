@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HexaCv - Resume Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f3f3fe",
+                        "tertiary-fixed": "#ffdbcd",
+                        "background": "#faf8ff",
+                        "on-error": "#ffffff",
+                        "on-surface": "#191b23",
+                        "on-primary-fixed": "#00174b",
+                        "on-secondary-fixed-variant": "#00504a",
+                        "inverse-surface": "#2e3039",
+                        "surface-bright": "#faf8ff",
+                        "surface-container-high": "#e7e7f3",
+                        "primary-container": "#2563eb",
+                        "tertiary": "#943700",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface-container-highest": "#e1e2ed",
+                        "surface-tint": "#0053db",
+                        "inverse-primary": "#b4c5ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#00201d",
+                        "surface-container": "#ededf9",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "inverse-on-surface": "#f0f0fb",
+                        "secondary-container": "#99efe5",
+                        "primary-fixed": "#dbe1ff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#9cf2e8",
+                        "outline": "#737686",
+                        "on-surface-variant": "#434655",
+                        "secondary-fixed-dim": "#80d5cb",
+                        "secondary": "#006a63",
+                        "on-tertiary-container": "#ffede6",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#bc4800",
+                        "on-tertiary-fixed": "#360f00",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e1e2ed",
+                        "surface": "#faf8ff",
+                        "on-secondary-container": "#006f67",
+                        "on-background": "#191b23",
+                        "surface-dim": "#d9d9e5",
+                        "primary": "#004ac6",
+                        "on-primary-container": "#eeefff",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "48px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "unit": "4px",
+                        "xs": "4px",
+                        "gutter": "24px",
+                        "xl": "32px",
+                        "max-width": "1280px",
+                        "margin-mobile": "16px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "caption": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "caption": ["12px", { "lineHeight": "1.4", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .aspect-letter {
+            aspect-ratio: 8.5 / 11;
+        }
+        
+        /* Glassmorphism Panel Utility */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased h-screen overflow-hidden flex flex-col">
+<!-- Navbar Suppression: Transactional/Task-Focused Intent -->
+<main class="flex-1 flex flex-col md:flex-row h-full">
+<!-- Left Panel: Editor Workspace (60%) -->
+<section class="w-full md:w-[60%] flex flex-col h-full bg-surface border-r border-surface-variant relative z-10 shadow-[0_0_40px_rgba(0,0,0,0.02)]">
+<!-- Sticky Header -->
+<header class="sticky top-0 z-20 bg-surface/90 backdrop-blur-md border-b border-surface-variant px-lg py-md flex items-center justify-between">
+<div class="flex items-center gap-md">
+<button aria-label="Go back" class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<div class="flex items-center gap-sm">
+<input class="bg-transparent border-none p-0 m-0 font-headline-md text-headline-md text-on-surface focus:ring-0 focus:outline-none w-auto max-w-[200px]" type="text" value="Surag's Resume"/>
+<button aria-label="Edit title" class="text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</div>
+<div class="flex items-center gap-xs text-secondary mt-1">
+<span class="material-symbols-outlined text-[14px] icon-fill">cloud_done</span>
+<span class="font-caption text-caption">Saved</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant">
+<button aria-label="Undo" class="p-2 hover:bg-surface-container-high rounded-full transition-colors opacity-50 cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined">undo</span>
+</button>
+<button aria-label="Redo" class="p-2 hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">redo</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto p-lg md:p-margin-desktop">
+<!-- Horizontal Wizard Stepper -->
+<div class="mb-xl overflow-x-auto pb-4">
+<div class="flex items-center min-w-max gap-2">
+<!-- Step 1: Done -->
+<div class="flex items-center gap-sm px-4 py-2 rounded-full border border-secondary/20 bg-secondary/5 text-secondary cursor-pointer hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined icon-fill text-[18px]">check_circle</span>
+<span class="font-label-md text-label-md">Header</span>
+</div>
+<div class="w-8 h-[2px] bg-secondary/30"></div>
+<!-- Step 2: Done -->
+<div class="flex items-center gap-sm px-4 py-2 rounded-full border border-secondary/20 bg-secondary/5 text-secondary cursor-pointer hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined icon-fill text-[18px]">check_circle</span>
+<span class="font-label-md text-label-md">Summary</span>
+</div>
+<div class="w-8 h-[2px] bg-secondary/30"></div>
+<!-- Step 3: Active -->
+<div class="flex items-center gap-sm px-4 py-2 rounded-full bg-primary-container text-on-primary-container shadow-sm border border-primary/20">
+<div class="w-5 h-5 rounded-full bg-on-primary-container text-primary-container flex items-center justify-center font-bold text-[12px]">3</div>
+<span class="font-label-md text-label-md">Skills</span>
+</div>
+<div class="w-8 h-[2px] bg-outline-variant"></div>
+<!-- Step 4: Pending -->
+<div class="flex items-center gap-sm px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="w-5 h-5 rounded-full border border-on-surface-variant flex items-center justify-center text-[12px]">4</div>
+<span class="font-label-md text-label-md">Experience</span>
+</div>
+<div class="w-8 h-[2px] bg-outline-variant"></div>
+<!-- Step 5: Pending -->
+<div class="flex items-center gap-sm px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="w-5 h-5 rounded-full border border-on-surface-variant flex items-center justify-center text-[12px]">5</div>
+<span class="font-label-md text-label-md">Projects</span>
+</div>
+</div>
+</div>
+<!-- Form Area -->
+<div class="max-w-3xl mx-auto">
+<div class="mb-lg">
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">Skills</h1>
+<p class="text-on-surface-variant font-body-lg text-body-lg">Highlight your core technical competencies and tools.</p>
+</div>
+<!-- Skills Category Card (Glassmorphism) -->
+<div class="glass-panel p-lg rounded-xl mb-lg relative group">
+<!-- Action Bar for Card -->
+<div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+<button aria-label="Move up" class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded-md transition-colors">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_up</span>
+</button>
+<button aria-label="Move down" class="p-1.5 text-on-surface-variant hover:bg-surface-container-high rounded-md transition-colors">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+</button>
+<button aria-label="Delete category" class="p-1.5 text-error hover:bg-error-container rounded-md transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<div class="grid grid-cols-1 gap-md">
+<!-- Category Input -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-sm">Category Name</label>
+<input class="w-full bg-surface-container-low border border-transparent focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-on-surface transition-all placeholder:text-outline" placeholder="e.g., Languages, Frameworks, Tools" type="text" value="Frontend"/>
+</div>
+<!-- Skills Input Area -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-sm">Skills (comma separated or hit Enter)</label>
+<div class="w-full bg-surface-container-low border border-transparent focus-within:border-primary focus-within:ring-1 focus-within:ring-primary rounded-lg p-3 min-h-[100px] flex flex-wrap gap-2 items-start transition-all cursor-text">
+<!-- Skill Chip -->
+<div class="flex items-center gap-1 bg-secondary/10 text-secondary border border-secondary/20 px-3 py-1.5 rounded-lg group/chip">
+<span class="font-label-md text-label-md leading-none">React</span>
+<button aria-label="Remove React" class="text-secondary/70 hover:text-secondary rounded-full p-0.5 focus:outline-none focus:bg-secondary/20 transition-colors">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+<!-- Skill Chip -->
+<div class="flex items-center gap-1 bg-secondary/10 text-secondary border border-secondary/20 px-3 py-1.5 rounded-lg group/chip">
+<span class="font-label-md text-label-md leading-none">TypeScript</span>
+<button aria-label="Remove TypeScript" class="text-secondary/70 hover:text-secondary rounded-full p-0.5 focus:outline-none focus:bg-secondary/20 transition-colors">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+<!-- Skill Chip -->
+<div class="flex items-center gap-1 bg-secondary/10 text-secondary border border-secondary/20 px-3 py-1.5 rounded-lg group/chip">
+<span class="font-label-md text-label-md leading-none">Tailwind CSS</span>
+<button aria-label="Remove Tailwind CSS" class="text-secondary/70 hover:text-secondary rounded-full p-0.5 focus:outline-none focus:bg-secondary/20 transition-colors">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+<!-- Input for new skill -->
+<input class="flex-1 min-w-[120px] bg-transparent border-none p-0 focus:ring-0 text-on-surface placeholder:text-outline-variant h-8 self-center" placeholder="Add a skill..." type="text"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Add Category Button -->
+<button class="w-full py-4 border-2 border-dashed border-outline-variant rounded-xl text-primary hover:bg-primary-container/10 hover:border-primary/50 transition-colors flex items-center justify-center gap-2 font-label-md text-label-md font-bold group">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">add_circle</span>
+                        Add Skill Category
+                    </button>
+</div>
+</div>
+<!-- Sticky Footer Actions -->
+<footer class="sticky bottom-0 z-20 bg-surface/90 backdrop-blur-md border-t border-surface-variant p-lg flex items-center justify-between">
+<button class="px-6 py-3 rounded-lg border border-outline-variant bg-surface/50 text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">
+                    Back
+                </button>
+<button class="px-6 py-3 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md hover:bg-primary transition-colors hover:scale-[1.02] shadow-sm hover:shadow-md flex items-center gap-2">
+                    Next Step
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</footer>
+</section>
+<!-- Right Panel: Live Preview (40%) -->
+<section class="hidden md:flex md:w-[40%] bg-[#f1f5f9] h-full relative overflow-hidden flex-col items-center justify-start pt-lg pb-lg px-md overflow-y-auto">
+<!-- Preview Controls (Floating) -->
+<div class="sticky top-0 z-30 mb-lg flex items-center justify-center gap-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-white">
+<button aria-label="Zoom out" class="p-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">zoom_out</span>
+</button>
+<span class="font-caption text-caption font-bold text-on-surface w-12 text-center">85%</span>
+<button aria-label="Zoom in" class="p-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">zoom_in</span>
+</button>
+<div class="w-[1px] h-4 bg-outline-variant mx-2"></div>
+<button aria-label="Download PDF" class="p-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+</div>
+<!-- Resume Paper Document -->
+<div class="w-full max-w-[850px] aspect-letter bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] mb-xl flex-shrink-0 transition-transform origin-top select-none" style="transform: scale(0.85);">
+<!-- Mock Resume Content inside the paper -->
+<div class="p-[48px] h-full flex flex-col font-sans text-on-surface">
+<!-- Resume Header -->
+<div class="border-b-2 border-primary pb-4 mb-6">
+<h1 class="text-4xl font-bold tracking-tight text-on-surface mb-2 uppercase">Surag Doe</h1>
+<div class="flex gap-4 text-sm text-on-surface-variant">
+<span>surag@example.com</span>
+<span>•</span>
+<span>(555) 123-4567</span>
+<span>•</span>
+<span>San Francisco, CA</span>
+<span>•</span>
+<span>linkedin.com/in/surag</span>
+</div>
+</div>
+<!-- Summary -->
+<div class="mb-6">
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                            Innovative and detail-oriented Frontend Developer with over 5 years of experience building scalable web applications. Passionate about creating seamless user experiences using modern JavaScript frameworks and functional programming paradigms.
+                        </p>
+</div>
+<!-- Live Highlighted Skills Section -->
+<div class="mb-6 relative">
+<!-- Highlight Overlay to show this is the active section being edited -->
+<div class="absolute -inset-4 bg-primary/5 border border-primary/20 rounded-lg -z-10 pointer-events-none"></div>
+<div class="absolute -left-[54px] top-1 w-2 h-8 bg-primary rounded-r-md"></div>
+<h2 class="text-lg font-bold text-primary uppercase tracking-wider mb-3">Skills</h2>
+<div class="flex gap-4 mb-2">
+<h3 class="w-24 text-sm font-semibold text-on-surface shrink-0 pt-0.5">Frontend</h3>
+<div class="flex flex-wrap gap-x-2 gap-y-1">
+<span class="text-sm text-on-surface-variant">React,</span>
+<span class="text-sm text-on-surface-variant">TypeScript,</span>
+<span class="text-sm text-on-surface-variant">Tailwind CSS</span>
+</div>
+</div>
+</div>
+<!-- Experience (Faded/Mock) -->
+<div class="mb-6 opacity-60">
+<h2 class="text-lg font-bold text-on-surface uppercase tracking-wider mb-3 border-b border-outline-variant pb-1">Experience</h2>
+<div class="mb-4">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="text-md font-semibold text-on-surface">Senior UI Developer</h3>
+<span class="text-sm text-on-surface-variant">Jan 2021 - Present</span>
+</div>
+<div class="text-sm text-primary font-medium mb-2">TechFlow Solutions</div>
+<ul class="list-disc pl-4 text-sm text-on-surface-variant space-y-1">
+<li>Architected and implemented a component library reducing development time by 40%.</li>
+<li>Led the migration of legacy monolithic frontend to micro-frontends.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

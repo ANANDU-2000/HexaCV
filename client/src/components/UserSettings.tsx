@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronRight, Check, RefreshCw, Moon, Sun, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 const T = {
   surface: '#131b33',
@@ -47,52 +48,78 @@ const NOTIFS = [
 ];
 
 function ProfileForm() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
+  const utils = trpc.useUtils();
   const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [saving, setSaving] = useState(false);
+  const email = user?.email || '';
+  const updateProfile = trpc.auth.updateProfile.useMutation({
+    onSuccess: async () => {
+      toast.success('Profile updated');
+      await utils.auth.me.invalidate();
+      await refresh();
+    },
+    onError: (err) => toast.error(err.message || 'Could not update profile'),
+  });
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    setTimeout(() => { setSaving(false); toast.success('Profile updated'); }, 1000);
+    if (!name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+    updateProfile.mutate({ name: name.trim() });
   };
   return (
     <form onSubmit={handleSave} className="space-y-4">
       <div className="flex items-center gap-4 mb-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold"
           style={{ backgroundColor: T.primary, color: 'white' }}>
-          {name.charAt(0).toUpperCase()}
+          {(name || 'U').charAt(0).toUpperCase()}
         </div>
         <div>
-          <p className="text-sm font-bold" style={{ color: T.text }}>{name}</p>
-          <p className="text-xs" style={{ color: T.muted }}>{email}</p>
+          <p className="text-sm font-bold" style={{ color: T.text }}>{name || 'Your name'}</p>
+          <p className="text-xs" style={{ color: T.muted }}>{email || 'No email on file'}</p>
         </div>
       </div>
       <div className="space-y-1">
         <label className="text-xs font-bold" style={{ color: T.muted }}>Full Name</label>
         <input value={name} onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+          className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none min-h-11"
           style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
       </div>
       <div className="space-y-1">
         <label className="text-xs font-bold" style={{ color: T.muted }}>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }} />
+        <input value={email} readOnly
+          className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none min-h-11 opacity-80"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.muted }} />
+        <p className="text-[11px]" style={{ color: T.muted }}>Email comes from your sign-in provider and cannot be edited here.</p>
       </div>
-      <button type="submit" disabled={saving}
-        className="rounded-lg px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
+      <button type="submit" disabled={updateProfile.isPending}
+        className="rounded-lg px-4 py-2.5 text-xs font-bold text-white transition hover:opacity-90 min-h-11"
         style={{ backgroundColor: T.primary }}>
-        {saving ? <><RefreshCw className="inline h-3 w-3 animate-spin mr-1" /> Saving...</> : 'Save Changes'}
+        {updateProfile.isPending ? <><RefreshCw className="inline h-3 w-3 animate-spin mr-1" /> Saving...</> : 'Save Changes'}
       </button>
     </form>
   );
 }
 
 function PreferencesForm() {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [lang, setLang] = useState('en');
   const [selectedProvider, setSelectedProvider] = useState('openai');
+  const optOut = !!(user as { evaluationOptOut?: boolean } | null)?.evaluationOptOut;
+  const setOptOut = trpc.auth.setEvaluationOptOut.useMutation({
+    onSuccess: async (data) => {
+      toast.success(
+        data.evaluationOptOut
+          ? "Evaluation logging off — thumbs will not be stored"
+          : "Evaluation logging on"
+      );
+      await utils.auth.me.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Could not update preference"),
+  });
 
   const providers = FALLBACK_PROVIDERS;
 
@@ -104,7 +131,7 @@ function PreferencesForm() {
         <div className="flex gap-2">
           {(['dark', 'light'] as const).map((t) => (
             <button key={t} onClick={() => setTheme(t)}
-              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold capitalize transition"
+              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold capitalize transition min-h-[44px]"
               style={{
                 borderColor: theme === t ? T.primary : T.outlineVariant,
                 backgroundColor: theme === t ? `${T.primary}20` : T.elevated,
@@ -121,13 +148,45 @@ function PreferencesForm() {
       <div>
         <p className="text-sm font-bold mb-2" style={{ color: T.text }}>Language</p>
         <select value={lang} onChange={(e) => setLang(e.target.value)}
-          className="rounded-lg border px-3 py-2 text-sm outline-none"
+          className="rounded-lg border px-3 py-2 text-sm outline-none min-h-[44px]"
           style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated, color: T.text }}>
           <option value="en">English</option>
           <option value="es">Español</option>
           <option value="fr">Français</option>
           <option value="de">Deutsch</option>
         </select>
+      </div>
+
+      {/* G2 evaluation opt-out */}
+      <div>
+        <p className="text-sm font-bold mb-2" style={{ color: T.text }}>AI evaluation dataset</p>
+        <label
+          className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px]"
+          style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}
+        >
+          <div>
+            <p className="text-sm" style={{ color: T.text }}>Opt out of evaluation logging</p>
+            <p className="text-xs mt-0.5" style={{ color: T.muted }}>
+              When on, thumbs up/down on AI rewrites are not stored. See{" "}
+              <a href="/privacy#evaluation-opt-out" className="underline" style={{ color: T.primaryText }}>
+                Privacy
+              </a>
+              .
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label={optOut ? "Turn evaluation logging on" : "Opt out of evaluation logging"}
+            disabled={setOptOut.isPending}
+            onClick={() => setOptOut.mutate({ optOut: !optOut })}
+            className="relative h-5 w-9 shrink-0 rounded-full transition"
+            style={{ backgroundColor: optOut ? T.primary : T.outlineVariant }}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition ${optOut ? "translate-x-4" : ""}`}
+            />
+          </button>
+        </label>
       </div>
 
       {/* AI Provider picker */}

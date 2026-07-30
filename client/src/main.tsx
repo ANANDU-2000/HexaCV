@@ -6,7 +6,12 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { purgeLegacyMockUsers } from "./lib/localStorageDb";
 import "./index.css";
+
+if (typeof window !== "undefined") {
+  purgeLegacyMockUsers();
+}
 
 // Register Service Worker for PWA support on all pages in production, or unregister in dev to prevent cache issues
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -83,10 +88,13 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
+const trpcUrl = apiBase ? `${apiBase}/api/trpc` : "/api/trpc";
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: trpcUrl,
       transformer: superjson,
       headers() {
         const isLoggedOut = localStorage.getItem("hexacv_logged_out") === "true";

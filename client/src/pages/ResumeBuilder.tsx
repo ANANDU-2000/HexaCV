@@ -556,14 +556,20 @@ function BuilderHeader({
           {action}
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {user?.name || user?.email}
-              </span>
+              <Link href="/dashboard/settings">
+                <button
+                  type="button"
+                  className="hidden sm:inline max-w-[160px] truncate text-xs font-semibold text-slate-700 dark:text-slate-300 hover:underline min-h-11 px-2"
+                  aria-label="Open account settings"
+                >
+                  {user?.name || user?.email || "Account"}
+                </button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => logout()}
-                className="h-9 rounded-lg px-3 text-xs font-bold border-slate-300 dark:border-white/10"
+                className="h-11 min-w-11 rounded-lg px-3 text-xs font-bold border-slate-300 dark:border-white/10"
               >
                 Log out
               </Button>
@@ -573,7 +579,7 @@ function BuilderHeader({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-lg px-3 text-xs font-bold border-slate-300 dark:border-white/10"
+                className="h-11 rounded-lg px-3 text-xs font-bold border-slate-300 dark:border-white/10"
               >
                 Log in
               </Button>
