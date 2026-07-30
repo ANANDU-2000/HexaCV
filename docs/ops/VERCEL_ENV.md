@@ -2,7 +2,9 @@
 
 **Project ID:** `prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`  
 **Domain (current):** https://www.hexacv.online  
-**Repo (after push):** https://github.com/ANANDU-2000/HexaCV.git
+**Repo (after push):** https://github.com/ANANDU-2000/HexaCV.git  
+**Production app (Render):** https://hexacv.onrender.com — service `srv-d9lekem417fc73coh0n0`  
+**Webhook:** `https://hexacv.onrender.com/api/webhooks/razorpay`
 
 Add these in Vercel → Project → Settings → Environment Variables  
 (Production + Preview + Development unless noted). **Do not put secrets in git.**
