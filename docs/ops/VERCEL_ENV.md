@@ -1,40 +1,28 @@
 # Vercel — HexaCV frontend only
 
-**Project:** `hexacv-admin-web`  
 **Domain:** https://www.hexacv.online  
-**API:** Render `hexacv-app` + Postgres `hexacv`
+**API:** Render `hexacv-app` + Postgres  
 
-## Vercel env (public only)
+## Required for live sign-in (public VITE_ only)
 
-Empty is OK for a guest-only SPA. For **real Manus OAuth** on production Login, add these **public** keys on Vercel (safe in the client bundle):
+Set on **Vercel** and redeploy:
 
-| Key | Purpose |
+| Key | Notes |
 |---|---|
-| `VITE_OAUTH_PORTAL_URL` | Manus auth portal base URL (e.g. `https://auth.hexastacksolutions.com`) |
-| `VITE_APP_ID` | App id for Manus `/app-auth` |
+| `VITE_OAUTH_PORTAL_URL` | Manus portal base URL |
+| `VITE_APP_ID` | Manus app id |
 
-**Do not** put on Vercel: `DATABASE_URL`, Razorpay secrets, LLM keys, `JWT_SECRET`, `ADMIN_PASSWORD`.
+Without these, Login/Register show a clear error and guest mode only — **no fake Google / test emails**.
 
-After adding `VITE_*`, redeploy Vercel so the client bundle embeds them.
+Never put on Vercel: `DATABASE_URL`, LLM keys, Razorpay secrets, `JWT_SECRET`, `ADMIN_PASSWORD`.
 
-## Auth behavior
+## Auth rules (live only)
 
-| Environment | Google / OAuth CTA | Mock `/api/mock/login` |
-|---|---|---|
-| Localhost | Dev mock allowed (labeled) if portal unset; portal if `VITE_*` set | Allowed |
-| Production | Manus OAuth when `VITE_*` set; else toast (no fake “Google Candidate”) | **Admin email+password only** |
+- Login / Register → Manus OAuth only (`getLoginUrl`)
+- `/api/mock/login` → **disabled** unless `ALLOW_MOCK_LOGIN=true` on Render (admin recovery only)
+- `useAuth` prefers `auth.me` (server session)
+- Legacy `Google Candidate` / `mock-*` localStorage users are purged on load
 
-`useAuth` prefers **`auth.me`** (server) over localStorage.
+## Builder
 
-Profile: `/dashboard/settings` — name save via `auth.updateProfile`.
-
-## Builder steps
-
-Primary form steps: Header → Summary → Skills → Experience → Projects → Education → **More** (optional) → Review. Live Preview stays a side panel / mobile tab, not a forced 12-step march.
-
-## Verify
-
-1. `GET https://www.hexacv.online/api/health` → ok  
-2. Production Google CTA must **not** create `mock-google-*` openIds when OAuth env is set  
-3. Header name links to Account Settings  
-4. Profile save persists to Postgres  
+Steps: Header → Summary → Skills → Experience → Projects → Education → More → Review

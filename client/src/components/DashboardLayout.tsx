@@ -227,7 +227,7 @@ function DashboardLayoutContent({
                         {user?.name || "Admin User"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-1.5">
-                        {user?.email || "admin@hexacv.com"}
+                        {user?.email || "No email"}
                       </p>
                     </div>
                   </button>

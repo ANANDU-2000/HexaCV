@@ -38,8 +38,8 @@ export const ENV = {
   aiQuotaGuest: process.env.AI_QUOTA_GUEST ?? "3",
   aiQuotaFree: process.env.AI_QUOTA_FREE ?? "20",
   aiQuotaPaid: process.env.AI_QUOTA_PAID ?? "200",
-  adminEmail: process.env.ADMIN_EMAIL ?? "admin@hexacv.com",
-  adminPassword: process.env.ADMIN_PASSWORD ?? "1234@hexaCv",
+  adminEmail: process.env.ADMIN_EMAIL ?? "",
+  adminPassword: process.env.ADMIN_PASSWORD ?? "",
   /** Payments: razorpay (primary) | stripe (legacy emergency only). */
   paymentProvider: (process.env.PAYMENT_PROVIDER ?? "razorpay").toLowerCase(),
   razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? "",

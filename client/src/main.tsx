@@ -6,7 +6,12 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { purgeLegacyMockUsers } from "./lib/localStorageDb";
 import "./index.css";
+
+if (typeof window !== "undefined") {
+  purgeLegacyMockUsers();
+}
 
 // Register Service Worker for PWA support on all pages in production, or unregister in dev to prevent cache issues
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {

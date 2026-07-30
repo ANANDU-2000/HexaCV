@@ -191,7 +191,7 @@ export default function AdminCRM() {
   const [search, setSearch] = useState("");
   const [location] = useLocation();
   const routeSearch = useSearch();
-  const isAdminPreview = user?.role === "admin" || user?.email?.toLowerCase() === "admin@hexacv.com" || import.meta.env.DEV;
+  const isAdminPreview = user?.role === "admin" || import.meta.env.DEV;
 
   // API Key Management state
   const [apiCategoryFilter, setApiCategoryFilter] = useState<string>("All");

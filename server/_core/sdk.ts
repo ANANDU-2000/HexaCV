@@ -270,28 +270,12 @@ class SDKServer {
       }
     }
 
-    // Check header for local user openId sent by frontend
+    // Header openId: only resolve existing DB users — never invent fake emails
     const localUserOpenId = req.headers["x-local-user-openid"] as string | undefined;
     if (localUserOpenId) {
-      let user = await db.getUserByOpenId(localUserOpenId);
+      const user = await db.getUserByOpenId(localUserOpenId);
       if (user) {
         return user;
-      }
-      // If user not in server DB yet, auto-upsert mock user for this openId
-      const isOwner = localUserOpenId === "admin-key-owner" || localUserOpenId.includes("admin");
-      try {
-        await db.upsertUser({
-          openId: localUserOpenId,
-          name: isOwner ? "Admin User" : "Candidate User",
-          email: isOwner ? "admin@hexacv.com" : "candidate@hexacv.local",
-          loginMethod: "local",
-          lastSignedIn: new Date(),
-          role: isOwner ? "admin" : "user",
-        });
-        user = await db.getUserByOpenId(localUserOpenId);
-        if (user) return user;
-      } catch (err) {
-        console.error("[Auth] Error upserting header openId user:", err);
       }
     }
 
