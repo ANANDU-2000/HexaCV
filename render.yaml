@@ -5,8 +5,8 @@ services:
     name: hexacv
     runtime: node
     plan: free
-    region: oregon
-    buildCommand: npm install --legacy-peer-deps && npm run build
+    region: singapore
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
