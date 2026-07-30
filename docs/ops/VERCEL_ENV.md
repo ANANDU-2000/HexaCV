@@ -19,7 +19,9 @@ Vercel published the **server bundle** (`dist/index.js`) instead of the **Vite S
 | Build Command | `npx vite build` |
 | Output Directory | **`dist/public`** |
 | Framework | Other / null |
-| `/api/*` | Rewritten to backend `http://16.171.240.226:3001/api/$1` |
+| `/api/*` | Rewritten to live backend `https://hexacv-app.onrender.com/api/$1` |
+
+**Auth note:** UI “Continue with Google” is currently **`/api/mock/login`** (dev mock), not Clerk. Clerk keys in `.env` are not wired into `Login.tsx` yet.
 
 ---
 
