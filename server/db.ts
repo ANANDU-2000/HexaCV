@@ -1,5 +1,6 @@
 import { eq, and, desc, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { 
   InsertUser, users, resumes, InsertResumeDb, jobDescriptions, InsertJobDescriptionDb, subscriptions, supportTickets,
   organizations, InsertOrganizationDb, organizationMembers, InsertOrganizationMemberDb,
@@ -10,16 +11,29 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+const { Pool } = pg;
+
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: pg.Pool | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       const url = process.env.DATABASE_URL;
-      if (url.startsWith("mysql://") || url.startsWith("mysql2://")) {
-        _db = drizzle(url);
+      if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
+        _pool = new Pool({
+          connectionString: url,
+          ssl:
+            url.includes("render.com") || url.includes("dpg-")
+              ? { rejectUnauthorized: false }
+              : undefined,
+        });
+        _db = drizzle(_pool);
       } else {
+        console.warn(
+          "[Database] DATABASE_URL must be postgres/postgresql:// (Render Postgres)."
+        );
         _db = null;
       }
     } catch (error) {
@@ -171,7 +185,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {

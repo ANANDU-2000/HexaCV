@@ -20,6 +20,8 @@ services:
         value: "false"
       - key: DATABASE_URL
         sync: false
+      # Prefer Render Postgres internal URL:
+      # postgresql://USER:PASS@dpg-xxxxx/hexacv
       - key: JWT_SECRET
         generateValue: true
       - key: OWNER_OPEN_ID
