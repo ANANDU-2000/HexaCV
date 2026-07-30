@@ -1,57 +1,40 @@
 # Vercel — HexaCV frontend only
 
-**Project:** `hexacv-admin-web` (`prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`)  
+**Project:** `hexacv-admin-web`  
 **Domain:** https://www.hexacv.online  
-**Repo:** https://github.com/ANANDU-2000/HexaCV.git  
+**API:** Render `hexacv-app` + Postgres `hexacv`
 
-**Vercel = SPA only. Empty Environment Variables on Vercel is correct.**  
-**Secrets + DB live on Render `hexacv-app` + Render Postgres `hexacv` (`dpg-d9lfhubm8hqs738kcq80-a`).**
+## Vercel env (public only)
 
----
+Empty is OK for a guest-only SPA. For **real Manus OAuth** on production Login, add these **public** keys on Vercel (safe in the client bundle):
 
-## Architecture
-
-| Layer | Where | Env |
-|---|---|---|
-| Frontend | Vercel `hexacv-admin-web` | Keep **empty** (optional public `VITE_*` later) |
-| API | Render **`hexacv-app`** (`srv-d9lenj710e5c73di93h0`) | All secrets + `DATABASE_URL` |
-| DB | Render Postgres **`hexacv`** Free (expires ~2026-08-29) | Internal URL on API service |
-| Duplicate API | Render **`hexacv`** web (`srv-d9lekem417fc73coh0n0`) | **Suspend in dashboard** (MCP cannot suspend). Keep only `hexacv-app`. |
-
-`/api/*` on hexacv.online → `https://hexacv-app.onrender.com/api/$1` ([`vercel.json`](../../vercel.json)).
-
----
-
-## Database (PostgreSQL)
-
-App uses **Drizzle + `pg`** (`postgresql://…`).  
-**Not** MySQL. **Not** MongoDB.
-
-| Use | URL |
+| Key | Purpose |
 |---|---|
-| Render service env (internal) | `postgresql://hexacv_user:***@dpg-d9lfhubm8hqs738kcq80-a/hexacv` |
-| Local / drizzle-kit (external) | `postgresql://hexacv_user:***@dpg-d9lfhubm8hqs738kcq80-a.singapore-postgres.render.com/hexacv?sslmode=require` |
+| `VITE_OAUTH_PORTAL_URL` | Manus auth portal base URL (e.g. `https://auth.hexastacksolutions.com`) |
+| `VITE_APP_ID` | App id for Manus `/app-auth` |
 
-Push schema: `DATABASE_URL=<external> npm run db:push`
+**Do not** put on Vercel: `DATABASE_URL`, Razorpay secrets, LLM keys, `JWT_SECRET`, `ADMIN_PASSWORD`.
 
----
+After adding `VITE_*`, redeploy Vercel so the client bundle embeds them.
 
-## Vercel env
+## Auth behavior
 
-**Correct:** no variables.  
-Delete if present: Mongo/`DATABASE_URL`, PayU, `VITE_*` AI secrets.
+| Environment | Google / OAuth CTA | Mock `/api/mock/login` |
+|---|---|---|
+| Localhost | Dev mock allowed (labeled) if portal unset; portal if `VITE_*` set | Allowed |
+| Production | Manus OAuth when `VITE_*` set; else toast (no fake “Google Candidate”) | **Admin email+password only** |
 
----
+`useAuth` prefers **`auth.me`** (server) over localStorage.
 
-## Auth note
+Profile: `/dashboard/settings` — name save via `auth.updateProfile`.
 
-Login UI still uses `/api/mock/login` (not Clerk). Clerk keys unused until wired.
+## Builder steps
 
----
+Primary form steps: Header → Summary → Skills → Experience → Projects → Education → **More** (optional) → Review. Live Preview stays a side panel / mobile tab, not a forced 12-step march.
 
 ## Verify
 
-1. `GET https://hexacv-app.onrender.com/api/health` → `{ok:true}`  
-2. `GET https://www.hexacv.online/api/health` → same  
-3. Mock login + resume parse  
-4. Dashboard → suspend web service **`hexacv`** (not `hexacv-app`)
+1. `GET https://www.hexacv.online/api/health` → ok  
+2. Production Google CTA must **not** create `mock-google-*` openIds when OAuth env is set  
+3. Header name links to Account Settings  
+4. Profile save persists to Postgres  

@@ -223,6 +223,27 @@ export async function setUserEvaluationOptOut(
     .where(eq(users.id, userId));
 }
 
+export async function updateUserProfile(
+  userId: number,
+  data: { name?: string; email?: string }
+): Promise<typeof users.$inferSelect | undefined> {
+  const db = await getDb();
+  if (!db) {
+    const u = mockDb.users.find((user) => user.id === userId);
+    if (!u) return undefined;
+    if (data.name !== undefined) u.name = data.name;
+    if (data.email !== undefined) u.email = data.email;
+    u.updatedAt = new Date();
+    return u as any;
+  }
+  const patch: Partial<InsertUser> = { updatedAt: new Date() };
+  if (data.name !== undefined) patch.name = data.name;
+  if (data.email !== undefined) patch.email = data.email;
+  await db.update(users).set(patch).where(eq(users.id, userId));
+  const rows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return rows[0];
+}
+
 export async function createResume(data: InsertResumeDb) {
   const db = await getDb();
   if (!db) {

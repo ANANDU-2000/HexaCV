@@ -75,10 +75,10 @@ const steps = [
 ];
 
 const stats = [
-  { icon: BarChart3, value: '10,000+', label: 'Resumes Built' },
-  { icon: Star, value: '4.8/5', label: 'User Rating' },
-  { icon: Clock, value: '< 5 min', label: 'Time to First Resume' },
-  { icon: Globe, value: '95%', label: 'ATS Pass Rate' },
+  { icon: BarChart3, value: 'ATS-first', label: 'Templates designed for scanners' },
+  { icon: Clock, value: '< 5 min', label: 'Time to first draft' },
+  { icon: Shield, value: 'Private', label: 'Your file stays in your session' },
+  { icon: Globe, value: 'Multi-country', label: 'Region-aware formatting' },
 ];
 
 const testimonials = [
@@ -241,21 +241,32 @@ export default function Landing() {
         {/* Desktop right */}
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated ? (
-            <Button variant="outline" size="sm" onClick={() => logout()}
-              style={{ borderRadius: 8, borderColor: T.border, color: T.text, fontSize: 13 }}
-              className="font-medium"
-            >Log out</Button>
+            <>
+              <Link href="/dashboard/settings">
+                <Button variant="ghost" size="sm"
+                  style={{ color: T.text, fontSize: 13, minHeight: 44 }}
+                  className="font-medium no-underline max-w-[180px] truncate"
+                  aria-label="Account settings"
+                >
+                  {user?.name || user?.email || "Account"}
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={() => logout()}
+                style={{ borderRadius: 8, borderColor: T.border, color: T.text, fontSize: 13, minHeight: 44 }}
+                className="font-medium"
+              >Log out</Button>
+            </>
           ) : (
             <Link href="/login">
               <Button variant="ghost" size="sm"
-                style={{ color: T.muted, fontSize: 13 }}
+                style={{ color: T.muted, fontSize: 13, minHeight: 44 }}
                 className="font-medium no-underline"
               >Log in</Button>
             </Link>
           )}
           <Link href="/builder">
             <Button size="sm"
-              style={{ backgroundColor: T.accent, color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+              style={{ backgroundColor: T.accent, color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, minHeight: 44 }}
               className="hover:bg-orange-600 transition-all px-4 no-underline"
             >
               Build Your Resume
@@ -292,16 +303,24 @@ export default function Landing() {
         ))}
         <div className="flex flex-col gap-3 mt-8">
           {isAuthenticated ? (
-            <Button variant="outline" className="w-full" onClick={() => logout()}
-              style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log out</Button>
+            <>
+              <Link href="/dashboard/settings">
+                <Button variant="outline" className="w-full min-h-11"
+                  style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>
+                  {user?.name || "Account"} — Settings
+                </Button>
+              </Link>
+              <Button variant="outline" className="w-full min-h-11" onClick={() => logout()}
+                style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log out</Button>
+            </>
           ) : (
             <Link href="/login">
-              <Button variant="outline" className="w-full"
+              <Button variant="outline" className="w-full min-h-11"
                 style={{ borderRadius: 8, borderColor: T.border, color: T.text }}>Log in</Button>
             </Link>
           )}
           <Link href="/builder">
-            <Button className="w-full"
+            <Button className="w-full min-h-11"
               style={{ backgroundColor: T.accent, color: '#fff', borderRadius: 8 }}>Build Your Resume</Button>
           </Link>
         </div>
@@ -372,7 +391,7 @@ export default function Landing() {
 
                 {/* Trust indicators */}
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-5 mt-8 text-sm font-medium" style={{ color: T.muted }}>
-                  <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> No sign-up needed</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> {isAuthenticated ? "Signed in — builds sync when saved" : "Guest mode available"}</span>
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> 100% private</span>
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" style={{ color: T.success }} /> Free PDF export</span>
                 </div>
@@ -447,7 +466,7 @@ export default function Landing() {
                       alignSelf: 'flex-start',
                     }}>
                       <CheckCircle2 className="w-3.5 h-3.5" style={{ color: T.success }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: T.success }}>ATS Score: 92%</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: T.success }}>ATS-oriented layout</span>
                     </div>
                   </div>
                 </div>

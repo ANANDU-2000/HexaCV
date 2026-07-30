@@ -52,7 +52,7 @@ export function registerOAuthRoutes(app: Express) {
     }
   });
 
-  // Mock login for local sandbox / dev testing
+  // Mock login: full access in development; production allows only verified admin credentials
   app.get("/api/mock/login", async (req: Request, res: Response) => {
     const email = (req.query.email as string) || "test.candidate@gmail.com";
     const password = (req.query.password as string) || "";
@@ -60,8 +60,23 @@ export function registerOAuthRoutes(app: Express) {
     const provider = (req.query.provider as string) || "google";
     const normalizedEmail = email.toLowerCase().trim();
 
+    if (process.env.NODE_ENV === "production") {
+      const adminOk =
+        normalizedEmail === "admin@hexacv.com" &&
+        password &&
+        password === (process.env.ADMIN_PASSWORD || "1234@hexaCv");
+      if (!adminOk) {
+        res.status(403).json({
+          error:
+            "Mock login is disabled in production except for the admin account. Configure Manus OAuth (VITE_OAUTH_PORTAL_URL + VITE_APP_ID).",
+        });
+        return;
+      }
+    }
+
     // Verify admin credentials if logging in as admin@hexacv.com
-    if (normalizedEmail === "admin@hexacv.com" && password && password !== "1234@hexaCv") {
+    const adminPassword = process.env.ADMIN_PASSWORD || "1234@hexaCv";
+    if (normalizedEmail === "admin@hexacv.com" && password && password !== adminPassword) {
       res.status(401).json({ error: "Invalid credentials for admin account." });
       return;
     }

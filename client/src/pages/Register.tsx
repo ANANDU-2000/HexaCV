@@ -6,6 +6,7 @@ import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { registerLocalUser } from "@/lib/localStorageDb";
+import { canUseOAuthPortal, getLoginUrl, isLocalDevHost } from "@/const";
 
 const T = {
   bg: '#0b1326',
@@ -52,6 +53,7 @@ export default function Register() {
 
   const params = new URLSearchParams(window.location.search);
   const redirectParam = params.get('redirect') || '/';
+  const allowDevMock = isLocalDevHost();
 
   const strength = useMemo(() => getStrength(password), [password]);
   const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
@@ -73,6 +75,11 @@ export default function Register() {
     if (confirmPassword && password !== confirmPassword) { toast.error('Passwords do not match.'); return; }
     if (!agreedToTerms) { toast.error('Please agree to the Terms of Service.'); return; }
 
+    if (!allowDevMock && !canUseOAuthPortal()) {
+      toast.error('Account signup via email is available in local development only until OAuth is configured.');
+      return;
+    }
+
     const result = registerLocalUser(fullName, email, password);
     if (result.success) {
       toast.success(result.message || 'Account created successfully!');
@@ -83,12 +90,20 @@ export default function Register() {
     }
   };
 
-  const handleGoogleRegister = () => {
-    const name = 'Google Candidate';
-    const gEmail = 'google.candidate@gmail.com';
-    registerLocalUser(name, gEmail);
-    toast.success('Account created with Google!');
-    window.location.href = `/api/mock/login?provider=google&name=${encodeURIComponent(name)}&email=${encodeURIComponent(gEmail)}&redirect=${encodeURIComponent(redirectParam)}`;
+  const handleOAuthContinue = () => {
+    if (canUseOAuthPortal()) {
+      window.location.href = getLoginUrl("signUp");
+      return;
+    }
+    if (allowDevMock) {
+      toast.message("Dev mock signup — not a real Google account");
+      const name = "Google Candidate";
+      const gEmail = "google.candidate@gmail.com";
+      registerLocalUser(name, gEmail);
+      window.location.href = `/api/mock/login?provider=google&name=${encodeURIComponent(name)}&email=${encodeURIComponent(gEmail)}&redirect=${encodeURIComponent(redirectParam)}`;
+      return;
+    }
+    toast.error("Sign-up is not configured yet. Continue as guest, or try again later.");
   };
 
   const inputStyle = {
@@ -228,13 +243,23 @@ export default function Register() {
         <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
       </div>
 
-      <Button variant="outline" onClick={handleGoogleRegister} style={{
+      <Button variant="outline" onClick={handleOAuthContinue} style={{
         width: '100%', height: 48, borderRadius: T.radius,
         backgroundColor: 'transparent', border: `1px solid ${T.border}`,
         color: T.text, fontSize: 14, fontWeight: 500, gap: 8, cursor: 'pointer',
       }} className="hover:opacity-80 transition-opacity">
-        <Chrome className="w-4 h-4" /> Continue with Google
+        <Chrome className="w-4 h-4" />{" "}
+        {canUseOAuthPortal()
+          ? "Continue with HexaCv account"
+          : allowDevMock
+            ? "Continue with Google (dev mock)"
+            : "Continue with HexaCv account"}
       </Button>
+      {allowDevMock && !canUseOAuthPortal() && (
+        <p className="text-center mt-2" style={{ color: T.muted, fontSize: 11 }}>
+          Local only — invents a test user. Not real Google.
+        </p>
+      )}
 
       <p className="text-center mt-8" style={{ color: T.muted, fontSize: 13 }}>
         Already have an account?{' '}

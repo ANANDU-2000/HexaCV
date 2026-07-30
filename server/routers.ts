@@ -64,6 +64,18 @@ export const appRouter = router({
         await db.setUserEvaluationOptOut(ctx.user.id, input.optOut);
         return { success: true as const, evaluationOptOut: input.optOut };
       }),
+    updateProfile: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const updated = await db.updateUserProfile(ctx.user.id, {
+          name: input.name,
+        });
+        return { success: true as const, user: updated };
+      }),
     convertGuest: protectedProcedure
       .input(z.object({ guestSessionId: z.string() }))
       .mutation(async ({ input, ctx }) => {

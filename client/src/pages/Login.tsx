@@ -9,6 +9,7 @@ import { useResumeStorage } from "@/_core/hooks/useResumeStorage";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { loginLocalUser, registerLocalUser } from "@/lib/localStorageDb";
+import { canUseOAuthPortal, getLoginUrl, isLocalDevHost } from "@/const";
 
 const T = {
   bg: '#0b1326',
@@ -37,6 +38,7 @@ export default function Login() {
   const params = new URLSearchParams(window.location.search);
   const convertParam = params.get("convert") === "true";
   const redirectParam = params.get("redirect") || "/";
+  const allowDevMock = isLocalDevHost();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -61,12 +63,29 @@ export default function Login() {
     setLocation(redirectParam);
   };
 
-  const handleMockLogin = (provider: string) => {
+  const handleOAuthContinue = () => {
+    if (canUseOAuthPortal() && !allowDevMock) {
+      window.location.href = getLoginUrl("signIn");
+      return;
+    }
+    if (canUseOAuthPortal() && allowDevMock) {
+      // Prefer real portal even on localhost when configured
+      window.location.href = getLoginUrl("signIn");
+      return;
+    }
+    if (allowDevMock) {
+      handleDevMockLogin("google");
+      return;
+    }
+    toast.error("Sign-in is not configured yet. Continue as guest, or try again later.");
+  };
+
+  const handleDevMockLogin = (provider: string) => {
     const name = provider.charAt(0).toUpperCase() + provider.slice(1) + " Candidate";
     const userEmail = `${provider}.candidate@gmail.com`;
     registerLocalUser(name, userEmail);
     const finalRedirect = convertParam ? `${redirectParam}?convert=true` : redirectParam;
-    toast.success(`Logged in with ${provider}!`);
+    toast.message("Dev mock login — not a real Google account");
     window.location.href = `/api/mock/login?provider=${provider}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(userEmail)}&redirect=${encodeURIComponent(finalRedirect)}`;
   };
 
@@ -74,6 +93,11 @@ export default function Login() {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (!allowDevMock && !canUseOAuthPortal()) {
+      toast.error("Email login is available in local development only until OAuth is configured.");
       return;
     }
 
@@ -174,13 +198,23 @@ export default function Login() {
         <div style={{ flex: 1, height: 1, backgroundColor: T.border }} />
       </div>
 
-      <Button variant="outline" onClick={() => handleMockLogin('google')} style={{
+      <Button variant="outline" onClick={handleOAuthContinue} style={{
         width: '100%', height: 48, borderRadius: T.radius,
         backgroundColor: 'transparent', border: `1px solid ${T.border}`,
         color: T.text, fontSize: 14, fontWeight: 500, gap: 8, cursor: 'pointer',
       }} className="hover:opacity-80 transition-opacity">
-        <Chrome className="w-4 h-4" /> Continue with Google
+        <Chrome className="w-4 h-4" />{" "}
+        {canUseOAuthPortal()
+          ? "Continue with HexaCv account"
+          : allowDevMock
+            ? "Continue with Google (dev mock)"
+            : "Continue with HexaCv account"}
       </Button>
+      {allowDevMock && !canUseOAuthPortal() && (
+        <p className="text-center mt-2" style={{ color: T.muted, fontSize: 11 }}>
+          Local only — invents a test user. Not real Google.
+        </p>
+      )}
 
       <p className="text-center mt-8" style={{ color: T.muted, fontSize: 13 }}>
         Don't have an account?{' '}
