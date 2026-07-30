@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Documentation - HexaCv</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "slate-50": "#f8fafc",
+                        "surface-container-high": "#222a3d",
+                        "secondary-fixed": "#d8e2ff",
+                        "on-surface": "#dae2fd",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#93ccff",
+                        "on-secondary": "#002e6a",
+                        "surface-container": "#171f33",
+                        "tertiary-fixed": "#cce5ff",
+                        "on-surface-variant": "#c4c5d5",
+                        "on-secondary-container": "#e6ecff",
+                        "surface-dim": "#0b1326",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "inverse-primary": "#3755c3",
+                        "inverse-surface": "#dae2fd",
+                        "inverse-on-surface": "#283044",
+                        "primary": "#b8c4ff",
+                        "surface-container-highest": "#2d3449",
+                        "primary-fixed-dim": "#b8c4ff",
+                        "error-container": "#93000a",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#77c2ff",
+                        "on-primary-fixed": "#001453",
+                        "on-tertiary-fixed": "#001d31",
+                        "outline": "#8e909f",
+                        "primary-fixed": "#dde1ff",
+                        "surface-container-lowest": "#060e20",
+                        "on-secondary-fixed-variant": "#004395",
+                        "surface": "#0b1326",
+                        "slate-900": "#1f2937",
+                        "on-primary-fixed-variant": "#173bab",
+                        "surface-variant": "#2d3449",
+                        "surface-container-low": "#131b2e",
+                        "on-background": "#dae2fd",
+                        "secondary-container": "#0566d9",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-primary": "#002584",
+                        "outline-variant": "#444653",
+                        "primary-container": "#1e40af",
+                        "surface-bright": "#31394d",
+                        "tertiary": "#93ccff",
+                        "on-secondary-fixed": "#001a42",
+                        "on-tertiary": "#003351",
+                        "surface-tint": "#b8c4ff",
+                        "background": "#0b1326",
+                        "success": "#16a34a",
+                        "secondary": "#adc6ff",
+                        "on-primary-container": "#a8b8ff",
+                        "on-error": "#690005",
+                        "tertiary-container": "#004f7a",
+                        "brand-orange": "#ea580c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "unit": "8px",
+                        "margin-desktop": "40px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at top left, rgba(173, 198, 255, 0.05), transparent 40%),
+                        radial-gradient(circle at bottom right, rgba(0, 102, 217, 0.05), transparent 40%),
+                        #0b1326;
+            color: #dae2fd;
+        }
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top-color: rgba(255, 255, 255, 0.2);
+            border-left-color: rgba(255, 255, 255, 0.2);
+        }
+        .code-block {
+            background: rgba(6, 14, 32, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-family: monospace;
+        }
+        
+        /* Hide scrollbar for clean horizontal scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md min-h-screen flex flex-col pb-safe">
+<!-- TopAppBar -->
+<header class="bg-surface/10 dark:bg-surface-container/10 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/20 shadow-sm">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 w-full max-w-container-max mx-auto">
+<button class="text-on-surface-variant hover:brightness-110 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center justify-center p-2 rounded-full glass-panel">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="font-headline-md text-headline-md font-bold text-primary tracking-tight">HexaCv</div>
+<div class="w-10"></div> <!-- Placeholder for balance -->
+</div>
+</header>
+<main class="flex-1 mt-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full relative z-10">
+<!-- Tabbed Navigation -->
+<div class="glass-panel rounded-xl mb-6 p-1 overflow-hidden sticky top-20 z-40 shadow-lg">
+<div class="flex overflow-x-auto no-scrollbar snap-x snap-mandatory">
+<button class="snap-start flex-shrink-0 flex-1 py-3 px-4 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md text-center transition-all duration-300 mx-1">
+                    Setup Guide
+                </button>
+<button class="snap-start flex-shrink-0 flex-1 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-white/5 font-label-md text-label-md text-center transition-all duration-300 mx-1">
+                    Prompts
+                </button>
+<button class="snap-start flex-shrink-0 flex-1 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-white/5 font-label-md text-label-md text-center transition-all duration-300 mx-1">
+                    Tech Stack
+                </button>
+</div>
+</div>
+<!-- Content Area (Setup Guide Active) -->
+<div class="space-y-6">
+<section class="glass-panel rounded-xl p-6">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-4">Quick Start Guide</h1>
+<p class="text-on-surface-variant mb-6 leading-relaxed">
+                    Welcome to the HexaCv developer documentation. This guide will help you get the local environment running for contributing to the premium resume builder.
+                </p>
+<h2 class="font-headline-sm text-headline-sm text-secondary mb-3 mt-8">1. Prerequisites</h2>
+<ul class="list-disc pl-5 space-y-2 text-on-surface-variant">
+<li>Node.js (v18.x or higher)</li>
+<li>npm or yarn</li>
+<li>Git</li>
+</ul>
+<h2 class="font-headline-sm text-headline-sm text-secondary mb-3 mt-8">2. Installation</h2>
+<div class="code-block rounded-lg p-4 mb-4 overflow-x-auto">
+<pre><code class="text-tertiary-fixed">git clone https://github.com/hexastack/hexacv.git
+cd hexacv
+npm install</code></pre>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-secondary mb-3 mt-8">3. Environment Variables</h2>
+<p class="text-on-surface-variant mb-3">Copy the example environment file and update the variables accordingly:</p>
+<div class="code-block rounded-lg p-4 mb-4 overflow-x-auto">
+<pre><code class="text-tertiary-fixed">cp .env.example .env.local</code></pre>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-secondary mb-3 mt-8">4. Running Locally</h2>
+<p class="text-on-surface-variant mb-3">Start the development server:</p>
+<div class="code-block rounded-lg p-4 overflow-x-auto">
+<pre><code class="text-tertiary-fixed">npm run dev</code></pre>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on desktop as per rules, but present for mobile context) -->
+<nav class="bg-surface-container-low/15 dark:bg-surface-container-lowest/15 backdrop-blur-2xl fixed bottom-0 w-full z-50 rounded-t-xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] flex md:hidden justify-around items-center h-20 pb-safe px-4">
+<!-- Suppressed Nav Shell: Page intent is focused documentation (Task-focused/Departing main flow). Hiding nav items to prioritize content canvas. -->
+<div class="text-on-surface-variant font-label-md text-label-md opacity-50 flex items-center justify-center w-full">
+<span class="material-symbols-outlined mr-2" data-icon="auto_stories">auto_stories</span> Reading Mode
+         </div>
+</nav>
+</body></html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HexaCv - Resume Completed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "surface-variant": "#e1e2ed",
+                            "secondary-fixed": "#9cf2e8",
+                            "background": "#faf8ff",
+                            "primary-fixed-dim": "#b4c5ff",
+                            "surface-container-highest": "#e1e2ed",
+                            "on-tertiary-container": "#ffede6",
+                            "on-tertiary-fixed-variant": "#7d2d00",
+                            "inverse-primary": "#b4c5ff",
+                            "tertiary-container": "#bc4800",
+                            "on-secondary-fixed-variant": "#00504a",
+                            "error": "#ba1a1a",
+                            "on-tertiary": "#ffffff",
+                            "on-primary-fixed-variant": "#003ea8",
+                            "tertiary-fixed-dim": "#ffb596",
+                            "surface": "#faf8ff",
+                            "on-secondary-fixed": "#00201d",
+                            "inverse-surface": "#2e3039",
+                            "on-surface": "#191b23",
+                            "on-primary-container": "#eeefff",
+                            "on-error": "#ffffff",
+                            "surface-dim": "#d9d9e5",
+                            "secondary": "#006a63",
+                            "outline-variant": "#c3c6d7",
+                            "on-error-container": "#93000a",
+                            "surface-container-low": "#f3f3fe",
+                            "on-secondary": "#ffffff",
+                            "outline": "#737686",
+                            "on-tertiary-fixed": "#360f00",
+                            "tertiary-fixed": "#ffdbcd",
+                            "on-secondary-container": "#006f67",
+                            "error-container": "#ffdad6",
+                            "on-surface-variant": "#434655",
+                            "on-background": "#191b23",
+                            "primary-fixed": "#dbe1ff",
+                            "on-primary": "#ffffff",
+                            "surface-tint": "#0053db",
+                            "secondary-container": "#99efe5",
+                            "surface-container-lowest": "#ffffff",
+                            "surface-bright": "#faf8ff",
+                            "inverse-on-surface": "#f0f0fb",
+                            "primary": "#004ac6",
+                            "tertiary": "#943700",
+                            "secondary-fixed-dim": "#80d5cb",
+                            "primary-container": "#2563eb",
+                            "surface-container": "#ededf9",
+                            "on-primary-fixed": "#00174b",
+                            "surface-container-high": "#e7e7f3"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "max-width": "1280px",
+                            "gutter": "24px",
+                            "sm": "8px",
+                            "margin-mobile": "16px",
+                            "lg": "24px",
+                            "unit": "4px",
+                            "md": "16px",
+                            "xs": "4px",
+                            "xl": "32px",
+                            "margin-desktop": "48px"
+                    },
+                    "fontFamily": {
+                            "label-md": [
+                                    "Inter"
+                            ],
+                            "body-md": [
+                                    "Inter"
+                            ],
+                            "body-lg": [
+                                    "Inter"
+                            ],
+                            "headline-md": [
+                                    "Inter"
+                            ],
+                            "headline-lg": [
+                                    "Inter"
+                            ],
+                            "caption": [
+                                    "Inter"
+                            ],
+                            "headline-lg-mobile": [
+                                    "Inter"
+                            ],
+                            "display": [
+                                    "Inter"
+                            ]
+                    },
+                    "fontSize": {
+                            "label-md": [
+                                    "14px",
+                                    {
+                                            "lineHeight": "1.2",
+                                            "letterSpacing": "0.05em",
+                                            "fontWeight": "600"
+                                    }
+                            ],
+                            "body-md": [
+                                    "16px",
+                                    {
+                                            "lineHeight": "1.5",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "body-lg": [
+                                    "18px",
+                                    {
+                                            "lineHeight": "1.6",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "headline-md": [
+                                    "24px",
+                                    {
+                                            "lineHeight": "1.3",
+                                            "fontWeight": "600"
+                                    }
+                            ],
+                            "headline-lg": [
+                                    "32px",
+                                    {
+                                            "lineHeight": "1.2",
+                                            "letterSpacing": "-0.01em",
+                                            "fontWeight": "700"
+                                    }
+                            ],
+                            "caption": [
+                                    "12px",
+                                    {
+                                            "lineHeight": "1.4",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "headline-lg-mobile": [
+                                    "24px",
+                                    {
+                                            "lineHeight": "1.2",
+                                            "fontWeight": "700"
+                                    }
+                            ],
+                            "display": [
+                                    "48px",
+                                    {
+                                            "lineHeight": "1.1",
+                                            "letterSpacing": "-0.02em",
+                                            "fontWeight": "800"
+                                    }
+                            ]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .hexagon-clip {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 1s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex items-center justify-center relative overflow-hidden">
+<!-- Background Shader -->
+<div class="absolute inset-0 z-0 opacity-10">
+<!-- STITCH_SHADER_START:ANIMATION_9 class="w-full h-full" -->
+<div class="w-full h-full" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_9" style="display:block;width:100%;height:100%"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_9');
+
+  // Sync the WebGL drawing-buffer size with the CSS-driven layout size.
+  // This fires on initial layout and whenever the element is resized.
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+varying vec2 v_texCoord;
+uniform float u_time;
+
+void main() {
+    vec2 uv = v_texCoord;
+    vec3 color1 = vec3(0.145, 0.388, 0.922); // Royal Blue #2563eb
+    vec3 color2 = vec3(0.059, 0.463, 0.431); // Emerald #0f766e
+    vec3 color3 = vec3(0.973, 0.973, 1.0);   // Soft Background
+    
+    float noise = sin(uv.x * 3.0 + u_time * 0.5) * cos(uv.y * 3.0 - u_time * 0.3);
+    float noise2 = sin(uv.y * 5.0 + u_time * 0.2) * cos(uv.x * 2.0 - u_time * 0.4);
+    
+    vec3 mixedColor = mix(color1, color2, noise * 0.5 + 0.5);
+    mixedColor = mix(mixedColor, color3, noise2 * 0.3 + 0.7);
+    
+    gl_FragColor = vec4(mixedColor, 0.1);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).
+  // Shaders that need normalized coords should use: u_mouse / u_resolution.
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_9 -->
+</div>
+<!-- Main Modal Container -->
+<main class="relative z-10 w-full max-w-2xl mx-auto p-margin-mobile md:p-margin-desktop">
+<div class="glass-panel rounded-xl p-lg md:p-xl flex flex-col items-center text-center transform transition-all duration-300 scale-100 hover:scale-[1.01] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+<!-- Header Section -->
+<header class="mb-lg w-full flex flex-col items-center">
+<div class="w-24 h-24 mb-md relative">
+<!-- STITCH_SVG_START:ANIMATION_8 class="w-full h-full text-secondary" --><div class="w-full h-full text-secondary" id="animated-svg-ANIMATION_8" style="display:block;"><svg class="w-24 h-24 mx-auto" viewbox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="50" fill="none" r="45" stroke="#0f766e" stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round" stroke-width="8">
+<animate attributename="stroke-dashoffset" dur="0.6s" fill="freeze" from="283" to="0"></animate>
+</circle>
+<path d="M30 50 L45 65 L70 35" fill="none" stroke="#0f766e" stroke-dasharray="100" stroke-dashoffset="100" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
+<animate attributename="stroke-dashoffset" begin="0.6s" dur="0.4s" fill="freeze" from="100" to="0"></animate>
+</path>
+</svg></div><!-- STITCH_SVG_END:ANIMATION_8 -->
+<!-- Decorative Hexagon behind checkmark -->
+<div class="absolute inset-0 bg-secondary/10 hexagon-clip -z-10 scale-110"></div>
+</div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-sm">
+                    Resume Completed!
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md">
+                    Your ATS-optimized resume has been generated and is ready to share.
+                </p>
+</header>
+<!-- Match Summary Card -->
+<section class="w-full glass-card rounded-lg p-lg mb-xl flex flex-col md:flex-row items-center gap-lg">
+<!-- Circular Progress Dial -->
+<div class="relative w-32 h-32 flex-shrink-0">
+<svg class="w-full h-full" viewbox="0 0 100 100">
+<circle class="text-surface-variant stroke-current" cx="50" cy="50" fill="transparent" r="40" stroke-width="8"></circle>
+<circle class="text-secondary progress-ring__circle stroke-current" cx="50" cy="50" fill="transparent" r="40" stroke-dasharray="251.2" stroke-dashoffset="32.656" stroke-linecap="round" stroke-width="8"></circle> <!-- 87% offset -->
+</svg>
+<div class="absolute inset-0 flex items-center justify-center flex-col">
+<span class="font-headline-md text-headline-md text-secondary">87%</span>
+<span class="font-caption text-caption text-secondary">Match</span>
+</div>
+</div>
+<!-- Metadata text -->
+<div class="flex-1 text-left">
+<h3 class="font-label-md text-label-md text-on-surface mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                        ATS Optimization Score: High
+                    </h3>
+<ul class="space-y-sm">
+<li class="flex items-start gap-sm">
+<div class="w-unit h-unit bg-secondary hexagon-clip mt-1 flex-shrink-0"></div>
+<span class="font-body-md text-body-md text-on-surface-variant">12 matching keywords found.</span>
+</li>
+<li class="flex items-start gap-sm">
+<div class="w-unit h-unit bg-secondary hexagon-clip mt-1 flex-shrink-0"></div>
+<span class="font-body-md text-body-md text-on-surface-variant">All key sections populated accurately.</span>
+</li>
+</ul>
+<div class="mt-md flex flex-wrap gap-xs">
+<span class="inline-flex items-center px-sm py-xs rounded-full bg-secondary/10 text-secondary font-caption text-caption border border-secondary/20">Leadership</span>
+<span class="inline-flex items-center px-sm py-xs rounded-full bg-secondary/10 text-secondary font-caption text-caption border border-secondary/20">Project Management</span>
+<span class="inline-flex items-center px-sm py-xs rounded-full bg-secondary/10 text-secondary font-caption text-caption border border-secondary/20">+10 more</span>
+</div>
+</div>
+</section>
+<!-- Actions Section -->
+<section class="w-full flex flex-col gap-md mb-lg">
+<button class="w-full bg-primary-container text-on-primary hover:bg-primary transition-colors duration-200 rounded-lg py-md px-lg flex items-center justify-center gap-sm font-label-md text-label-md shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">download</span>
+                    Download PDF Format
+                </button>
+<button class="w-full bg-white/50 backdrop-blur-sm border border-outline-variant hover:border-primary-container text-primary-container hover:bg-primary-container/5 transition-all duration-200 rounded-lg py-md px-lg flex items-center justify-center gap-sm font-label-md text-label-md">
+<span class="material-symbols-outlined">description</span>
+                    Download MS Word (.docx) Format
+                </button>
+</section>
+<!-- Footer Links -->
+<footer class="w-full flex justify-center gap-lg border-t border-outline-variant/30 pt-md">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors flex items-center gap-xs" href="#">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                    Go back to editor
+                </a>
+<span class="text-outline-variant">|</span>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors flex items-center gap-xs" href="#">
+                    Start a new CV
+                    <span class="material-symbols-outlined text-[18px]">add_circle</span>
+</a>
+</footer>
+</div>
+</main>
+<script>
+        // Simple script to animate the progress ring on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const circle = document.querySelector('.progress-ring__circle');
+            if(circle) {
+                // Force a reflow before animating
+                circle.style.strokeDashoffset = '251.2';
+                setTimeout(() => {
+                    circle.style.strokeDashoffset = '32.656'; // 87%
+                }, 100);
+            }
+        });
+    </script>
+</body></html>

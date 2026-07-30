@@ -1,0 +1,369 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>HexaCv - Build Your Perfect Resume</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "slate-50": "#f8fafc",
+                      "surface-container-high": "#222a3d",
+                      "secondary-fixed": "#d8e2ff",
+                      "on-surface": "#dae2fd",
+                      "on-error-container": "#ffdad6",
+                      "tertiary-fixed-dim": "#93ccff",
+                      "on-secondary": "#002e6a",
+                      "surface-container": "#171f33",
+                      "tertiary-fixed": "#cce5ff",
+                      "on-surface-variant": "#c4c5d5",
+                      "on-secondary-container": "#e6ecff",
+                      "surface-dim": "#0b1326",
+                      "on-tertiary-fixed-variant": "#004b73",
+                      "inverse-primary": "#3755c3",
+                      "inverse-surface": "#dae2fd",
+                      "inverse-on-surface": "#283044",
+                      "primary": "#b8c4ff",
+                      "surface-container-highest": "#2d3449",
+                      "primary-fixed-dim": "#b8c4ff",
+                      "error-container": "#93000a",
+                      "error": "#ffb4ab",
+                      "on-tertiary-container": "#77c2ff",
+                      "on-primary-fixed": "#001453",
+                      "on-tertiary-fixed": "#001d31",
+                      "outline": "#8e909f",
+                      "primary-fixed": "#dde1ff",
+                      "surface-container-lowest": "#060e20",
+                      "on-secondary-fixed-variant": "#004395",
+                      "surface": "#0b1326",
+                      "slate-900": "#1f2937",
+                      "on-primary-fixed-variant": "#173bab",
+                      "surface-variant": "#2d3449",
+                      "surface-container-low": "#131b2e",
+                      "on-background": "#dae2fd",
+                      "secondary-container": "#0566d9",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "on-primary": "#002584",
+                      "outline-variant": "#444653",
+                      "primary-container": "#1e40af",
+                      "surface-bright": "#31394d",
+                      "tertiary": "#93ccff",
+                      "on-secondary-fixed": "#001a42",
+                      "on-tertiary": "#003351",
+                      "surface-tint": "#b8c4ff",
+                      "background": "#0b1326",
+                      "success": "#16a34a",
+                      "secondary": "#adc6ff",
+                      "on-primary-container": "#a8b8ff",
+                      "on-error": "#690005",
+                      "tertiary-container": "#004f7a",
+                      "brand-orange": "#ea580c"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "unit": "8px",
+                      "margin-desktop": "40px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        /* Glassmorphism ambient glow base */
+        body {
+            background-color: #0b1326;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(173, 198, 255, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(147, 204, 255, 0.05), transparent 25%);
+            background-attachment: fixed;
+        }
+
+        .glass-panel {
+            background-color: rgba(19, 27, 46, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top-color: rgba(255, 255, 255, 0.3);
+            border-left-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-floating {
+            background-color: rgba(19, 27, 46, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(184, 196, 255, 0.15);
+        }
+
+        .glass-interactive {
+            transition: all 0.3s ease;
+        }
+        
+        .glass-interactive:hover {
+            background-color: rgba(19, 27, 46, 0.25);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px 0 rgba(184, 196, 255, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #b8c4ff, #adc6ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+        }
+      </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopAppBar Navigation -->
+<header class="bg-surface/10 dark:bg-surface-container/10 backdrop-blur-xl fixed top-0 w-full z-50 shadow-sm border-b border-white/20">
+<div class="flex justify-between items-center px-margin-desktop h-16 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[28px]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">layers</span>
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">HexaCv</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Features</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Templates</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Pricing</a>
+</nav>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20 text-primary font-label-md text-label-md hover:bg-primary/20 hover:border-primary/40 transition-all duration-300">
+<span class="">My Resumes</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</header>
+<main class="flex-grow pt-24 pb-20">
+<!-- Hero Section -->
+<section class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pt-12 md:pt-24 pb-20">
+<div class="flex flex-col lg:flex-row items-center gap-gutter">
+<div class="flex-1 text-center lg:text-left z-10">
+<h1 class="font-display-lg text-display-lg text-on-surface mb-6 leading-tight">
+                        Build Your <span class="gradient-text">Perfect Resume</span> in Minutes
+                    </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-10 max-w-2xl mx-auto lg:mx-0">
+                        Craft professional, ATS-friendly resumes with intelligent formatting, high-end design templates, and tailored content suggestions. Elevate your career narrative instantly.
+                    </p>
+<div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+<button class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-container rounded-xl font-headline-sm text-headline-sm shadow-lg hover:shadow-primary-container/50 hover:brightness-110 transition-all duration-300 transform hover:-translate-y-1">
+                            Build from Scratch
+                        </button>
+<button class="w-full sm:w-auto px-8 py-4 glass-panel rounded-xl font-headline-sm text-headline-sm text-on-surface hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">upload_file</span>
+                            Upload Resume
+                        </button>
+</div>
+</div>
+<div class="flex-1 w-full mt-12 lg:mt-0 relative perspective-1000">
+<div class="glass-floating rounded-2xl p-2 md:p-4 transform rotate-y-[-10deg] rotate-x-[5deg] shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-transform duration-700 hover:rotate-y-0 hover:rotate-x-0 relative z-10">
+<img class="w-full h-auto rounded-xl border border-white/10 shadow-inner" data-alt="A highly detailed, ultra-high-resolution mockup of a modern resume builder dashboard interface. The UI features a sleek, glassmorphic design in dark mode with deep slate blues, frosted glass panels, and vibrant primary blue accents. It displays a real-time resume preview alongside editing tools, progress bars, and high-tech typography. The lighting suggests a glowing screen in a sophisticated, dim environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlu9tiv5Tnwd4qfUJXyAbLy71Gqd0MiQrVS2-hRcS_0g5LcqLKUMuiurgaXRuqmUW40ovSQFPrka7d-04VYUf1G1TQlkIy4kD2ZP_cPeKDeD1hwSRa4LouhmGH1M1cPX3I5J3rFuOl3w76Vk8kOOJw2BSCBltNQPSdd69f_JVSMH10J9EZvodjUYM3gP15rN-lAyJ9MjCuj2eOoHC66KaXuWAvoAPI0FODLe7bjTRynbKPM-JSehfBhBoEsCwRZB01n8t82T7B2Sg">
+</div>
+<!-- Decorative background elements -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/20 blur-[100px] rounded-full z-0"></div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-20 relative">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-4">Six Powerful Features to Supercharge Your Career</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xl mx-auto">Everything you need to construct a compelling career narrative, engineered for precision and impact.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="glass-panel glass-interactive rounded-2xl p-8 flex flex-col items-start lg:col-span-2"><div class="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mb-6"><span class="material-symbols-outlined text-secondary text-[24px]">cloud_upload</span></div><h3 class="font-headline-md text-headline-md text-on-surface mb-2">Smart Upload</h3><p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">Upload PDF, Word, or text files and automatically parse your resume content in seconds.</p></div>
+<div class="glass-panel glass-interactive rounded-2xl p-8 flex flex-col items-start"><div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-6"><span class="material-symbols-outlined text-primary text-[24px]">auto_awesome</span></div><h3 class="font-headline-md text-headline-md text-on-surface mb-2">AI-Powered</h3><p class="font-body-sm text-body-sm text-on-surface-variant">Align your resume to any job description and get smart keyword suggestions to beat the ATS.</p></div>
+<div class="glass-panel glass-interactive rounded-2xl p-8 flex flex-col items-start"><div class="w-12 h-12 rounded-full bg-tertiary/20 flex items-center justify-center mb-6"><span class="material-symbols-outlined text-tertiary text-[24px]">track_changes</span></div><h3 class="font-headline-md text-headline-md text-on-surface mb-2">Job Targeting</h3><p class="font-body-sm text-body-sm text-on-surface-variant">Select from preset roles or add custom job descriptions for precision matching.</p></div>
+<div class="glass-panel glass-interactive rounded-2xl p-8 flex flex-col items-start lg:col-span-2"><div class="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center mb-6"><span class="material-symbols-outlined text-success text-[24px]">view_quilt</span></div><h3 class="font-headline-md text-headline-md text-on-surface mb-2">Multiple Templates</h3><p class="font-body-sm text-body-sm text-on-surface-variant">Choose from four professional, high-end designs tailored for every industry.</p></div>
+<div class="glass-panel glass-interactive rounded-2xl p-8 flex flex-col items-start"><div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-6"><span class="material-symbols-outlined text-primary text-[24px]">download</span></div><h3 class="font-headline-md text-headline-md text-on-surface mb-2">Instant Export</h3><p class="font-body-sm text-body-sm text-on-surface-variant">Download your resume as a beautifully formatted, print-ready PDF instantly.</p></div><div class="glass-panel glass-interactive rounded-2xl p-8 flex flex-col items-start"><div class="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mb-6"><span class="material-symbols-outlined text-secondary text-[24px]">devices</span></div><h3 class="font-headline-md text-headline-md text-on-surface mb-2">Mobile Ready</h3><p class="font-body-sm text-body-sm text-on-surface-variant">Build, edit, and polish your resume on any device, anywhere, anytime.</p></div></div>
+</section>
+<!-- Template Preview Section -->
+<section class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-20 border-t border-white/5 relative overflow-hidden">
+<div class="text-center mb-12">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-4">Designed for Success</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Choose from expertly crafted, premium templates that stand out.</p>
+</div>
+<!-- Horizontal scroll container -->
+<div class="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory scrollbar-hide">
+<!-- Classic -->
+<div class="snap-center shrink-0 w-[280px] md:w-[320px] glass-panel rounded-xl p-4 flex flex-col group cursor-pointer">
+<div class="h-[400px] w-full bg-surface-container-high rounded-lg mb-4 overflow-hidden relative">
+<img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" data-alt="A clean, highly professional 'Classic' style resume template displayed on a digital screen. The template features strong, traditional serif typography, clear hierarchical structure, and subtle horizontal rule lines separating sections. The overall color palette of the resume is crisp white with dark charcoal text, set against the dark glassmorphic UI background of the app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8vRHIv2hCQ1Ex4XFEnQ6xNrSMhZWP-Un1uPZf1UeYBLYUIZkvDX-6V2Ixo_1UvcFNRhcwZ60QZ5XlejJ4M3NtFCX178weAeD4hWjS0iGA8IZcqNpvFvh5XIV-8EcpdCRqHe6ZR7Lk6r3_Tu3Dop9umqtI16pCeSxq7QdYX444FiLyOKDT5X4AWX1oaROn-TDid5soYXwm0G6EASI_gD1XsMkYY5t7Uxw2CE0jPDSBVu8tZ1urYT1oBoy2QmFS1hBWv8FMb5HYkEM">
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface text-center">Classic</h4>
+</div>
+<!-- Minimal -->
+<div class="snap-center shrink-0 w-[280px] md:w-[320px] glass-panel rounded-xl p-4 flex flex-col group cursor-pointer relative top-0 hover:-top-2 transition-all duration-300">
+<div class="h-[400px] w-full bg-surface-container-high rounded-lg mb-4 overflow-hidden relative shadow-[0_0_20px_rgba(184,196,255,0.1)] border border-primary/30">
+<img class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-300" data-alt="A sleek, 'Minimal' style resume template displayed on a digital screen. The design is characterized by vast amounts of whitespace, ultra-thin sans-serif typography, and a distinct lack of heavy borders or solid color blocks. It focuses entirely on content legibility and modern elegance, contrasting cleanly with the dark, blurred glass environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBK0Kxoc2jSs8m0GX2NwuEAzn4TLNKZGiApNprEZmjDTaQxD5bgA1kYl2zd3BX_0fb77e1PQmRMXSsmP_3mFJ0ewQ-Tu2_VT4viVNBDwu4z32PDUhZmbgM6WJJ1VeYK4YBoRgrVEWkaVgEz4SdbHq5npBf8408yB8Z2YFNoSPMnTJPaSUIMVaztoW__knBS4kX7_9fTekcJQyKciD0LK26PoDtXYtZyP75R6QhL9Be9PB2AEPTEsCbGeCSL-EBaSv_wuifCP2H_MV8">
+<div class="absolute inset-0 bg-primary/5 group-hover:bg-transparent transition-colors duration-300"></div>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary text-center">Minimal</h4>
+</div>
+<!-- Modern -->
+<div class="snap-center shrink-0 w-[280px] md:w-[320px] glass-panel rounded-xl p-4 flex flex-col group cursor-pointer">
+<div class="h-[400px] w-full bg-surface-container-high rounded-lg mb-4 overflow-hidden relative">
+<img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" data-alt="A bold, 'Modern' style resume template displayed on a digital interface. This template utilizes a striking two-column layout, perhaps with a dark subtle sidebar for contact info and skills, paired with a bright main content area. It employs contemporary typography and subtle accent colors that match the primary blue theme of the application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCytf3EPjZIV9nhdfbo5kVO4XOv03sEK-QLhr0eekHHY_6I19k-nhla8WGFXa-Fjm5vsbkYApeIuFqLkw3WRuURnuYc-q62BCA8fwfOmHoZFBT5L9xWmX7n7Kw5_1_wX3ttC0E-tzfqmGdtwt7UtFCgPsiMuK0JKlPljMMUb7K9PB_dLMyvd81BsVxHLMf1EIpxKp-TvX_PoJF2WamXlOYJbOX7GSz97FgJnFdiFlbi9RRqX92c88Yz7XSeEn_JzWuLCH6o30oAvM0">
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface text-center">Modern</h4>
+</div>
+<!-- Technical -->
+<div class="snap-center shrink-0 w-[280px] md:w-[320px] glass-panel rounded-xl p-4 flex flex-col group cursor-pointer">
+<div class="h-[400px] w-full bg-surface-container-high rounded-lg mb-4 overflow-hidden relative">
+<img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" data-alt="A structured, 'Technical' style resume template designed for engineers and IT professionals, viewed on a screen. It features dense but highly readable formatting, with dedicated sections for coding languages, frameworks, and project repositories using custom chip/tag UI elements. The design feels precise and data-driven." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcnNUBqVvtdYT3My0OanVPPVvnkHfHOCrpzIQzVn49CRXkTtzCRi3aqhuCpbzGzWqWpuXyoqG5HiWRhEeDioKGpkPR2yYXrLKjn8TzHdB9epX1mR4Ee9eueaSDE7z05F3u7Coq__OcA335swo6xLe40r2WtqH3wfKCyUTVbKA3Tzj4jqEU8gDNhf2sJt7gbO9uWBjWi3ZXfdC96jTP0RAuT9MYS5UZcnFnAuiE3d0xflDxiQQp-9549mnfVtoToyg3jG00snv3TNM">
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface text-center">Technical</h4>
+</div>
+</div>
+<!-- Fade gradients for scroll area -->
+<div class="absolute top-0 bottom-0 left-0 w-8 md:w-20 bg-gradient-to-r from-background to-transparent pointer-events-none"></div>
+<div class="absolute top-0 bottom-0 right-0 w-8 md:w-20 bg-gradient-to-l from-background to-transparent pointer-events-none"></div>
+</section>
+</main>
+<!-- Footer Component from JSON -->
+<footer class="bg-surface-container-lowest/20 dark:bg-surface-container-lowest/20 backdrop-blur-md w-full py-12 border-t border-white/5 mt-auto">
+<div class="flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-gutter">
+<!-- Brand & Copyright -->
+<div class="flex flex-col items-center md:items-start gap-2">
+<span class="font-label-md text-label-md font-black text-primary">HexaStack Solutions</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">© 2024 HexaStack Solutions. All rights reserved.</span>
+</div>
+<!-- Links -->
+<nav class="flex flex-wrap justify-center gap-6 mt-6 md:mt-0">
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Support</a>
+</nav>
+</div>
+</footer>
+<style>
+        /* Utility to hide scrollbar but keep functionality */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+    </style>
+
+
+</body></html>

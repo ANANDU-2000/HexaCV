@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HexaCv - Next-Gen Resume Building</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#faf8ff",
+                        "surface-container-highest": "#e1e2ed",
+                        "tertiary-container": "#bc4800",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d9d9e5",
+                        "background": "#faf8ff",
+                        "outline": "#737686",
+                        "on-secondary-container": "#006f67",
+                        "outline-variant": "#c3c6d7",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#943700",
+                        "surface-container": "#ededf9",
+                        "secondary-fixed": "#9cf2e8",
+                        "inverse-surface": "#2e3039",
+                        "on-surface-variant": "#434655",
+                        "surface-variant": "#e1e2ed",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "on-surface": "#191b23",
+                        "surface-tint": "#0053db",
+                        "inverse-primary": "#b4c5ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-primary-container": "#eeefff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary-fixed-variant": "#00504a",
+                        "inverse-on-surface": "#f0f0fb",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "secondary-container": "#99efe5",
+                        "surface": "#faf8ff",
+                        "on-background": "#191b23",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#00174b",
+                        "tertiary-fixed": "#ffdbcd",
+                        "secondary-fixed-dim": "#80d5cb",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3fe",
+                        "primary": "#004ac6",
+                        "secondary": "#006a63",
+                        "surface-container-high": "#e7e7f3",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-secondary-fixed": "#00201d",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "on-tertiary-container": "#ffede6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "md": "16px",
+                        "max-width": "1280px",
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "caption": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "caption": ["12px", { "lineHeight": "1.4", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#f8fafc] text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-white/80 dark:bg-inverse-surface/80 backdrop-blur-md shadow-sm border-b border-white/40 dark:border-white/10">
+<div class="flex justify-between items-center px-margin-desktop py-4 max-w-max-width mx-auto">
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary tracking-tight">
+                HexaCv
+            </div>
+<div class="hidden md:flex items-center gap-lg">
+<a class="font-body-md text-body-md text-primary dark:text-inverse-primary border-b-2 border-primary hover:text-primary dark:hover:text-inverse-primary hover:scale-105 transition-all scale-95 transition-transform" href="#">Features</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-inverse-primary hover:scale-105 transition-all" href="#">Templates</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-inverse-primary hover:scale-105 transition-all" href="#">Pricing</a>
+<a class="font-body-md text-body-md text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-inverse-primary hover:scale-105 transition-all" href="#">Resources</a>
+</div>
+<div class="flex items-center gap-md">
+<button class="font-label-md text-label-md text-primary dark:text-inverse-primary hover:bg-surface-container-low px-4 py-2 rounded-lg transition-colors">
+                    Sign In
+                </button>
+<button class="font-label-md text-label-md bg-[#2563eb] text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
+                    Build My CV
+                </button>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[100px] flex flex-col px-margin-desktop max-w-max-width mx-auto w-full gap-xl mb-xl">
+<!-- Hero Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter items-center min-h-[716px]">
+<div class="flex flex-col gap-lg z-10">
+<h1 class="font-display text-display text-on-surface max-w-[600px] leading-tight">
+                    Next-Gen Resume Building. Designed for ATS Victory.
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-[500px]">
+                    Upload, optimize, and export high-scoring professional resumes client-side. Built for ambitious professionals who value efficiency and modern aesthetics.
+                </p>
+<div class="flex items-center gap-md pt-sm">
+<button class="font-label-md text-label-md bg-[#2563eb] text-white px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md hover:scale-[1.01]">
+                        Start Building Free
+                    </button>
+<button class="font-label-md text-label-md border border-outline-variant bg-white/50 backdrop-blur-sm text-on-surface px-8 py-3 rounded-lg hover:bg-white hover:shadow-sm transition-all">
+                        Learn More
+                    </button>
+</div>
+</div>
+<div class="relative flex justify-center items-center">
+<!-- Decorative Background Panel (Glassmorphism Level 2) -->
+<div class="absolute inset-0 bg-white/70 backdrop-blur-[12px] border border-white/40 rounded-xl transform rotate-3 scale-105 shadow-[0_4px_20px_rgba(0,0,0,0.03)] z-0"></div>
+<!-- Main Resume Mockup (Level 1) -->
+<div class="relative bg-white w-full max-w-[400px] aspect-[8.5/11] rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-white/50 p-lg flex flex-col gap-md z-10 transform transition-transform hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)]">
+<!-- Mock Header -->
+<div class="flex flex-col gap-xs border-b border-surface-container pb-md">
+<div class="h-6 w-1/2 bg-surface-container-high rounded"></div>
+<div class="h-4 w-1/3 bg-surface-container rounded"></div>
+</div>
+<!-- Mock Experience -->
+<div class="flex flex-col gap-sm">
+<div class="h-5 w-1/4 bg-surface-container-high rounded mb-xs"></div>
+<div class="flex gap-sm">
+<div class="w-1 bg-[#2563eb] rounded-full"></div>
+<div class="flex flex-col gap-xs flex-grow">
+<div class="h-4 w-full bg-surface-container rounded"></div>
+<div class="h-4 w-5/6 bg-surface-container rounded"></div>
+<div class="h-4 w-4/6 bg-surface-container rounded"></div>
+</div>
+</div>
+<div class="flex gap-sm mt-xs">
+<div class="w-1 bg-surface-container-high rounded-full"></div>
+<div class="flex flex-col gap-xs flex-grow">
+<div class="h-4 w-full bg-surface-container rounded"></div>
+<div class="h-4 w-3/4 bg-surface-container rounded"></div>
+</div>
+</div>
+</div>
+<!-- Mock Skills -->
+<div class="flex flex-col gap-sm mt-auto">
+<div class="h-5 w-1/4 bg-surface-container-high rounded mb-xs"></div>
+<div class="flex flex-wrap gap-xs">
+<div class="h-6 w-16 bg-secondary/10 rounded-full"></div>
+<div class="h-6 w-20 bg-secondary/10 rounded-full"></div>
+<div class="h-6 w-14 bg-secondary/10 rounded-full"></div>
+<div class="h-6 w-24 bg-secondary/10 rounded-full"></div>
+</div>
+</div>
+<!-- ATS Badge -->
+<div class="absolute -right-6 -top-6 bg-white rounded-full p-2 shadow-lg z-20 border border-white/50 animate-bounce" style="animation-duration: 3s;">
+<div class="bg-secondary/10 w-20 h-20 rounded-full flex flex-col items-center justify-center border-2 border-secondary">
+<span class="font-headline-md text-headline-md font-bold text-[#0f766e]">92%</span>
+<span class="font-caption text-caption text-[#0f766e] font-semibold">ATS Score</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="flex flex-col gap-lg py-xl">
+<h2 class="font-headline-lg text-headline-lg text-on-surface text-center mb-md">Engineered for Success</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Feature 1 -->
+<div class="bg-white/70 backdrop-blur-[10px] border border-white/40 rounded-xl p-lg shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.01] transition-all flex flex-col gap-md">
+<div class="bg-primary-container/10 w-12 h-12 rounded-lg flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-2xl">document_scanner</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Smart Parser</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Upload your existing PDF or Word files. Our advanced client-side parser extracts text intelligently, maintaining structural integrity without sending data to a server.
+                    </p>
+</div>
+<!-- Feature 2 -->
+<div class="bg-white/70 backdrop-blur-[10px] border border-white/40 rounded-xl p-lg shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.01] transition-all flex flex-col gap-md">
+<div class="bg-primary-container/10 w-12 h-12 rounded-lg flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-2xl">memory</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">AI Optimization</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Tailor your content to specific job descriptions. Our local AI models suggest high-impact keywords and structural improvements to boost ATS compatibility.
+                    </p>
+</div>
+<!-- Feature 3 -->
+<div class="bg-white/70 backdrop-blur-[10px] border border-white/40 rounded-xl p-lg shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.01] transition-all flex flex-col gap-md">
+<div class="bg-[#0f766e]/10 w-12 h-12 rounded-lg flex items-center justify-center text-[#0f766e]">
+<span class="material-symbols-outlined text-2xl">shield_locked</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm">
+                        Private & Offline 
+                        <span class="bg-[#0f766e]/10 text-[#0f766e] font-caption text-caption px-2 py-1 rounded-full border border-[#0f766e]/20">PWA Ready</span>
+</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Your professional data is highly sensitive. Processing happens entirely within your browser. Install as a PWA and work offline anywhere.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-xl bg-surface-container-low dark:bg-inverse-surface mt-auto">
+<div class="flex flex-col items-center justify-center gap-md px-margin-desktop w-full max-w-max-width mx-auto">
+<div class="font-headline-md text-headline-md font-black text-on-surface dark:text-inverse-on-surface tracking-tight">
+                HexaStack Solutions
+            </div>
+<div class="flex flex-wrap justify-center gap-md">
+<a class="font-caption text-caption text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-caption text-caption text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-caption text-caption text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Contact Us</a>
+<a class="font-caption text-caption text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors" href="#">Support</a>
+</div>
+<div class="font-caption text-caption text-secondary dark:text-secondary-fixed mt-sm">
+                © 2024 HexaStack Solutions. All rights reserved.
+            </div>
+</div>
+</footer>
+</body></html>

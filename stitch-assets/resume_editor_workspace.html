@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Resume Editor - Mobile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "slate-50": "#f8fafc",
+                        "surface-container-high": "#222a3d",
+                        "secondary-fixed": "#d8e2ff",
+                        "on-surface": "#dae2fd",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#93ccff",
+                        "on-secondary": "#002e6a",
+                        "surface-container": "#171f33",
+                        "tertiary-fixed": "#cce5ff",
+                        "on-surface-variant": "#c4c5d5",
+                        "on-secondary-container": "#e6ecff",
+                        "surface-dim": "#0b1326",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "inverse-primary": "#3755c3",
+                        "inverse-surface": "#dae2fd",
+                        "inverse-on-surface": "#283044",
+                        "primary": "#b8c4ff",
+                        "surface-container-highest": "#2d3449",
+                        "primary-fixed-dim": "#b8c4ff",
+                        "error-container": "#93000a",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#77c2ff",
+                        "on-primary-fixed": "#001453",
+                        "on-tertiary-fixed": "#001d31",
+                        "outline": "#8e909f",
+                        "primary-fixed": "#dde1ff",
+                        "surface-container-lowest": "#060e20",
+                        "on-secondary-fixed-variant": "#004395",
+                        "surface": "#0b1326",
+                        "slate-900": "#1f2937",
+                        "on-primary-fixed-variant": "#173bab",
+                        "surface-variant": "#2d3449",
+                        "surface-container-low": "#131b2e",
+                        "on-background": "#dae2fd",
+                        "secondary-container": "#0566d9",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-primary": "#002584",
+                        "outline-variant": "#444653",
+                        "primary-container": "#1e40af",
+                        "surface-bright": "#31394d",
+                        "tertiary": "#93ccff",
+                        "on-secondary-fixed": "#001a42",
+                        "on-tertiary": "#003351",
+                        "surface-tint": "#b8c4ff",
+                        "background": "#0b1326",
+                        "success": "#16a34a",
+                        "secondary": "#adc6ff",
+                        "on-primary-container": "#a8b8ff",
+                        "on-error": "#690005",
+                        "tertiary-container": "#004f7a",
+                        "brand-orange": "#ea580c"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "container-max": "1280px",
+                        "unit": "8px",
+                        "margin-desktop": "40px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "headline-lg-mobile": ["28px", { lineHeight: "36px", fontWeight: "700" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glass-input {
+            background: rgba(31, 41, 55, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glass-input:focus {
+            border-color: #0566d9;
+            box-shadow: 0 0 0 2px rgba(5, 102, 217, 0.2);
+            outline: none;
+        }
+        .ambient-glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(184,196,255,0.15) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        /* Hide scrollbar for horizontal scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative overflow-x-hidden pt-16 pb-24">
+<!-- Ambient Background Glows -->
+<div class="ambient-glow top-0 left-0"></div>
+<div class="ambient-glow bottom-0 right-0" style="background: radial-gradient(circle, rgba(173,198,255,0.1) 0%, rgba(0,0,0,0) 70%);"></div>
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-sm">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">layers</span>
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">HexaCv</span>
+</div>
+<button class="text-primary font-bold hover:brightness-110 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 active:scale-95">
+                My Resumes
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full px-margin-mobile flex flex-col gap-6 relative z-10 max-w-md mx-auto">
+<!-- Job Match Score Widget -->
+<div class="glass-panel rounded-xl p-4 mt-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative w-12 h-12 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-high" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="100, 100" stroke-width="3"></path>
+<path class="text-success" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="85, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<span class="font-label-md text-label-md text-success absolute">85%</span>
+</div>
+<div>
+<h3 class="font-body-sm text-body-sm text-on-surface-variant">Match Score</h3>
+<p class="font-headline-sm text-headline-sm text-on-surface">Full-Stack Dev</p>
+</div>
+</div>
+<button class="text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+<!-- Tab Toggle -->
+<div class="flex bg-surface-container-high rounded-full p-1 relative">
+<div class="absolute inset-y-1 left-1 w-1/3 bg-primary-container rounded-full transition-transform duration-300 transform translate-x-full"></div>
+<button class="flex-1 py-2 text-center z-10 font-label-md text-label-md text-on-surface-variant">Sections</button>
+<button class="flex-1 py-2 text-center z-10 font-label-md text-label-md text-on-primary-container">Editor</button>
+<button class="flex-1 py-2 text-center z-10 font-label-md text-label-md text-on-surface-variant">Preview</button>
+</div>
+<!-- Editor Panel: Experience -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Experience</h2>
+<button class="text-secondary flex items-center gap-1 font-label-md text-label-md hover:text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span> Add
+                </button>
+</div>
+<!-- Experience Item Card -->
+<div class="glass-panel rounded-xl p-5 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="w-full">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Role</label>
+<input class="w-full glass-input rounded-lg px-3 py-2 text-on-surface font-body-md text-body-md" type="text" value="Senior Software Engineer"/>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<div class="w-full">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Company</label>
+<input class="w-full glass-input rounded-lg px-3 py-2 text-on-surface font-body-md text-body-md" type="text" value="TechNova Solutions"/>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Start Date</label>
+<input class="w-full glass-input rounded-lg px-3 py-2 text-on-surface font-body-md text-body-md" type="text" value="Mar 2021"/>
+</div>
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">End Date</label>
+<input class="w-full glass-input rounded-lg px-3 py-2 text-on-surface font-body-md text-body-md" type="text" value="Present"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Description</label>
+<div class="glass-input rounded-lg p-3 min-h-[120px]">
+<ul class="list-disc pl-5 space-y-2 text-on-surface font-body-md text-body-md">
+<li>Architected and deployed scalable microservices using Node.js and Docker, improving system performance by 40%.</li>
+<li>Mentored junior developers and led code reviews to ensure code quality.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Collapsed Experience Item -->
+<div class="glass-panel rounded-xl p-4 flex items-center justify-between opacity-70">
+<div>
+<h4 class="font-body-md text-body-md text-on-surface">Web Developer</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Creative Digital • 2018 - 2021</p>
+</div>
+<button class="text-on-surface-variant">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</section>
+<!-- Template Selector (Horizontal Scroll) -->
+<section class="mt-6">
+<h3 class="font-label-md text-label-md text-on-surface-variant mb-3 px-1">Quick Templates</h3>
+<div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2 px-1">
+<div class="w-24 h-32 flex-shrink-0 glass-panel rounded-lg border-2 border-primary-container relative">
+<div class="absolute inset-0 bg-primary/20 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+</div>
+</div>
+<div class="w-24 h-32 flex-shrink-0 glass-panel rounded-lg opacity-60 hover:opacity-100 transition-opacity"></div>
+<div class="w-24 h-32 flex-shrink-0 glass-panel rounded-lg opacity-60 hover:opacity-100 transition-opacity"></div>
+<div class="w-24 h-32 flex-shrink-0 glass-panel rounded-lg opacity-60 hover:opacity-100 transition-opacity"></div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="flex md:hidden justify-around items-center h-20 pb-safe px-4 fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-low/15 dark:bg-surface-container-lowest/15 backdrop-blur-2xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-white/5 active:scale-90">
+<span class="material-symbols-outlined text-secondary">dashboard</span>
+<span class="font-label-md text-label-md text-secondary">Templates</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 hover:bg-white/5 active:scale-90">
+<span class="material-symbols-outlined text-secondary">edit_note</span>
+<span class="font-label-md text-label-md text-secondary">Editor</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-white/5 active:scale-90">
+<span class="material-symbols-outlined text-secondary">visibility</span>
+<span class="font-label-md text-label-md text-secondary">Preview</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-white/5 active:scale-90">
+<span class="material-symbols-outlined text-secondary">download</span>
+<span class="font-label-md text-label-md text-secondary">Download</span>
+</button>
+</nav>
+<!-- Floating Action Button (Export) -->
+<button class="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-container rounded-full p-4 shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">picture_as_pdf</span>
+</button>
+</body></html>

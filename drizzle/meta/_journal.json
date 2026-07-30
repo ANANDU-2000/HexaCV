@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1781941588872,
+      "tag": "0000_amazing_flatman",
+      "breakpoints": true
+    }
+  ]
+}

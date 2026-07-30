@@ -1,0 +1,3 @@
+## Brand & Style
+
+This design system is built for a premium, high-tech resume-building experience...
