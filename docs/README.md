@@ -35,6 +35,7 @@ how to start work in Cursor.
 |---|---|
 | [`architecture/DATA_MODEL.md`](./architecture/DATA_MODEL.md) | App-level shapes + illustrative SQL (live schema = `drizzle/schema.ts`) |
 | [`ops/BUILD_AND_DEPLOYMENT.md`](./ops/BUILD_AND_DEPLOYMENT.md) | Build + deploy |
+| [`ops/VERCEL_ENV.md`](./ops/VERCEL_ENV.md) | Vercel env key checklist (Clerk / Razorpay / AI) |
 | [`ops/PRODUCTION_CHECKLIST.md`](./ops/PRODUCTION_CHECKLIST.md) | Production checklist |
 | [`ai/AI_PROMPT_GUIDE.md`](./ai/AI_PROMPT_GUIDE.md) | AI prompt guide |
 | [`user/USER_GUIDE.md`](./user/USER_GUIDE.md) | End-user guide |
