@@ -89,8 +89,7 @@
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "vite": "^7.1.7",
-    "vite-plugin-manus-runtime": "^0.0.58",
-    "@vercel/node": "^5.3.6"
+    "vite-plugin-manus-runtime": "^0.0.58"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",

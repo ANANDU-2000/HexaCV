@@ -83,10 +83,13 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
+const trpcUrl = apiBase ? `${apiBase}/api/trpc` : "/api/trpc";
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: trpcUrl,
       transformer: superjson,
       headers() {
         const isLoggedOut = localStorage.getItem("hexacv_logged_out") === "true";

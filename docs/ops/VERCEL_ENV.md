@@ -1,70 +1,93 @@
-# Vercel — HexaCV (primary production)
+# Vercel — HexaCV frontend only
 
-**Project ID:** `prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`  
+**Project:** `hexacv-admin-web` (`prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY`)  
 **Domain:** https://www.hexacv.online  
 **Repo:** https://github.com/ANANDU-2000/HexaCV.git  
 
-## Why production showed raw `drizzle/schema.ts` code
+**No Render. No Vercel backend. No MongoDB on this frontend project.**
 
-Vercel was serving the **server esbuild bundle** (`dist/index.js`) as the site root instead of the **Vite SPA** (`dist/public`). That bundle inlines schema source — so the homepage looked like database code.
+---
 
-**Fix (in repo now):** [`vercel.json`](../../vercel.json)
+## Why the site showed `drizzle/schema.ts` code
 
-- `buildCommand`: `npx vite build` (client only)
-- `outputDirectory`: `dist/public` (real UI)
-- `/api/*` → serverless Express in [`api/index.ts`](../../api/index.ts)
-- SPA fallback → `index.html`
+Vercel published the **server bundle** (`dist/index.js`) instead of the **Vite SPA** (`dist/public`).
 
-## Dashboard settings (must match)
-
-In Vercel → Project → Settings → General / Build & Development:
+**Repo fix:** [`vercel.json`](../../vercel.json)
 
 | Setting | Value |
 |---|---|
-| Framework Preset | Other |
-| Root Directory | `.` (repo root) |
-| Install Command | `npm install --include=dev` (or leave blank — vercel.json sets it) |
-| Build Command | leave blank to use vercel.json **or** `npx vite build` |
-| Output Directory | `dist/public` |
-| Node.js | 22.x |
+| Build Command | `npx vite build` |
+| Output Directory | **`dist/public`** |
+| Framework | Other / null |
+| `/api/*` | Rewritten to backend `http://16.171.240.226:3001/api/$1` |
 
-Then **Redeploy** Production (Deployments → … → Redeploy). Domain `hexacv.online` should already be attached to this project.
+---
 
-## Environment variables
+## Vercel Environment Variables (frontend project)
 
-Add for Production (and Preview as needed). **Never commit secrets.**
+### DELETE from Vercel (wrong for this app)
 
-| Key | Notes |
+| Key | Why remove |
 |---|---|
-| `DATABASE_URL` | **External MySQL** (TiDB Cloud / PlanetScale / Railway / Aiven). Vercel does **not** host MySQL; app dialect is MySQL. |
-| `JWT_SECRET` | Long random secret |
-| `PAYMENT_PROVIDER` | `razorpay` |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | Webhook URL: `https://www.hexacv.online/api/webhooks/razorpay` |
-| `OWNER_OPEN_ID` | Admin owner openId |
-| `AI_PAUSED` | `false` for live AI |
-| LLM keys | See [`docs/ai/MODELS_AND_KEYS.md`](../ai/MODELS_AND_KEYS.md) |
-| `VITE_OAUTH_PORTAL_URL` / `VITE_APP_ID` | Client OAuth (build-time) |
+| `DATABASE_URL` with `mongodb+srv://…` | HexaCV uses **MySQL + Drizzle**, not Mongo. DB belongs on the **API server**, not Vercel. |
+| `PAYU_KEY` / `PAYU_SALT` | App payments are **Razorpay**, not PayU. |
+| `VITE_OPENAI_API_KEY` / `VITE_GEMINI_API_KEY` / `VITE_GROQ_API_KEY` | LLM secrets must stay **server-only** on the API host. Never `VITE_` (exposes keys in the browser). |
 
-Apply SQL migrations against that MySQL (`drizzle/*.sql`, including `g2_evaluation_opt_out.sql`).
+### KEEP / ADD on Vercel (public client only)
 
-## Architecture on Vercel
+| Key | Example / notes |
+|---|---|
+| `VITE_APP_ID` | OAuth / app id if used |
+| `VITE_OAUTH_PORTAL_URL` | OAuth portal URL if used |
+| `VITE_ANALYTICS_ENDPOINT` | Optional |
+| `VITE_ANALYTICS_WEBSITE_ID` | Optional |
 
+**Do not set `VITE_API_URL` on Vercel** when using the rewrite in `vercel.json` (browser keeps calling `/api/trpc` on `hexacv.online`, Vercel proxies to EC2).
+
+Optional override (only if rewrite fails):  
+`VITE_API_URL=http://16.171.240.226:3001` — then client calls that host directly (CORS/cookies harder).
+
+---
+
+## Backend host (not Vercel) — env key/value
+
+On **`http://16.171.240.226:3001`** (or your API VPS), create a **local `.env`** (never commit):
+
+```env
+NODE_ENV=production
+PORT=3001
+DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/hexacv
+JWT_SECRET=generate-a-long-random-secret
+PAYMENT_PROVIDER=razorpay
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+OWNER_OPEN_ID=
+AI_PAUSED=false
+OPENROUTER_API_KEY=
+OPENAI_API_KEY=
 ```
-Browser → hexacv.online
-  ├── static files from dist/public  (Landing, Pricing, Terms, app shell)
-  └── /api/* → api/index.ts → Express (tRPC, webhooks, OAuth, health)
-       └── DATABASE_URL → your MySQL host
-```
 
-AI / long requests: Hobby plan has short serverless timeouts; Pro allows up to 60s (`vercel.json` `maxDuration`).
+Then: `npm run build && npm run start`  
+Check: `GET http://16.171.240.226:3001/api/health` → `{ "ok": true }`
 
-## CLI deploy (after `vercel login`)
+---
 
-```bash
-vercel link --project prj_ZLUzdW0OdMAQt8iXFBQ7jbPmmwCY
-vercel --prod
-```
+## Dashboard redeploy (required for hexacv.online)
 
-## Render note
+1. Vercel → **hexacv-admin-web** → **Settings → Build and Deployment**
+2. Framework Preset: **Other**
+3. Output Directory: **`dist/public`** (override if dashboard still says `dist`)
+4. Build Command: `npx vite build` (or blank to use `vercel.json`)
+5. **Environments**: remove Mongo `DATABASE_URL` / PayU / `VITE_*` AI secrets
+6. **Deployments → Redeploy** latest `main` with **Clear cache**
 
-Render (`hexacv-app.onrender.com`) was a temporary Node host while Vercel output was misconfigured. **Canonical production is Vercel + hexacv.online** once the redeploy above succeeds.
+After deploy: homepage must be HTML (HexaCv UI), not JavaScript schema text.
+
+---
+
+## Mongo connection string you pasted
+
+That `mongodb+srv://…` string is **not compatible** with this codebase. Do **not** put it on Vercel for HexaCV.
+
+**Security:** you posted the DB password in chat — **rotate that MongoDB Atlas password** in Atlas immediately.
