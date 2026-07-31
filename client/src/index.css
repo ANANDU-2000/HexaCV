@@ -43,36 +43,42 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-surface-container: var(--card);
   --color-outline-variant: var(--border);
+  --color-verified-green: var(--verified-green);
+  --color-accent-warm: var(--accent-warm);
+  --color-primary-dark: var(--primary-dark);
 }
 
 :root {
-  --background: #f8fafc;
+  --background: #FBF8F3;
   --foreground: #0f172a;
-  --card: #ffffff;
+  --card: #FEFDFB;
   --card-foreground: #0f172a;
-  --popover: #ffffff;
+  --popover: #FEFDFB;
   --popover-foreground: #0f172a;
-  --primary: #2563eb;
+  --primary: #1e40af;
   --primary-foreground: #ffffff;
+  --primary-dark: #1e3a8a;
   --secondary: #0f766e;
   --secondary-foreground: #ffffff;
   --muted: #f1f5f9;
   --muted-foreground: #475569;
   --accent: #e2e8f0;
   --accent-foreground: #0f172a;
+  --accent-warm: #ea580c;
+  --verified-green: #16a34a;
   --destructive: #e11d48;
   --destructive-foreground: #ffffff;
-  --border: #cbd5e1;
+  --border: #e2e8f0;
   --input: #f1f5f9;
-  --ring: #2563eb;
+  --ring: #1e40af;
   --radius: 12px;
-  --sidebar: #f8fafc;
+  --sidebar: #FBF8F3;
   --sidebar-foreground: #0f172a;
   --sidebar-accent: #f1f5f9;
   --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #cbd5e1;
-  --sidebar-ring: #2563eb;
-  --chart-1: #2563eb;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #1e40af;
+  --chart-1: #1e40af;
   --chart-2: #0f766e;
   --chart-3: #06b6d4;
   --chart-4: #3b82f6;
@@ -274,9 +280,9 @@
 
 /* Glassmorphism ambient glow base */
 .glass-bg {
-  background-color: #f8fafc;
+  background-color: var(--background);
   background-image: 
-      radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.04), transparent 50%),
+      radial-gradient(circle at 15% 50%, color-mix(in srgb, var(--primary) 4%, transparent), transparent 50%),
       radial-gradient(circle at 85% 30%, rgba(15, 118, 110, 0.04), transparent 50%);
   background-attachment: fixed;
 }
