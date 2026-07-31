@@ -114,6 +114,58 @@ const marketToCountryCode = (market: string) => {
   return '';
 };
 
+const countryCodeToMarket = (code: string) => {
+  const c = code.trim().toUpperCase();
+  if (c === 'IN') return 'India';
+  if (['AE', 'SA', 'QA', 'KW', 'OM', 'BH'].includes(c)) return 'Gulf';
+  if (c === 'US') return 'US';
+  return 'Global';
+};
+
+const TARGET_DRAFT_KEY = 'hexacv_target_panel_draft';
+
+type TargetDraft = {
+  role: string;
+  experience: string;
+  market: string;
+  jobDescription: string;
+};
+
+function loadTargetDraft(): TargetDraft | null {
+  try {
+    const raw = localStorage.getItem(TARGET_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as TargetDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveTargetDraft(draft: TargetDraft) {
+  try {
+    localStorage.setItem(TARGET_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function clearTargetDraft() {
+  try {
+    localStorage.removeItem(TARGET_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Soft heuristic: pasted text that looks like a resume (email + date ranges), not a JD. */
+function looksLikeResumeNotJd(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 120) return false;
+  const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(t);
+  const dateHits = (t.match(/\b(19|20)\d{2}\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b/gi) || []).length;
+  return hasEmail && dateHits >= 2;
+}
+
 export default function ResumeBuilder() {
   const { isAuthenticated } = useAuth();
   const storage = useResumeStorage();
@@ -125,10 +177,12 @@ export default function ResumeBuilder() {
   const [targetProfile, setTargetProfile] = useState<TargetProfile | null>(null);
   const [showTargetPanel, setShowTargetPanel] = useState(false);
   const [pendingMode, setPendingMode] = useState<BuilderMode | null>(null);
-  const [setupTargetRole, setSetupTargetRole] = useState('');
-  const [setupExperience, setSetupExperience] = useState('3-5 yrs');
-  const [setupMarket, setSetupMarket] = useState('Global');
-  const [setupJobDescription, setSetupJobDescription] = useState('');
+
+  const initialDraft = typeof window !== 'undefined' ? loadTargetDraft() : null;
+  const [setupTargetRole, setSetupTargetRole] = useState(initialDraft?.role || '');
+  const [setupExperience, setSetupExperience] = useState(initialDraft?.experience || '3-5 yrs');
+  const [setupMarket, setSetupMarket] = useState(initialDraft?.market || 'Global');
+  const [setupJobDescription, setSetupJobDescription] = useState(initialDraft?.jobDescription || '');
 
   const currentModeConfig = useMemo(
     () => BUILDER_MODES.find((item) => item.mode === mode),
@@ -151,9 +205,23 @@ export default function ResumeBuilder() {
   }, [activeResume]);
 
   // Deep-link: /builder?id=X opens that resume in the live editor (DashboardHome edit redirects here).
+  // Also: ?role= & ?country= prefill TargetPanel fields (SEO example pages).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const resumeId = params.get('id');
+    const roleParam = params.get('role');
+    const countryParam = params.get('country');
+
+    if (roleParam && roleParam.trim()) {
+      setSetupTargetRole(roleParam.trim());
+    }
+    if (countryParam && countryParam.trim()) {
+      setSetupMarket(countryCodeToMarket(countryParam));
+    }
+    if (roleParam || countryParam) {
+      setShowTargetPanel(true);
+    }
+
     if (!resumeId) return;
 
     let cancelled = false;
@@ -171,8 +239,17 @@ export default function ResumeBuilder() {
     return () => {
       cancelled = true;
     };
-    // Re-run when the location (and thus ?id=) changes.
   }, [location]);
+
+  // Persist in-progress TargetPanel fields so refresh does not lose a pasted JD.
+  useEffect(() => {
+    saveTargetDraft({
+      role: setupTargetRole,
+      experience: setupExperience,
+      market: setupMarket,
+      jobDescription: setupJobDescription,
+    });
+  }, [setupTargetRole, setupExperience, setupMarket, setupJobDescription]);
 
   const navigateToMode = (nextMode: BuilderMode) => {
     setActiveResume(null);
@@ -292,6 +369,7 @@ export default function ResumeBuilder() {
       jobDescription: setupJobDescription,
     });
     setShowTargetPanel(false);
+    clearTargetDraft();
     toast.success('Target profile saved.');
 
     if (pendingMode) {
@@ -854,6 +932,12 @@ function TargetPanel({
               rows={4}
               className="rounded-xl border-slate-200 bg-white text-sm leading-6 dark:bg-slate-950"
             />
+            {looksLikeResumeNotJd(setupJobDescription) && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                This looks more like a resume than a job posting (email plus date ranges). You can still continue.
+                Pasting the employer JD usually produces better role targeting.
+              </p>
+            )}
           </div>
         </div>
 
