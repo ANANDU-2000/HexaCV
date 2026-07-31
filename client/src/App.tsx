@@ -15,6 +15,7 @@ import Privacy from "./pages/Privacy";
 import Refund from "./pages/Refund";
 import CookiePolicy from "./pages/Cookie";
 import Pricing from "./pages/Pricing";
+import ResumeExampleLanding from "./pages/ResumeExampleLanding";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/dashboard/:sub*" component={Dashboard} />
       <Route path="/admin" component={Dashboard} />
       <Route path="/url" component={Dashboard} />
+      <Route path="/resume-examples/:country/:role" component={ResumeExampleLanding} />
 
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
