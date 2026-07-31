@@ -3,9 +3,13 @@ import { Button } from '@/shared/ui/button';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Link } from 'wouter';
 import {
-  Upload, Layers, Menu, X, ArrowRight, Download, CheckCircle2,
-  Linkedin, FileText, Shield,
+  Layers, Menu, X, ArrowRight, CheckCircle2, Linkedin,
 } from 'lucide-react';
+import HowItWorksStrip from '@/components/landing/HowItWorksStrip';
+import GroundingProof from '@/components/landing/GroundingProof';
+import OutputPreviewRow from '@/components/landing/OutputPreviewRow';
+import PricingTeaser from '@/components/landing/PricingTeaser';
+import LandingFaq from '@/components/landing/LandingFaq';
 
 // Tokens aligned with stitch-assets/design_system.json (light marketing surface)
 const T = {
@@ -21,27 +25,6 @@ const T = {
   border: '#e2e8f0',
   success: '#16a34a',
 };
-
-const steps = [
-  {
-    number: '01',
-    icon: Upload,
-    title: 'Upload, paste, or LinkedIn',
-    desc: 'Bring an existing PDF/DOCX, start blank, or pull from LinkedIn. Three ways in — no extra setup.',
-  },
-  {
-    number: '02',
-    icon: Shield,
-    title: 'AI shows what is grounded',
-    desc: 'We rewrite for clarity and your target role, then check claims against your source. Invented metrics get cut.',
-  },
-  {
-    number: '03',
-    icon: Download,
-    title: 'Download and apply',
-    desc: 'Export an ATS-friendly PDF when you are ready. Edit anything yourself — your words stay yours.',
-  },
-];
 
 const footerLinks = {
   product: [
@@ -267,14 +250,14 @@ export default function Landing() {
                 >
                   Sent dozens of resumes. Still waiting.{' '}
                   <span style={{ color: T.primaryDark }}>HexaCv shows what is real</span>
-                  {' '}— for Gulf &amp; India job formats.
+                  {' '}for Gulf &amp; India job formats.
                 </h1>
                 <p
                   className="mt-5 text-base sm:text-lg leading-relaxed mx-auto lg:mx-0"
                   style={{ color: T.muted, maxWidth: 520 }}
                 >
                   Grounded resume AI: clearer wording and ATS-friendly layout without inventing
-                  achievements. Built for UAE, Saudi, and India hiring norms — not generic hype.
+                  achievements. Built for UAE, Saudi, and India hiring norms, not generic hype.
                 </p>
 
                 <div className="mt-8 max-w-md mx-auto lg:mx-0 w-full">
@@ -296,7 +279,7 @@ export default function Landing() {
                   </Link>
                   <p className="mt-3 text-sm" style={{ color: T.lightMuted }}>
                     {isAuthenticated
-                      ? `Signed in as ${user?.name?.split(' ')[0] || 'you'} — drafts sync when you save.`
+                      ? `Signed in as ${user?.name?.split(' ')[0] || 'you'}. Drafts sync when you save.`
                       : 'Guest mode available. No sign-up required to start.'}
                   </p>
                 </div>
@@ -369,85 +352,21 @@ export default function Landing() {
         </section>
 
         {/* 2 — How it works */}
-        <section
-          id="how-it-works"
-          aria-label="How it works"
-          className="mx-auto px-4 sm:px-8"
-          style={{ maxWidth: 1280, paddingTop: 72, paddingBottom: 72 }}
-        >
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: T.text }}>
-              Three steps. No filler.
-            </h2>
-            <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: T.muted }}>
-              Matches how HexaCv actually works — upload or write, ground the rewrite, export.
-            </p>
-          </div>
+        <HowItWorksStrip />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
-            {steps.map((step, i) => (
-              <div key={step.number} className="relative text-center md:text-left">
-                {i < steps.length - 1 && (
-                  <div
-                    aria-hidden="true"
-                    className="hidden md:block absolute top-7 left-[58%] w-[84%] h-px"
-                    style={{ backgroundColor: T.border }}
-                  />
-                )}
-                <div className="flex flex-col items-center md:items-start gap-3">
-                  <div
-                    style={{
-                      width: 56, height: 56, borderRadius: 14,
-                      backgroundColor: T.primary,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <step.icon className="w-6 h-6" style={{ color: '#fff' }} strokeWidth={1.75} />
-                  </div>
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: T.lightMuted }}>
-                    Step {step.number}
-                  </span>
-                  <h3 className="text-lg font-bold" style={{ color: T.text }}>{step.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: T.muted }}>{step.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* 3 — Grounding proof (before/after) */}
+        <GroundingProof />
 
-        {/* 3 — Proof (one honest point) */}
-        <section
-          aria-label="What makes HexaCv different"
-          style={{
-            backgroundColor: T.surface,
-            borderTop: `1px solid ${T.border}`,
-            borderBottom: `1px solid ${T.border}`,
-          }}
-        >
-          <div className="mx-auto px-4 sm:px-8" style={{ maxWidth: 720, paddingTop: 72, paddingBottom: 72 }}>
-            <div className="flex flex-col items-center text-center gap-4">
-              <div
-                style={{
-                  width: 48, height: 48, borderRadius: 12,
-                  backgroundColor: `${T.primary}12`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <FileText className="w-6 h-6" style={{ color: T.primary }} strokeWidth={1.75} />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: T.text }}>
-                If it is not in your source, it does not stay
-              </h2>
-              <p className="text-base leading-relaxed" style={{ color: T.muted }}>
-                After a rewrite, HexaCv runs grounding checks: filler phrases and claims that
-                cannot be traced to your upload or notes are stripped or blocked. That is the
-                product — clearer ATS-friendly wording without fabricated experience.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* 4 — Real output previews */}
+        <OutputPreviewRow />
 
-        {/* 4 — Final CTA + footer */}
+        {/* 5 — Pricing teaser */}
+        <PricingTeaser />
+
+        {/* 6 — FAQ */}
+        <LandingFaq />
+
+        {/* 7 — Final CTA + footer */}
         <section
           aria-label="Call to action"
           style={{ backgroundColor: T.primaryDark, position: 'relative' }}
@@ -457,7 +376,7 @@ export default function Landing() {
               Start with what you already have
             </h2>
             <p className="mt-3 text-base text-white/80">
-              Upload a resume or write from scratch. Improve clarity and ATS compatibility —
+              Upload a resume or write from scratch. Improve clarity and ATS compatibility
               without inventing a career you do not have.
             </p>
             <div className="mt-8 max-w-sm mx-auto w-full">
