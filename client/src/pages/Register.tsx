@@ -1,18 +1,28 @@
 import { Button } from "@/components/ui/button";
-import { Layers, Chrome, Sparkles } from "lucide-react";
+import { Layers, Chrome } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { canUseOAuthPortal, getLoginUrl } from "@/const";
 
+/** Match Landing Step 3 light tokens */
 const T = {
-  bg: "#0b1326",
-  primaryText: "#b8c4ff",
+  bg: "#f8fafc",
+  surface: "#ffffff",
+  primary: "#1e40af",
   accent: "#ea580c",
-  text: "#dae2fd",
-  muted: "#c4c5d5",
-  border: "#444653",
-  radius: 8,
+  text: "#0f172a",
+  muted: "#475569",
+  lightMuted: "#94a3b8",
+  border: "#e2e8f0",
+  radius: 10,
 };
+
+function guestHref(redirect: string): string {
+  if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
+    return "/builder";
+  }
+  return redirect;
+}
 
 export default function Register() {
   const params = new URLSearchParams(window.location.search);
@@ -21,7 +31,7 @@ export default function Register() {
   const handleOAuthContinue = () => {
     if (!canUseOAuthPortal()) {
       toast.error(
-        "Live sign-up is not configured. Set VITE_OAUTH_PORTAL_URL and VITE_APP_ID, then redeploy. Or continue as guest."
+        "Sign-up is not available on this site right now. Continue as guest to build a resume, or try again later."
       );
       return;
     }
@@ -29,61 +39,86 @@ export default function Register() {
   };
 
   const form = (
-    <div style={{ width: "100%", maxWidth: 440 }}>
-      <div className="flex items-center justify-center gap-2 mb-8">
-        <Layers style={{ color: T.primaryText }} className="w-7 h-7" />
-        <span className="text-xl font-bold" style={{ color: T.text }}>
+    <div style={{ width: "100%", maxWidth: 400 }}>
+      <Link href="/" className="flex items-center justify-center gap-2.5 mb-8 no-underline">
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: T.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          aria-hidden="true"
+        >
+          <Layers style={{ color: "#fff" }} className="w-4 h-4" strokeWidth={1.75} />
+        </div>
+        <span className="text-xl font-extrabold tracking-tight" style={{ color: T.text }}>
           HexaCv
         </span>
-      </div>
+      </Link>
 
-      <h1
-        className="text-2xl font-bold text-center mb-3"
-        style={{ color: T.text }}
-      >
+      <h1 className="text-2xl font-extrabold text-center mb-3 tracking-tight" style={{ color: T.text }}>
         Create your account
       </h1>
       <p
         className="text-center mb-8"
-        style={{ color: T.muted, fontSize: 14, lineHeight: 1.5 }}
+        style={{ color: T.muted, fontSize: 14, lineHeight: 1.55 }}
       >
-        Use your real HexaCv identity. Fake Google / test emails are removed.
+        Guest drafts stay on this device until you sign in. AI runs only send resume
+        text to your configured model provider when you use AI.
       </p>
 
       <Button
         onClick={handleOAuthContinue}
+        className="w-full font-bold hover:opacity-90 transition-opacity"
         style={{
-          width: "100%",
           height: 48,
+          minHeight: 44,
           borderRadius: T.radius,
           backgroundColor: T.accent,
           color: "#fff",
           fontSize: 15,
-          fontWeight: 600,
           border: "none",
-          cursor: "pointer",
           gap: 8,
         }}
-        className="hover:opacity-90 transition-opacity"
       >
-        <Chrome className="w-4 h-4" /> Sign up with HexaCv
+        <Chrome className="w-4 h-4" strokeWidth={1.75} /> Sign up with HexaCv
       </Button>
+
+      <Link href={guestHref(redirectParam)} className="block w-full mt-3 no-underline">
+        <Button
+          variant="outline"
+          className="w-full font-semibold"
+          style={{
+            height: 48,
+            minHeight: 44,
+            borderRadius: T.radius,
+            borderColor: T.border,
+            color: T.text,
+            backgroundColor: T.surface,
+          }}
+        >
+          Continue as guest
+        </Button>
+      </Link>
 
       {!canUseOAuthPortal() && (
         <p
           className="text-center mt-3"
-          style={{ color: T.muted, fontSize: 12, lineHeight: 1.4 }}
+          style={{ color: T.lightMuted, fontSize: 12, lineHeight: 1.4 }}
         >
-          OAuth portal env is missing on this deploy. Continue as guest, or add
-          public <code>VITE_OAUTH_*</code> keys on Vercel and redeploy.
+          Live sign-up is not set up on this deploy. Guest mode still works.
         </p>
       )}
 
       <p className="text-center mt-8" style={{ color: T.muted, fontSize: 13 }}>
         Already have an account?{" "}
-        <Link href="/login">
+        <Link href={`/login${window.location.search || ""}`}>
           <span
-            style={{ color: T.primaryText, fontWeight: 600, cursor: "pointer" }}
+            style={{ color: T.primary, fontWeight: 600, cursor: "pointer" }}
             className="hover:underline"
           >
             Log in
@@ -91,28 +126,9 @@ export default function Register() {
         </Link>
       </p>
 
-      <div className="text-center mt-4">
-        <Link href={redirectParam}>
-          <span
-            style={{
-              color: T.muted,
-              fontSize: 12,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              minHeight: 44,
-            }}
-            className="hover:opacity-80 transition-opacity"
-          >
-            <Sparkles className="w-3 h-3" /> Continue as Guest
-          </span>
-        </Link>
-      </div>
-
       <p
         className="text-center mt-6"
-        style={{ color: T.border, fontSize: 10, lineHeight: 1.4 }}
+        style={{ color: T.lightMuted, fontSize: 11, lineHeight: 1.45 }}
       >
         By continuing you agree to the{" "}
         <Link href="/terms" style={{ color: T.muted }} className="underline">
@@ -137,10 +153,22 @@ export default function Register() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 24,
+        padding: "48px 24px",
       }}
     >
-      {form}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 440,
+          backgroundColor: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 16,
+          padding: "40px 28px",
+          boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
+        }}
+      >
+        {form}
+      </div>
     </div>
   );
 }

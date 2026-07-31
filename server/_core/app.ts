@@ -10,7 +10,6 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./vite";
 import { configureSecurity } from "../middleware/security";
-import { registerStripeWebhook } from "../stripeWebhook";
 import { registerRazorpayWebhook } from "../razorpayWebhook";
 import { registerCountryRoutes } from "../countryRoutes";
 
@@ -40,7 +39,6 @@ export function createApp(options: CreateAppOptions = {}): Express {
   configureSecurity(app);
 
   registerRazorpayWebhook(app);
-  registerStripeWebhook(app);
 
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

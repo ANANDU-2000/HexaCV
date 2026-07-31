@@ -38,6 +38,8 @@ export const resumes = pgTable("resumes", {
   content: jsonb("content").notNull(), // Native JSON content of the resume
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  /** Soft-delete timestamp. Null = active. 30-day purge cron is a follow-up. */
+  deletedAt: timestamp("deletedAt"),
 }, (table) => ({
   userIndex: index("resumes_user_idx").on(table.userId),
 }));
@@ -445,6 +447,7 @@ export type ResumeEvaluationDb = typeof resumeEvaluations.$inferSelect;
 export type InsertResumeEvaluationDb = typeof resumeEvaluations.$inferInsert;
 
 // ==========================================
+// DEPRECATED — Stripe removed; table retained for existing prod rows. Do not write.
 // F3 — PROCESSED STRIPE EVENTS (webhook idempotency)
 // ==========================================
 

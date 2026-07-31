@@ -155,7 +155,7 @@ export default function ResumeAIGenerator({
           <Label htmlFor="experience-summary" className="font-semibold text-slate-700 dark:text-slate-350 text-xs uppercase tracking-wider">Your Background & Highlights</Label>
           <Textarea
             id="experience-summary"
-            placeholder="e.g. 5 years of experience building React apps, worked at Google and Stripe, designed high-performance billing system, proficient in GraphQL..."
+            placeholder="e.g. 5 years of experience building React apps, worked at Google and Amazon, designed high-performance billing system, proficient in GraphQL..."
             rows={4}
             value={experienceDetails}
             onChange={(e) => setExperienceDetails(e.target.value)}

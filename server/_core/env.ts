@@ -40,8 +40,6 @@ export const ENV = {
   aiQuotaPaid: process.env.AI_QUOTA_PAID ?? "200",
   adminEmail: process.env.ADMIN_EMAIL ?? "",
   adminPassword: process.env.ADMIN_PASSWORD ?? "",
-  /** Payments: razorpay (primary) | stripe (legacy emergency only). */
-  paymentProvider: (process.env.PAYMENT_PROVIDER ?? "razorpay").toLowerCase(),
   razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? "",
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? "",
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",

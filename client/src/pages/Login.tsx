@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Layers, Chrome, Sparkles } from "lucide-react";
+import { Layers, Chrome } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -8,16 +8,25 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { canUseOAuthPortal, getLoginUrl } from "@/const";
 
+/** Match Landing Step 3 light tokens */
 const T = {
-  bg: "#0b1326",
-  surface: "#171f33",
-  primaryText: "#b8c4ff",
+  bg: "#f8fafc",
+  surface: "#ffffff",
+  primary: "#1e40af",
   accent: "#ea580c",
-  text: "#dae2fd",
-  muted: "#c4c5d5",
-  border: "#444653",
-  radius: 8,
+  text: "#0f172a",
+  muted: "#475569",
+  lightMuted: "#94a3b8",
+  border: "#e2e8f0",
+  radius: 10,
 };
+
+function guestHref(redirect: string): string {
+  if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
+    return "/builder";
+  }
+  return redirect;
+}
 
 export default function Login() {
   const { isAuthenticated } = useAuth();
@@ -39,23 +48,25 @@ export default function Login() {
     if (convertParam) {
       const guestSessionId = localStorage.getItem("guest_session_id");
       if (guestSessionId) {
-        toast.info("Migrating your guest data to your account...");
+        toast.info("Saving your guest drafts to your account…");
         try {
           await convertGuestMutation.mutateAsync({ guestSessionId });
           await storage.syncGuestDataToCloud();
-          toast.success("Guest data saved to your account.");
-        } catch (e) {
-          console.error("Failed to convert guest session:", e);
+          toast.success("Your guest drafts are now on your account.");
+        } catch {
+          toast.error(
+            "Signed in, but we could not move guest drafts automatically. Your local drafts are still on this device."
+          );
         }
       }
     }
-    setLocation(redirectParam);
+    setLocation(redirectParam === "/" && convertParam ? "/builder" : redirectParam);
   };
 
   const handleOAuthContinue = () => {
     if (!canUseOAuthPortal()) {
       toast.error(
-        "Live sign-in is not configured. Set VITE_OAUTH_PORTAL_URL and VITE_APP_ID, then redeploy. Or continue as guest."
+        "Sign-in is not available on this site right now. Continue as guest to build a resume, or try again later."
       );
       return;
     }
@@ -64,61 +75,85 @@ export default function Login() {
 
   const form = (
     <div style={{ width: "100%", maxWidth: 400 }}>
-      <div className="flex items-center justify-center gap-2 mb-8">
-        <Layers style={{ color: T.primaryText }} className="w-7 h-7" />
-        <span className="text-xl font-bold" style={{ color: T.text }}>
+      <Link href="/" className="flex items-center justify-center gap-2.5 mb-8 no-underline">
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: T.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          aria-hidden="true"
+        >
+          <Layers style={{ color: "#fff" }} className="w-4 h-4" strokeWidth={1.75} />
+        </div>
+        <span className="text-xl font-extrabold tracking-tight" style={{ color: T.text }}>
           HexaCv
         </span>
-      </div>
+      </Link>
 
-      <h1
-        className="text-2xl font-bold text-center mb-3"
-        style={{ color: T.text }}
-      >
-        {convertParam ? "Secure your guest resume" : "Welcome back"}
+      <h1 className="text-2xl font-extrabold text-center mb-3 tracking-tight" style={{ color: T.text }}>
+        {convertParam ? "Save your guest resume" : "Welcome back"}
       </h1>
       <p
         className="text-center mb-8"
-        style={{ color: T.muted, fontSize: 14, lineHeight: 1.5 }}
+        style={{ color: T.muted, fontSize: 14, lineHeight: 1.55 }}
       >
-        Sign in with your real HexaCv account. No fake Google or test emails.
+        Guest drafts stay on this device until you sign in. AI runs only send resume
+        text to your configured model provider when you use AI.
       </p>
 
       <Button
         onClick={handleOAuthContinue}
+        className="w-full font-bold hover:opacity-90 transition-opacity"
         style={{
-          width: "100%",
           height: 48,
+          minHeight: 44,
           borderRadius: T.radius,
           backgroundColor: T.accent,
           color: "#fff",
           fontSize: 15,
-          fontWeight: 600,
           border: "none",
-          cursor: "pointer",
           gap: 8,
         }}
-        className="hover:opacity-90 transition-opacity"
       >
-        <Chrome className="w-4 h-4" /> Sign in with HexaCv
+        <Chrome className="w-4 h-4" strokeWidth={1.75} /> Sign in with HexaCv
       </Button>
+
+      <Link href={guestHref(redirectParam)} className="block w-full mt-3 no-underline">
+        <Button
+          variant="outline"
+          className="w-full font-semibold"
+          style={{
+            height: 48,
+            minHeight: 44,
+            borderRadius: T.radius,
+            borderColor: T.border,
+            color: T.text,
+            backgroundColor: T.surface,
+          }}
+        >
+          Continue as guest
+        </Button>
+      </Link>
 
       {!canUseOAuthPortal() && (
         <p
           className="text-center mt-3"
-          style={{ color: T.muted, fontSize: 12, lineHeight: 1.4 }}
+          style={{ color: T.lightMuted, fontSize: 12, lineHeight: 1.4 }}
         >
-          OAuth portal env is missing on this deploy. Use guest mode below, or
-          add <code>VITE_OAUTH_PORTAL_URL</code> + <code>VITE_APP_ID</code> on
-          Vercel and redeploy.
+          Live sign-in is not set up on this deploy. Guest mode still works.
         </p>
       )}
 
       <p className="text-center mt-8" style={{ color: T.muted, fontSize: 13 }}>
         Don&apos;t have an account?{" "}
-        <Link href="/register">
+        <Link href={`/register${window.location.search || ""}`}>
           <span
-            style={{ color: T.primaryText, fontWeight: 600, cursor: "pointer" }}
+            style={{ color: T.primary, fontWeight: 600, cursor: "pointer" }}
             className="hover:underline"
           >
             Sign up
@@ -126,43 +161,16 @@ export default function Login() {
         </Link>
       </p>
 
-      <div className="text-center mt-4">
-        <Link href={redirectParam}>
-          <span
-            style={{
-              color: T.muted,
-              fontSize: 12,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              minHeight: 44,
-            }}
-            className="hover:opacity-80 transition-opacity"
-          >
-            <Sparkles className="w-3 h-3" /> Continue as Guest
-          </span>
-        </Link>
-      </div>
-
       <p
         className="text-center mt-6"
-        style={{ color: T.border, fontSize: 10, lineHeight: 1.4 }}
+        style={{ color: T.lightMuted, fontSize: 11, lineHeight: 1.45 }}
       >
         By continuing, you agree to HexaCv&apos;s{" "}
-        <Link
-          href="/terms"
-          className="underline hover:underline"
-          style={{ color: T.muted }}
-        >
-          Terms of Service
+        <Link href="/terms" className="underline" style={{ color: T.muted }}>
+          Terms
         </Link>{" "}
         and{" "}
-        <Link
-          href="/privacy"
-          className="underline hover:underline"
-          style={{ color: T.muted }}
-        >
+        <Link href="/privacy" className="underline" style={{ color: T.muted }}>
           Privacy Policy
         </Link>
         .
@@ -178,44 +186,23 @@ export default function Login() {
         backgroundColor: T.bg,
         fontFamily: "Inter, sans-serif",
         display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "48px 24px",
       }}
     >
-      <div className="flex sm:hidden items-center justify-center w-full px-6 py-12">
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 440,
+          backgroundColor: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 16,
+          padding: "40px 28px",
+          boxShadow: "0 12px 40px rgba(15,23,42,0.06)",
+        }}
+      >
         {form}
-      </div>
-      <div className="hidden sm:flex w-full">
-        <div
-          className="flex items-center justify-center"
-          style={{ width: "40%", padding: 32 }}
-        >
-          {form}
-        </div>
-        <div
-          style={{
-            width: "60%",
-            position: "relative",
-            overflow: "hidden",
-            background:
-              "linear-gradient(135deg, #0f1b3d 0%, #1e40af 40%, #ea580c 100%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 64,
-          }}
-        >
-          <div className="flex items-center gap-3 mb-8 relative" style={{ zIndex: 1 }}>
-            <Layers style={{ color: "#fff", opacity: 0.9 }} className="w-8 h-8" />
-            <span className="text-2xl font-bold text-white">HexaCv</span>
-          </div>
-          <p
-            className="relative text-center text-white/90"
-            style={{ zIndex: 1, maxWidth: 400, fontSize: 16, lineHeight: 1.6 }}
-          >
-            Build an ATS-friendly resume with real account sync — no fabricated
-            demo identities.
-          </p>
-        </div>
       </div>
     </div>
   );

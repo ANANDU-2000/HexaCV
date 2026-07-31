@@ -139,14 +139,40 @@ export default function ResumeBuilder() {
     try {
       const list = await storage.listResumes();
       setResumesList(list);
+      return list;
     } catch (error) {
       console.error('Failed to load resumes list:', error);
+      return [] as Resume[];
     }
   };
 
   useEffect(() => {
     fetchResumes();
   }, [activeResume]);
+
+  // Deep-link: /builder?id=X opens that resume in the live editor (DashboardHome edit redirects here).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resumeId = params.get('id');
+    if (!resumeId) return;
+
+    let cancelled = false;
+    (async () => {
+      const list = await fetchResumes();
+      if (cancelled) return;
+      const matched = list.find((r) => r.id === resumeId);
+      if (matched) {
+        setActiveResume(matched);
+      } else {
+        toast.message('That draft was not found. Pick one from your list.');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-run when the location (and thus ?id=) changes.
+  }, [location]);
 
   const navigateToMode = (nextMode: BuilderMode) => {
     setActiveResume(null);

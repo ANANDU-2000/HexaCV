@@ -22,7 +22,7 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
-  FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
+  FileText, Zap, Users, Gift, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
   BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -32,13 +32,9 @@ import { BottomNav } from './BottomNav';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: FileText, label: "Resume Builder", path: "/dashboard/builder" },
+  { icon: FileText, label: "Resume Builder", path: "/builder" },
   { icon: Zap, label: "ATS Scanner", path: "/dashboard/ats" },
-  { icon: Store, label: "Marketplace", path: "/dashboard/marketplace" },
-  { icon: Briefcase, label: "Job Board", path: "/dashboard/jobs" },
-  { icon: Users, label: "Recruiter Portal", path: "/dashboard/recruiter" },
   { icon: Gift, label: "Affiliate Program", path: "/dashboard/affiliate" },
-  { icon: Building, label: "Organization", path: "/dashboard/organization" },
   { icon: CreditCard, label: "Billing & Subscriptions", path: "/dashboard/billing" },
   { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true }
 ];
@@ -296,10 +292,10 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className={`flex-1 p-4 ${isMobile && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') ? "pb-20" : ""}`}>{children}</main>
+        <main className={`flex-1 p-4 ${isMobile ? "pb-20" : ""}`}>{children}</main>
       </SidebarInset>
 
-      {isMobile && !isAdminRoute && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') && <BottomNav />}
+      {isMobile && !isAdminRoute && <BottomNav />}
     </>
   );
 }

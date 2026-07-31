@@ -6,12 +6,21 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Linkedin, Upload, FileText, AlertCircle } from 'lucide-react';
 import { ParsedResume } from '@shared/types';
 import { toast } from 'sonner';
-import { parseResumeText } from '@/lib/resumeParser';
 import { trpc } from '@/lib/trpc';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ResumeLinkedInImporterProps {
   onImported: (data: ParsedResume) => void;
+}
+
+/** UTF-8-safe base64 for paste text → resume.parse { filename, base64 } */
+function textToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
 }
 
 export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImporterProps) {
@@ -23,24 +32,28 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
 
   const parseMutation = trpc.resume.parse.useMutation();
 
-  const handleTextImport = () => {
+  const handleTextImport = async () => {
     if (!pastedText.trim()) {
       toast.error('Please paste your LinkedIn profile text.');
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
-      try {
-        const parsed = parseResumeText(pastedText);
-        toast.success('Successfully imported and parsed LinkedIn profile!');
-        onImported(parsed);
-      } catch (err) {
-        toast.error('Failed to parse text. Please check the content and try again.');
-      } finally {
-        setLoading(false);
-      }
-    }, 1500);
+    try {
+      const parsed = await parseMutation.mutateAsync({
+        filename: 'linkedin-profile.txt',
+        base64: textToBase64(pastedText),
+      });
+      toast.success('Successfully imported and parsed LinkedIn profile!');
+      onImported(parsed);
+    } catch (err: any) {
+      console.error('LinkedIn text parsing error:', err);
+      toast.error(
+        err?.message || 'Failed to parse text. Please check the content and try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,71 +74,41 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
     setLoading(true);
     setFileError(null);
 
-    if (file.type === 'text/plain') {
+    // PDF and TXT: same base64 → resume.parse path (server extractText handles both)
+    try {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
-          const text = e.target?.result as string;
-          const parsed = parseResumeText(text);
-          toast.success('Successfully parsed LinkedIn profile file!');
+          const result = e.target?.result as string;
+          const base64 = result.split(',')[1];
+          if (!base64) {
+            throw new Error('Failed to read file as base64.');
+          }
+
+          const parsed = await parseMutation.mutateAsync({
+            filename: file.name,
+            base64,
+          });
+
+          toast.success('Successfully parsed LinkedIn profile export!');
           onImported(parsed);
-        } catch (err) {
-          toast.error('Failed to parse file content.');
+        } catch (err: any) {
+          console.error('LinkedIn file parsing error:', err);
+          setFileError(
+            err?.message || 'Failed to parse file. Please paste your profile text instead.'
+          );
         } finally {
           setLoading(false);
         }
       };
       reader.onerror = () => {
-        toast.error('Failed to read file.');
+        setFileError('Failed to read file.');
         setLoading(false);
       };
-      reader.readAsText(file);
-    } else {
-      // PDF files: send to server for proper parsing (never fabricate data)
-      try {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          try {
-            const result = e.target?.result as string;
-            const base64 = result.split(',')[1];
-            if (!base64) {
-              throw new Error('Failed to read PDF file as base64.');
-            }
-
-            const parsed = await parseMutation.mutateAsync({
-              filename: file.name,
-              base64,
-            });
-
-            // Ensure the LinkedIn profile source is marked
-            if (!parsed.header?.links?.some(l => l.label === 'LinkedIn')) {
-              parsed.header = parsed.header || {};
-              parsed.header.links = [
-                ...(parsed.header.links || []),
-                { label: 'LinkedIn', url: 'https://linkedin.com/in/imported-profile' }
-              ];
-            }
-
-            toast.success('Successfully parsed LinkedIn profile PDF!');
-            onImported(parsed);
-          } catch (err: any) {
-            console.error('LinkedIn PDF parsing error:', err);
-            setFileError(
-              err?.message || 'Failed to parse PDF. Please paste your profile text instead.'
-            );
-          } finally {
-            setLoading(false);
-          }
-        };
-        reader.onerror = () => {
-          setFileError('Failed to read PDF file.');
-          setLoading(false);
-        };
-        reader.readAsDataURL(file);
-      } catch (err: any) {
-        setFileError(err?.message || 'Failed to process PDF file.');
-        setLoading(false);
-      }
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      setFileError(err?.message || 'Failed to process file.');
+      setLoading(false);
     }
   };
 
@@ -137,7 +120,8 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
           Import from LinkedIn
         </CardTitle>
         <CardDescription>
-          Paste your LinkedIn profile text or upload the profile PDF export (generated by clicking "More" &gt; "Save to PDF" on LinkedIn).
+          No live LinkedIn connection. Paste your profile text, or upload your LinkedIn PDF/data
+          export (More → Save to PDF on LinkedIn).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -176,7 +160,7 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
         </div>
 
         <div className="space-y-4">
-          <Label>Upload LinkedIn PDF Export</Label>
+          <Label>Upload LinkedIn PDF or text export</Label>
           <div
             onClick={() => fileInputRef.current?.click()}
             className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer"
@@ -191,9 +175,9 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
             <div className="flex flex-col items-center gap-2">
               <Upload className="w-8 h-8 text-slate-400" />
               <p className="text-sm font-semibold text-slate-700">
-                {file ? file.name : 'Select LinkedIn PDF Profile'}
+                {file ? file.name : 'Select PDF or .txt export'}
               </p>
-              <p className="text-xs text-slate-500">Supports PDF or plain text</p>
+              <p className="text-xs text-slate-500">Supports PDF or plain text — not a live LinkedIn login</p>
             </div>
           </div>
 
@@ -213,7 +197,7 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Extracting PDF...
+                  Extracting…
                 </>
               ) : (
                 <>

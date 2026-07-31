@@ -22,8 +22,8 @@ export type PaymentOrderStatus =
   | "failed"
   | "refunded";
 
-export function getPaymentProvider(): "razorpay" | "stripe" {
-  return ENV.paymentProvider === "stripe" ? "stripe" : "razorpay";
+export function getPaymentProvider(): "razorpay" {
+  return "razorpay";
 }
 
 export function getRazorpayKeyId(): string {

@@ -7,7 +7,6 @@ import * as db from "./db";
 import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
 import { nanoid } from "nanoid";
 import { extractText, parseResumeWithLLM } from "./fileParser";
-import Stripe from "stripe";
 import { getAllApiKeys, saveApiKey, testApiKey as testApiKeyFunc, isAiPaused, upsertModelRoute } from "./apiKeyManager";
 import { TRPCError } from "@trpc/server";
 import { buildAdminUsageStats } from "./usageTracker";
@@ -176,6 +175,16 @@ export const appRouter = router({
           throw new Error("Resume not found or access denied");
         }
         return db.deleteResume(input.id, ctx.user.id);
+      }),
+
+    restore: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getResume(input.id);
+        if (!existing || existing.userId !== ctx.user.id) {
+          throw new Error("Resume not found or access denied");
+        }
+        return db.restoreResume(input.id, ctx.user.id);
       }),
   }),
 
@@ -449,129 +458,131 @@ export const appRouter = router({
   });
   })(),
 
-  // SaaS: Organization Router
-  organization: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return db.getUserOrganizations(ctx.user.id);
-    }),
-    create: protectedProcedure
-      .input(z.object({ name: z.string(), slug: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const id = nanoid();
-        const org = await db.createOrganization({
-          id,
-          name: input.name,
-          slug: input.slug,
-          primaryColor: "#1e40af",
-          secondaryColor: "#0d9488",
-          logoUrl: "https://www.hexastacksolutions.com/logo.png",
-          customDomain: `${input.slug}.hexacv.com`
-        });
-        await db.addOrganizationMember({
-          id: nanoid(),
-          organizationId: id,
-          userId: ctx.user.id,
-          role: "owner"
-        });
-        return org;
-      }),
-    update: protectedProcedure
-      .input(z.object({
-        id: z.string(),
-        name: z.string().optional(),
-        logoUrl: z.string().optional(),
-        primaryColor: z.string().optional(),
-        secondaryColor: z.string().optional(),
-        customDomain: z.string().optional()
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const members = await db.getOrganizationMembers(input.id);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to update organization");
-        }
-        return db.updateOrganization(input.id, input);
-      }),
-    members: protectedProcedure
-      .input(z.object({ orgId: z.string() }))
-      .query(async ({ input, ctx }) => {
-        const members = await db.getOrganizationMembers(input.orgId);
-        const isMember = members.some(m => m.userId === ctx.user.id);
-        if (!isMember) {
-          throw new Error("Unauthorized to view members");
-        }
-        return members;
-      }),
-    invite: protectedProcedure
-      .input(z.object({ orgId: z.string(), email: z.string(), role: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const members = await db.getOrganizationMembers(input.orgId);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to invite members");
-        }
-        const invitee = db.mockDb.users.find(u => u.email === input.email);
-        if (!invitee) {
-          throw new Error("No HexaCv user found with that email yet. Have them sign in once first!");
-        }
-        return db.addOrganizationMember({
-          id: nanoid(),
-          organizationId: input.orgId,
-          userId: invitee.id,
-          role: input.role
-        });
-      }),
-    removeMember: protectedProcedure
-      .input(z.object({ orgId: z.string(), memberId: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const members = await db.getOrganizationMembers(input.orgId);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to remove members");
-        }
-        return db.removeOrganizationMember(input.orgId, input.memberId);
-      })
-  }),
+// PRUNED — not in V6 scope, see ARCHITECTURE.md scope question
+//   // SaaS: Organization Router
+//   organization: router({
+//     list: protectedProcedure.query(async ({ ctx }) => {
+//       return db.getUserOrganizations(ctx.user.id);
+//     }),
+//     create: protectedProcedure
+//       .input(z.object({ name: z.string(), slug: z.string() }))
+//       .mutation(async ({ input, ctx }) => {
+//         const id = nanoid();
+//         const org = await db.createOrganization({
+//           id,
+//           name: input.name,
+//           slug: input.slug,
+//           primaryColor: "#1e40af",
+//           secondaryColor: "#0d9488",
+//           logoUrl: "https://www.hexastacksolutions.com/logo.png",
+//           customDomain: `${input.slug}.hexacv.com`
+//         });
+//         await db.addOrganizationMember({
+//           id: nanoid(),
+//           organizationId: id,
+//           userId: ctx.user.id,
+//           role: "owner"
+//         });
+//         return org;
+//       }),
+//     update: protectedProcedure
+//       .input(z.object({
+//         id: z.string(),
+//         name: z.string().optional(),
+//         logoUrl: z.string().optional(),
+//         primaryColor: z.string().optional(),
+//         secondaryColor: z.string().optional(),
+//         customDomain: z.string().optional()
+//       }))
+//       .mutation(async ({ input, ctx }) => {
+//         const members = await db.getOrganizationMembers(input.id);
+//         const caller = members.find(m => m.userId === ctx.user.id);
+//         if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
+//           throw new Error("Unauthorized to update organization");
+//         }
+//         return db.updateOrganization(input.id, input);
+//       }),
+//     members: protectedProcedure
+//       .input(z.object({ orgId: z.string() }))
+//       .query(async ({ input, ctx }) => {
+//         const members = await db.getOrganizationMembers(input.orgId);
+//         const isMember = members.some(m => m.userId === ctx.user.id);
+//         if (!isMember) {
+//           throw new Error("Unauthorized to view members");
+//         }
+//         return members;
+//       }),
+//     invite: protectedProcedure
+//       .input(z.object({ orgId: z.string(), email: z.string(), role: z.string() }))
+//       .mutation(async ({ input, ctx }) => {
+//         const members = await db.getOrganizationMembers(input.orgId);
+//         const caller = members.find(m => m.userId === ctx.user.id);
+//         if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
+//           throw new Error("Unauthorized to invite members");
+//         }
+//         const invitee = db.mockDb.users.find(u => u.email === input.email);
+//         if (!invitee) {
+//           throw new Error("No HexaCv user found with that email yet. Have them sign in once first!");
+//         }
+//         return db.addOrganizationMember({
+//           id: nanoid(),
+//           organizationId: input.orgId,
+//           userId: invitee.id,
+//           role: input.role
+//         });
+//       }),
+//     removeMember: protectedProcedure
+//       .input(z.object({ orgId: z.string(), memberId: z.string() }))
+//       .mutation(async ({ input, ctx }) => {
+//         const members = await db.getOrganizationMembers(input.orgId);
+//         const caller = members.find(m => m.userId === ctx.user.id);
+//         if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
+//           throw new Error("Unauthorized to remove members");
+//         }
+//         return db.removeOrganizationMember(input.orgId, input.memberId);
+//       })
+//   }),
 
-  // SaaS: Marketplace Router
-  marketplace: router({
-    list: publicProcedure
-      .input(z.object({ type: z.string().optional() }))
-      .query(async ({ input }) => {
-        return db.listMarketplaceItems(input.type);
-      }),
-    publish: protectedProcedure
-      .input(z.object({
-        title: z.string(),
-        description: z.string(),
-        type: z.string(),
-        content: z.string(),
-        price: z.number(),
-        isPremium: z.boolean()
-      }))
-      .mutation(async ({ input, ctx }) => {
-        return db.createMarketplaceItem({
-          id: nanoid(),
-          authorId: ctx.user.id,
-          title: input.title,
-          description: input.description,
-          type: input.type,
-          content: input.content,
-          price: input.price,
-          isPremium: input.isPremium
-        });
-      }),
-    download: publicProcedure
-      .input(z.object({ id: z.string() }))
-      .mutation(async ({ input }) => {
-        return db.incrementDownloads(input.id);
-      }),
-    rate: protectedProcedure
-      .input(z.object({ id: z.string(), rating: z.number() }))
-      .mutation(async ({ input, ctx }) => {
-        return db.rateMarketplaceItem(input.id, input.rating);
-      })
-  }),
+// PRUNED — not in V6 scope, see ARCHITECTURE.md scope question
+//   // SaaS: Marketplace Router
+//   marketplace: router({
+//     list: publicProcedure
+//       .input(z.object({ type: z.string().optional() }))
+//       .query(async ({ input }) => {
+//         return db.listMarketplaceItems(input.type);
+//       }),
+//     publish: protectedProcedure
+//       .input(z.object({
+//         title: z.string(),
+//         description: z.string(),
+//         type: z.string(),
+//         content: z.string(),
+//         price: z.number(),
+//         isPremium: z.boolean()
+//       }))
+//       .mutation(async ({ input, ctx }) => {
+//         return db.createMarketplaceItem({
+//           id: nanoid(),
+//           authorId: ctx.user.id,
+//           title: input.title,
+//           description: input.description,
+//           type: input.type,
+//           content: input.content,
+//           price: input.price,
+//           isPremium: input.isPremium
+//         });
+//       }),
+//     download: publicProcedure
+//       .input(z.object({ id: z.string() }))
+//       .mutation(async ({ input }) => {
+//         return db.incrementDownloads(input.id);
+//       }),
+//     rate: protectedProcedure
+//       .input(z.object({ id: z.string(), rating: z.number() }))
+//       .mutation(async ({ input, ctx }) => {
+//         return db.rateMarketplaceItem(input.id, input.rating);
+//       })
+//   }),
 
   // SaaS: Affiliate Router
   affiliate: router({
@@ -585,98 +596,99 @@ export const appRouter = router({
       })
   }),
 
-  // SaaS: Recruiter Router
-  recruiter: router({
-    createJob: protectedProcedure
-      .input(z.object({
-        orgId: z.string(),
-        title: z.string(),
-        description: z.string(),
-        requirements: z.string()
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const members = await db.getOrganizationMembers(input.orgId);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'recruiter' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to create job for this organization");
-        }
-        return db.createRecruiterJob({
-          id: nanoid(),
-          organizationId: input.orgId,
-          title: input.title,
-          description: input.description,
-          requirements: input.requirements
-        });
-      }),
-    listJobs: publicProcedure
-      .input(z.object({ orgId: z.string().optional() }))
-      .query(async ({ input }) => {
-        return db.listRecruiterJobs(input.orgId);
-      }),
-    listApplications: protectedProcedure
-      .input(z.object({ jobId: z.string() }))
-      .query(async ({ input, ctx }) => {
-        const job = await db.getRecruiterJob(input.jobId);
-        if (!job) throw new Error("Recruiter job vacancy not found");
-        const members = await db.getOrganizationMembers(job.organizationId);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'recruiter' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to view applications for this vacancy");
-        }
-        return db.listJobApplications(input.jobId);
-      }),
-    submitApplication: publicProcedure
-      .input(z.object({
-        jobId: z.string(),
-        applicantName: z.string(),
-        applicantEmail: z.string(),
-        resumeContent: z.string()
-      }))
-      .mutation(async ({ input }) => {
-        const job = await db.getRecruiterJob(input.jobId);
-        if (!job) throw new Error("Recruiter job listing not found");
-        
-        let parsedResume: any;
-        try {
-          parsedResume = JSON.parse(input.resumeContent);
-        } catch {
-          // fallback mock resume structure if plain text is submitted
-          parsedResume = {
-            sections: [
-              { type: "skills", content: { skills: [{ category: "Skills", skills: input.resumeContent.split(/\s*,\s*/) }] } },
-              { type: "experience", content: { experiences: [{ role: "Candidate", company: "General", description: [input.resumeContent] }] } }
-            ]
-          };
-        }
+// PRUNED — not in V6 scope, see ARCHITECTURE.md scope question
+//   // SaaS: Recruiter Router
+//   recruiter: router({
+//     createJob: protectedProcedure
+//       .input(z.object({
+//         orgId: z.string(),
+//         title: z.string(),
+//         description: z.string(),
+//         requirements: z.string()
+//       }))
+//       .mutation(async ({ input, ctx }) => {
+//         const members = await db.getOrganizationMembers(input.orgId);
+//         const caller = members.find(m => m.userId === ctx.user.id);
+//         if (!caller || (caller.role !== 'owner' && caller.role !== 'recruiter' && caller.role !== 'admin')) {
+//           throw new Error("Unauthorized to create job for this organization");
+//         }
+//         return db.createRecruiterJob({
+//           id: nanoid(),
+//           organizationId: input.orgId,
+//           title: input.title,
+//           description: input.description,
+//           requirements: input.requirements
+//         });
+//       }),
+//     listJobs: publicProcedure
+//       .input(z.object({ orgId: z.string().optional() }))
+//       .query(async ({ input }) => {
+//         return db.listRecruiterJobs(input.orgId);
+//       }),
+//     listApplications: protectedProcedure
+//       .input(z.object({ jobId: z.string() }))
+//       .query(async ({ input, ctx }) => {
+//         const job = await db.getRecruiterJob(input.jobId);
+//         if (!job) throw new Error("Recruiter job vacancy not found");
+//         const members = await db.getOrganizationMembers(job.organizationId);
+//         const caller = members.find(m => m.userId === ctx.user.id);
+//         if (!caller || (caller.role !== 'owner' && caller.role !== 'recruiter' && caller.role !== 'admin')) {
+//           throw new Error("Unauthorized to view applications for this vacancy");
+//         }
+//         return db.listJobApplications(input.jobId);
+//       }),
+//     submitApplication: publicProcedure
+//       .input(z.object({
+//         jobId: z.string(),
+//         applicantName: z.string(),
+//         applicantEmail: z.string(),
+//         resumeContent: z.string()
+//       }))
+//       .mutation(async ({ input }) => {
+//         const job = await db.getRecruiterJob(input.jobId);
+//         if (!job) throw new Error("Recruiter job listing not found");
+//
+//         let parsedResume: any;
+//         try {
+//           parsedResume = JSON.parse(input.resumeContent);
+//         } catch {
+//           // fallback mock resume structure if plain text is submitted
+//           parsedResume = {
+//             sections: [
+//               { type: "skills", content: { skills: [{ category: "Skills", skills: input.resumeContent.split(/\s*,\s*/) }] } },
+//               { type: "experience", content: { experiences: [{ role: "Candidate", company: "General", description: [input.resumeContent] }] } }
+//             ]
+//           };
+//         }
+//
+//         const scoreObj = await calculateKeywordAlignment(parsedResume, job.requirements);
+//         return db.createJobApplication({
+//           id: nanoid(),
+//           jobId: input.jobId,
+//           applicantName: input.applicantName,
+//           applicantEmail: input.applicantEmail,
+//           matchScore: scoreObj.score,
+//           resumeContent: input.resumeContent,
+//           status: "pending"
+//         });
+//       }),
+//     updateStatus: protectedProcedure
+//       .input(z.object({ id: z.string(), status: z.string() }))
+//       .mutation(async ({ input, ctx }) => {
+//         const app = await db.getJobApplication(input.id);
+//         if (!app) throw new Error("Application not found");
+//         const job = await db.getRecruiterJob(app.jobId);
+//         if (!job) throw new Error("Recruiter job vacancy not found");
+//         const members = await db.getOrganizationMembers(job.organizationId);
+//         const caller = members.find(m => m.userId === ctx.user.id);
+//         if (!caller || (caller.role !== 'owner' && caller.role !== 'recruiter' && caller.role !== 'admin')) {
+//           throw new Error("Unauthorized to modify application status");
+//         }
+//         return db.updateApplicationStatus(input.id, input.status);
+//       })
+//   }),
 
-        const scoreObj = await calculateKeywordAlignment(parsedResume, job.requirements);
-        return db.createJobApplication({
-          id: nanoid(),
-          jobId: input.jobId,
-          applicantName: input.applicantName,
-          applicantEmail: input.applicantEmail,
-          matchScore: scoreObj.score,
-          resumeContent: input.resumeContent,
-          status: "pending"
-        });
-      }),
-    updateStatus: protectedProcedure
-      .input(z.object({ id: z.string(), status: z.string() }))
-      .mutation(async ({ input, ctx }) => {
-        const app = await db.getJobApplication(input.id);
-        if (!app) throw new Error("Application not found");
-        const job = await db.getRecruiterJob(app.jobId);
-        if (!job) throw new Error("Recruiter job vacancy not found");
-        const members = await db.getOrganizationMembers(job.organizationId);
-        const caller = members.find(m => m.userId === ctx.user.id);
-        if (!caller || (caller.role !== 'owner' && caller.role !== 'recruiter' && caller.role !== 'admin')) {
-          throw new Error("Unauthorized to modify application status");
-        }
-        return db.updateApplicationStatus(input.id, input.status);
-      })
-  }),
-
-  // SaaS: Billing & Support Router (Razorpay primary; Stripe legacy emergency)
+  // SaaS: Billing & Support Router (Razorpay only)
   billing: router({
     getSubscription: protectedProcedure.query(async ({ ctx }) => {
       return db.getSubscription(ctx.user.id);
@@ -689,92 +701,34 @@ export const appRouter = router({
     createCheckoutSession: protectedProcedure
       .input(z.object({ tier: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        const provider = getPaymentProvider();
         const tier = input.tier.toLowerCase();
         if (tier === "free") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot checkout free tier" });
         }
 
-        if (provider === "razorpay") {
-          try {
-            const order = await createRazorpayOrder({
-              userId: ctx.user.id,
-              tier,
-            });
-            return {
-              provider: "razorpay" as const,
-              keyId: order.keyId,
-              orderId: order.orderId,
-              amount: order.amount,
-              currency: order.currency,
-              tier: order.tier,
-              paymentOrderId: order.paymentOrderId,
-              sandbox: order.sandbox,
-              url: null as string | null,
-            };
-          } catch (e: any) {
-            console.error("Razorpay order creation error:", e);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: `Razorpay order failed: ${e.message}`,
-            });
-          }
+        try {
+          const order = await createRazorpayOrder({
+            userId: ctx.user.id,
+            tier,
+          });
+          return {
+            provider: "razorpay" as const,
+            keyId: order.keyId,
+            orderId: order.orderId,
+            amount: order.amount,
+            currency: order.currency,
+            tier: order.tier,
+            paymentOrderId: order.paymentOrderId,
+            sandbox: order.sandbox,
+            url: null as string | null,
+          };
+        } catch (e: any) {
+          console.error("Razorpay order creation error:", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Razorpay order failed: ${e.message}`,
+          });
         }
-
-        // Legacy Stripe emergency path only when PAYMENT_PROVIDER=stripe
-        if (process.env.STRIPE_SECRET_KEY) {
-          try {
-            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" as any });
-            const origin = ctx.req.headers.origin || "http://localhost:3000";
-            const session = await stripe.checkout.sessions.create({
-              payment_method_types: ["card"],
-              line_items: [{
-                price_data: {
-                  currency: "usd",
-                  product_data: {
-                    name: `HexaCv ${input.tier.toUpperCase()} Plan`,
-                    description: `Access to HexaCv ${input.tier} features`,
-                  },
-                  unit_amount: input.tier === "pro" ? 1900 : input.tier === "enterprise" ? 9900 : 0,
-                  recurring: { interval: "month" },
-                },
-                quantity: 1,
-              }],
-              mode: "subscription",
-              success_url: `${origin}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
-              cancel_url: `${origin}/dashboard/billing?status=cancel`,
-              metadata: {
-                userId: ctx.user.id.toString(),
-                tier: input.tier,
-              }
-            });
-            return {
-              provider: "stripe" as const,
-              url: session.url,
-              keyId: null as string | null,
-              orderId: null as string | null,
-              amount: null as number | null,
-              currency: null as string | null,
-              tier: input.tier,
-              paymentOrderId: null as string | null,
-              sandbox: false,
-            };
-          } catch (e: any) {
-            console.error("Stripe session creation error:", e);
-            throw new Error(`Stripe session creation failed: ${e.message}`);
-          }
-        }
-        return {
-          provider: "stripe" as const,
-          url: `/dashboard/billing/checkout?tier=${input.tier}`,
-          keyId: null as string | null,
-          orderId: null as string | null,
-          amount: null as number | null,
-          currency: null as string | null,
-          tier: input.tier,
-          paymentOrderId: null as string | null,
-          sandbox: true,
-        };
       }),
 
     verifyRazorpayPayment: protectedProcedure
@@ -902,7 +856,7 @@ export const appRouter = router({
         return { success: true as const, aiPaused: isAiPaused() };
       }),
 
-    /** Manual tier grant — admin only. Non-admin path is Stripe webhook only. */
+    /** Manual tier grant — admin only. Paid upgrades otherwise go through Razorpay fulfill. */
     manualGrantSubscription: adminProcedure
       .input(
         z.object({
