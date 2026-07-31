@@ -1,15 +1,5 @@
 import { Upload, Sparkles, PencilLine, Download } from 'lucide-react';
 
-// Light marketing tokens, kept in sync with Landing.tsx
-const T = {
-  surface: '#ffffff',
-  primary: '#1e40af',
-  text: '#0f172a',
-  muted: '#475569',
-  lightMuted: '#94a3b8',
-  border: '#e2e8f0',
-};
-
 const STEPS = [
   {
     icon: Upload,
@@ -41,36 +31,34 @@ export default function HowItWorksStrip() {
       className="mx-auto px-4 sm:px-8"
       style={{ maxWidth: 1280, paddingTop: 72, paddingBottom: 72 }}
     >
-      <div className="text-center mb-12">
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: T.text }}>
+      <div className="mb-12 text-center">
+        <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           Four steps. No filler.
         </h2>
-        <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: T.muted }}>
+        <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
           This is how HexaCv actually works: bring what you have, tailor it, check it, export it.
         </p>
       </div>
 
-      <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 list-none p-0 m-0">
+      <ol className="m-0 grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((step, i) => (
           <li
             key={step.title}
-            className="rounded-2xl p-6 flex flex-col gap-3"
-            style={{ backgroundColor: T.surface, border: `1px solid ${T.border}` }}
+            className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6"
           >
             <div className="flex items-center gap-3">
               <span
-                className="text-2xl font-extrabold tabular-nums"
-                style={{ color: T.primary }}
+                className="text-2xl font-extrabold tabular-nums text-primary"
                 aria-hidden="true"
               >
                 {i + 1}
               </span>
-              <step.icon className="w-5 h-5" style={{ color: T.lightMuted }} strokeWidth={1.75} />
+              <step.icon className="h-5 w-5 text-muted-foreground/70" strokeWidth={1.75} />
             </div>
-            <h3 className="text-base font-bold leading-snug" style={{ color: T.text }}>
+            <h3 className="text-base font-bold leading-snug text-foreground">
               {step.title}
             </h3>
-            <p className="text-sm leading-relaxed" style={{ color: T.muted }}>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               {step.desc}
             </p>
           </li>

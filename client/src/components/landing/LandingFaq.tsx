@@ -5,14 +5,6 @@ import {
   AccordionTrigger,
 } from '@/shared/ui/accordion';
 
-// Light marketing tokens, kept in sync with Landing.tsx
-const T = {
-  surface: '#ffffff',
-  text: '#0f172a',
-  muted: '#475569',
-  border: '#e2e8f0',
-};
-
 const FAQ_ITEMS = [
   {
     q: 'Is my resume data safe?',
@@ -40,30 +32,23 @@ export default function LandingFaq() {
   return (
     <section
       aria-label="Frequently asked questions"
-      style={{
-        backgroundColor: T.surface,
-        borderTop: `1px solid ${T.border}`,
-        borderBottom: `1px solid ${T.border}`,
-      }}
+      className="border-y border-border bg-card"
     >
       <div className="mx-auto px-4 sm:px-8" style={{ maxWidth: 760, paddingTop: 72, paddingBottom: 72 }}>
-        <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: T.text }}>
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
             Common questions
           </h2>
         </div>
 
         <Accordion type="single" collapsible className="w-full">
           {FAQ_ITEMS.map((item, i) => (
-            <AccordionItem key={item.q} value={`faq-${i}`} style={{ borderColor: T.border }}>
-              <AccordionTrigger
-                className="text-base font-semibold hover:no-underline"
-                style={{ color: T.text }}
-              >
+            <AccordionItem key={item.q} value={`faq-${i}`} className="border-border">
+              <AccordionTrigger className="text-base font-semibold text-foreground hover:no-underline">
                 {item.q}
               </AccordionTrigger>
               <AccordionContent>
-                <p className="text-sm leading-relaxed" style={{ color: T.muted }}>
+                <p className="text-sm leading-relaxed text-muted-foreground">
                   {item.a}
                 </p>
               </AccordionContent>

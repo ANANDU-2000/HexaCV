@@ -1,16 +1,6 @@
 import ResumePreview from '@/components/ResumePreview';
 import type { Resume, ResumeSection } from '@shared/types';
 
-// Light marketing tokens, kept in sync with Landing.tsx
-const T = {
-  surface: '#ffffff',
-  elevated: '#f1f5f9',
-  text: '#0f172a',
-  muted: '#475569',
-  lightMuted: '#94a3b8',
-  border: '#e2e8f0',
-};
-
 /** A4 page width used by ResumePreview; scale down to fit the card frame. */
 const PREVIEW_PAGE_WIDTH = 794;
 const FRAME_WIDTH = 280;
@@ -164,27 +154,22 @@ export default function OutputPreviewRow() {
       className="mx-auto px-4 sm:px-8"
       style={{ maxWidth: 1280, paddingTop: 72, paddingBottom: 72 }}
     >
-      <div className="text-center mb-10">
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: T.text }}>
+      <div className="mb-10 text-center">
+        <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           The output you actually get
         </h2>
-        <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: T.muted }}>
+        <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
           Rendered with the same templates and preview engine you export from. Sample content
           shown; your resume uses your real experience.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+      <div className="grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {SAMPLES.map(({ label, resume }) => (
           <figure key={resume.id} className="m-0 w-full" style={{ maxWidth: FRAME_WIDTH + 2 }}>
             <div
-              className="relative w-full overflow-hidden rounded-xl"
-              style={{
-                height: FRAME_HEIGHT,
-                border: `1px solid ${T.border}`,
-                backgroundColor: T.surface,
-                boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
-              }}
+              className="relative w-full overflow-hidden rounded-xl border border-border bg-card shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+              style={{ height: FRAME_HEIGHT }}
             >
               <div
                 className="pointer-events-none absolute left-1/2 top-0 origin-top"
@@ -198,10 +183,10 @@ export default function OutputPreviewRow() {
               </div>
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 h-14"
-                style={{ background: `linear-gradient(transparent, ${T.elevated})` }}
+                style={{ background: 'linear-gradient(transparent, var(--muted))' }}
               />
             </div>
-            <figcaption className="mt-3 text-center text-sm font-medium" style={{ color: T.muted }}>
+            <figcaption className="mt-3 text-center text-sm font-medium text-muted-foreground">
               {label}
             </figcaption>
           </figure>

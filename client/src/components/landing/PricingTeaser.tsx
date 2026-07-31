@@ -1,17 +1,6 @@
 import { Link } from 'wouter';
 import { ArrowRight } from 'lucide-react';
 
-// Light marketing tokens, kept in sync with Landing.tsx
-const T = {
-  surface: '#ffffff',
-  primary: '#1e40af',
-  accent: '#ea580c',
-  text: '#0f172a',
-  muted: '#475569',
-  lightMuted: '#94a3b8',
-  border: '#e2e8f0',
-};
-
 // Amounts match live Pricing.tsx / Razorpay checkout (INR)
 const TIERS = [
   {
@@ -44,37 +33,35 @@ export default function PricingTeaser() {
       className="mx-auto px-4 sm:px-8"
       style={{ maxWidth: 960, paddingTop: 72, paddingBottom: 72 }}
     >
-      <div className="text-center mb-10">
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: T.text }}>
+      <div className="mb-10 text-center">
+        <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           Simple pricing, start free
         </h2>
-        <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: T.muted }}>
+        <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
           Begin as a guest at no cost. Upgrade only if you need more.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {TIERS.map((tier) => (
           <div
             key={tier.name}
-            className="rounded-2xl p-6 text-center"
-            style={{
-              backgroundColor: T.surface,
-              border: `1px solid ${tier.highlight ? T.accent : T.border}`,
-            }}
+            className={`rounded-2xl border bg-card p-6 text-center ${
+              tier.highlight ? 'border-accent-warm' : 'border-border'
+            }`}
           >
-            <p className="text-sm font-bold uppercase tracking-widest" style={{ color: T.lightMuted }}>
+            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground/70">
               {tier.name}
             </p>
-            <p className="mt-2 text-3xl font-extrabold" style={{ color: T.text }}>
+            <p className="mt-2 text-3xl font-extrabold text-foreground">
               {tier.price}
               {tier.period && (
-                <span className="text-sm font-normal" style={{ color: T.muted }}>
+                <span className="text-sm font-normal text-muted-foreground">
                   {tier.period}
                 </span>
               )}
             </p>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: T.muted }}>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {tier.desc}
             </p>
           </div>
@@ -84,11 +71,10 @@ export default function PricingTeaser() {
       <div className="mt-8 text-center">
         <Link
           href="/pricing"
-          className="inline-flex items-center gap-1.5 text-sm font-bold no-underline min-h-11"
-          style={{ color: T.primary }}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-primary no-underline"
         >
           See full pricing
-          <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+          <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
         </Link>
       </div>
     </section>
