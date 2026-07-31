@@ -1,8 +1,8 @@
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/shared/ui/sonner";
+import { TooltipProvider } from "@/shared/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "./shared/layout/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Landing from "./pages/Landing";
 import ResumeBuilder from "./pages/ResumeBuilder";

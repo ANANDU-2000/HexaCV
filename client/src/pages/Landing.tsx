@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Link } from 'wouter';
 import {

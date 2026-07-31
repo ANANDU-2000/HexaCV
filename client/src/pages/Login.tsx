@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { Layers, Chrome } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";

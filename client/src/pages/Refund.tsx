@@ -1,4 +1,4 @@
-import LegalPageLayout, { LegalPlaceholder } from "@/components/LegalPageLayout";
+import LegalPageLayout, { LegalPlaceholder } from "@/shared/layout/LegalPageLayout";
 import { Link } from "wouter";
 
 export default function Refund() {

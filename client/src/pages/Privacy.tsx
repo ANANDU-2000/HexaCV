@@ -1,4 +1,4 @@
-import LegalPageLayout, { LegalPlaceholder } from "@/components/LegalPageLayout";
+import LegalPageLayout, { LegalPlaceholder } from "@/shared/layout/LegalPageLayout";
 
 export default function Privacy() {
   return (

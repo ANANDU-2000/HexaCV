@@ -1,13 +1,13 @@
 import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/shared/ui/button';
+import { Textarea } from '@/shared/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Label } from '@/shared/ui/label';
 import { Loader2, Linkedin, Upload, FileText, AlertCircle } from 'lucide-react';
 import { ParsedResume } from '@shared/types';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 
 interface ResumeLinkedInImporterProps {
   onImported: (data: ParsedResume) => void;

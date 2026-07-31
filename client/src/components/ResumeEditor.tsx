@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Textarea } from "@/shared/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/shared/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   Download,
   Eye,

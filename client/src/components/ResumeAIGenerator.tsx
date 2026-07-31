@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
+import { Textarea } from '@/shared/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Loader2, Sparkles } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { ParsedResume } from '@shared/types';
@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/shared/ui/select';
 
 interface ResumeAIGeneratorProps {
   onGenerated: (data: ParsedResume) => void;

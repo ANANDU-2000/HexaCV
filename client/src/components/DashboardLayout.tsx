@@ -1,11 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -18,9 +18,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@/shared/ui/sidebar";
 import { getLoginUrl } from "@/const";
-import { useIsMobile } from "@/hooks/useMobile";
+import { useIsMobile } from "@/shared/hooks/useMobile";
 import { 
   FileText, Zap, Users, Gift, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
   BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity
@@ -29,7 +29,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { BottomNav } from './BottomNav';
-import { Button } from "./ui/button";
+import { Button } from "@/shared/ui/button";
 
 const menuItems = [
   { icon: FileText, label: "Resume Builder", path: "/builder" },
