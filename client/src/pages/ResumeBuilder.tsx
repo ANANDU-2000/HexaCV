@@ -92,12 +92,16 @@ const BUILDER_MODES: Array<{
 ];
 
 const getModeFromLocation = (location: string): BuilderMode => {
-  const [path, queryString] = location.split('?');
+  const [path, queryFromLocation] = location.split('?');
   const routeMode = path.split('/').filter(Boolean)[1];
   if (routeMode === 'upload' || routeMode === 'scratch' || routeMode === 'ai' || routeMode === 'linkedin') {
     return routeMode;
   }
 
+  // wouter's useLocation is pathname-only; also read window search for ?mode=
+  const queryString =
+    queryFromLocation ||
+    (typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : '');
   const queryMode = new URLSearchParams(queryString || '').get('mode');
   if (queryMode === 'upload' || queryMode === 'scratch' || queryMode === 'ai' || queryMode === 'linkedin') {
     return queryMode;

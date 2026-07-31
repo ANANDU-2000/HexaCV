@@ -30,19 +30,19 @@ const METHOD_CARDS = [
     icon: Upload,
     title: 'Upload your resume',
     bullets: ['PDF or DOCX supported', 'Auto-parsed into editable sections', 'Kept private to your session'],
-    href: '/builder?mode=upload',
+    href: '/builder/upload',
   },
   {
     icon: Sparkles,
     title: 'Generate with AI',
     bullets: ['Target role and market first', 'Rewrites stay grounded in your source', 'Nothing invented'],
-    href: '/builder?mode=ai',
+    href: '/builder/ai',
   },
   {
     icon: Linkedin,
     title: 'Import from LinkedIn',
     bullets: ['Paste your profile text', 'Structured into resume sections', 'Edit before you export'],
-    href: '/builder?mode=linkedin',
+    href: '/builder/linkedin',
   },
 ];
 
