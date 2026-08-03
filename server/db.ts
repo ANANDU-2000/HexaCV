@@ -142,6 +142,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
         lastSignedIn: new Date(),
         evaluationOptOut: false,
       });
+      // V6: first-time signup free credit (mock path)
+      try {
+        const { grantSignupFreeCredit } = await import("./credits");
+        await grantSignupFreeCredit(nextId);
+      } catch (e) {
+        console.warn("[Database] signup free credit (mock) failed:", e);
+      }
     }
     return;
   }
@@ -185,10 +192,33 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
+    const before = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.openId, user.openId))
+      .limit(1);
+    const isNewUser = before.length === 0;
+
     await db.insert(users).values(values).onConflictDoUpdate({
       target: users.openId,
       set: updateSet,
     });
+
+    if (isNewUser) {
+      const created = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.openId, user.openId))
+        .limit(1);
+      if (created[0]?.id) {
+        try {
+          const { grantSignupFreeCredit } = await import("./credits");
+          await grantSignupFreeCredit(created[0].id);
+        } catch (e) {
+          console.warn("[Database] signup free credit failed:", e);
+        }
+      }
+    }
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;

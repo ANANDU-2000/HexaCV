@@ -482,3 +482,46 @@ export const paymentOrders = pgTable("payment_orders", {
 
 export type PaymentOrderDb = typeof paymentOrders.$inferSelect;
 export type InsertPaymentOrderDb = typeof paymentOrders.$inferInsert;
+
+// ==========================================
+// V6 — BUILD CREDITS (pay-per-use ₹99)
+// ==========================================
+
+/** Ledger row; balance = SUM(delta) for userId. */
+export const creditLedger = pgTable("credit_ledger", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: integer("userId").notNull(),
+  delta: integer("delta").notNull(),
+  /** signup_free | purchase | referral_reward | build_consume | build_release | admin_grant */
+  reason: varchar("reason", { length: 64 }).notNull(),
+  orderId: varchar("orderId", { length: 36 }),
+  buildId: varchar("buildId", { length: 36 }),
+  /** Idempotency key — unique per grant/consume event */
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("credit_ledger_user_idx").on(table.userId),
+  idemIdx: index("credit_ledger_idem_idx").on(table.idempotencyKey),
+}));
+
+export type CreditLedgerDb = typeof creditLedger.$inferSelect;
+export type InsertCreditLedgerDb = typeof creditLedger.$inferInsert;
+
+/** In-flight / completed AI build status for pipeline loader polling. */
+export const builds = pgTable("builds", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: integer("userId").notNull(),
+  resumeId: varchar("resumeId", { length: 36 }),
+  /** extract | target | rewrite | validate | polish | done | failed */
+  stage: varchar("stage", { length: 32 }).notNull().default("extract"),
+  role: varchar("role", { length: 255 }),
+  region: varchar("region", { length: 64 }),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+}, (table) => ({
+  userIdx: index("builds_user_idx").on(table.userId),
+}));
+
+export type BuildDb = typeof builds.$inferSelect;
+export type InsertBuildDb = typeof builds.$inferInsert;

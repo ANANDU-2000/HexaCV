@@ -15,10 +15,10 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 
 const navItems = [
-  { icon: FileText, label: "Builder", path: "/builder" },
+  { icon: FileText, label: "Builder", path: "/builder/target" },
   { icon: Zap, label: "ATS", path: "/dashboard/ats" },
-  { icon: Gift, label: "Affiliate", path: "/dashboard/affiliate" },
-  { icon: CreditCard, label: "Billing", path: "/dashboard/billing" },
+  { icon: Gift, label: "Refer", path: "/dashboard/affiliate" },
+  { icon: CreditCard, label: "Credits", path: "/dashboard/billing" },
 ];
 
 const moreItems = [

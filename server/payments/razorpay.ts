@@ -12,6 +12,9 @@ import { ENV } from "../_core/env";
 import { getDb, mockDb, updateSubscription } from "../db";
 
 export const RAZORPAY_PRICES_PAISE: Record<string, number> = {
+  /** V6 pay-per-use: one resume build credit */
+  build: 9900,
+  /** Legacy subscription tiers (kept for admin/legacy routes) */
   pro: 39900,
   enterprise: 79900,
 };
@@ -281,10 +284,22 @@ export async function fulfillVerifiedPayment(params: {
     razorpayPaymentId: params.razorpayPaymentId || order.razorpayPaymentId,
   });
 
-  await updateSubscription(order.userId, order.tier, {
-    provider: "razorpay",
-    referenceId: params.razorpayPaymentId || params.razorpayOrderId,
-  });
+  // V6: ₹99 build product grants a credit; legacy tiers still update subscription
+  if (order.tier === "build") {
+    const { grantPurchaseCredit, grantReferralRewardOnFirstPaidBuild } =
+      await import("../credits");
+    await grantPurchaseCredit(order.userId, order.id);
+    try {
+      await grantReferralRewardOnFirstPaidBuild(order.userId, order.id);
+    } catch (e) {
+      console.warn("[razorpay] referral reward failed:", e);
+    }
+  } else {
+    await updateSubscription(order.userId, order.tier, {
+      provider: "razorpay",
+      referenceId: params.razorpayPaymentId || params.razorpayOrderId,
+    });
+  }
 
   return { duplicate: false, order: updated };
 }

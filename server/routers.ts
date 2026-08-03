@@ -19,6 +19,15 @@ import {
   adminRefundPaymentOrder,
 } from "./payments/razorpay";
 import { isEffectivelyPaid } from "./subscriptionGrace";
+import {
+  getCreditBalance,
+  grantSignupFreeCredit,
+  consumeBuildCredit,
+  releaseBuildCredit,
+  createBuild,
+  updateBuildStage,
+  getBuild,
+} from "./credits";
 
 async function resolveTrackedAiOpts(ctx: {
   user?: { id: number } | null;
@@ -78,8 +87,29 @@ export const appRouter = router({
     convertGuest: protectedProcedure
       .input(z.object({ guestSessionId: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        return db.convertGuestSession(input.guestSessionId, ctx.user.id);
+        const result = await db.convertGuestSession(input.guestSessionId, ctx.user.id);
+        // Ensure free credit exists (idempotent) for converted accounts
+        await grantSignupFreeCredit(ctx.user.id);
+        return result;
       }),
+  }),
+
+  // V6: per-build credits
+  credits: router({
+    getBalance: protectedProcedure.query(async ({ ctx }) => {
+      const balance = await getCreditBalance(ctx.user.id);
+      return {
+        balance,
+        ctaLabel:
+          balance > 0
+            ? "Build my resume — free"
+            : "Build my resume — ₹99",
+      };
+    }),
+    ensureSignupCredit: protectedProcedure.mutation(async ({ ctx }) => {
+      const balance = await grantSignupFreeCredit(ctx.user.id);
+      return { balance };
+    }),
   }),
 
   // Resume Router
@@ -107,6 +137,33 @@ export const appRouter = router({
           throw new Error("Resume not found or access denied");
         }
         return resume;
+      }),
+
+    /** V6: poll pipeline stage while generateFullResume is in flight */
+    buildStatus: protectedProcedure
+      .input(z.object({ buildId: z.string() }))
+      .query(async ({ input, ctx }) => {
+        const build = await getBuild(input.buildId, ctx.user.id);
+        if (!build) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Build not found" });
+        }
+        return build;
+      }),
+
+    startBuild: protectedProcedure
+      .input(
+        z.object({
+          role: z.string().optional(),
+          region: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const build = await createBuild({
+          userId: ctx.user.id,
+          role: input.role,
+          region: input.region,
+        });
+        return build;
       }),
       
     create: protectedProcedure
@@ -246,11 +303,47 @@ export const appRouter = router({
         experienceLevel: z.string().optional(),
         market: z.string().optional(),
         jobDescription: z.string().optional(),
+        buildId: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        if (!ctx.user?.id) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Sign in to run the AI pipeline. Your draft is saved.",
+          });
+        }
+        const userId = ctx.user.id;
+        const balance = await getCreditBalance(userId);
+        if (balance < 1) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+
+        let build =
+          input.buildId
+            ? await getBuild(input.buildId, userId)
+            : null;
+        if (!build) {
+          build = await createBuild({
+            userId,
+            role: input.jobTitle,
+            region: input.market,
+          });
+        }
+
+        const consumed = await consumeBuildCredit(userId, build.id);
+        if (!consumed.ok) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+
         try {
           const opts = await resolveTrackedAiOpts(ctx);
-          return await runResumePipeline(
+          const result = await runResumePipeline(
             {
               sourceText: input.experienceDetails || "",
               jobTitle: input.jobTitle,
@@ -258,16 +351,25 @@ export const appRouter = router({
               market: input.market,
               experienceLevel: input.experienceLevel,
             },
-            opts
+            opts,
+            async (stage) => {
+              await updateBuildStage(build!.id, stage);
+            }
           );
+          await updateBuildStage(build.id, "done");
+          return { ...result, buildId: build.id };
         } catch (error: any) {
           console.error("AI Generation error:", error);
-          // NEVER return fabricated data — throw a real error instead
-          throw new Error(
-            `Resume generation failed: ${error?.message || "Unknown error"}. ` +
-            "Please check that your API keys are configured correctly in the .env file and try again, " +
-            "or use the 'Create from scratch' option to build your resume manually."
-          );
+          await releaseBuildCredit(userId, build.id);
+          await updateBuildStage(build.id, "failed", {
+            errorMessage: error?.message || "Generation failed",
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              `We hit a snag on the AI pipeline — no credit used. ` +
+              `${error?.message || "Please try again."}`,
+          });
         }
       }),
 
@@ -705,6 +807,7 @@ export const appRouter = router({
         if (tier === "free") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot checkout free tier" });
         }
+        // V6: "build" = ₹99 one-time credit; pro/enterprise kept for legacy
 
         try {
           const order = await createRazorpayOrder({

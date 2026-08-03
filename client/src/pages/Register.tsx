@@ -4,17 +4,17 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { canUseOAuthPortal, getLoginUrl } from "@/const";
 
-/** Match Landing Step 3 light tokens */
+/** Ledger tokens (DESIGN.md) */
 const T = {
-  bg: "#f8fafc",
-  surface: "#ffffff",
-  primary: "#1e40af",
-  accent: "#ea580c",
-  text: "#0f172a",
-  muted: "#475569",
-  lightMuted: "#94a3b8",
-  border: "#e2e8f0",
-  radius: 10,
+  bg: "#FBF8F3",
+  surface: "#FFFFFF",
+  primary: "#123832",
+  accent: "#C5622A",
+  text: "#1C1B18",
+  muted: "#635F55",
+  lightMuted: "#8B8680",
+  border: "#E4DFD3",
+  radius: 12,
 };
 
 function guestHref(redirect: string): string {
@@ -64,11 +64,16 @@ export default function Register() {
         Create your account
       </h1>
       <p
-        className="text-center mb-8"
+        className="text-center mb-2"
         style={{ color: T.muted, fontSize: 14, lineHeight: 1.55 }}
       >
-        Guest drafts stay on this device until you sign in. AI runs only send resume
-        text to your configured model provider when you use AI.
+        Your resume draft is saved — you&apos;ll pick up right where you left off.
+      </p>
+      <p
+        className="text-center mb-8"
+        style={{ color: T.lightMuted, fontSize: 13, lineHeight: 1.55 }}
+      >
+        First build free after signup. No subscription.
       </p>
 
       <Button

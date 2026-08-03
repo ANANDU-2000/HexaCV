@@ -6,6 +6,8 @@ import ErrorBoundary from "./shared/layout/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Landing from "./pages/Landing";
 import ResumeBuilder from "./pages/ResumeBuilder";
+import Targeting from "./pages/Targeting";
+import ParseReview from "./pages/ParseReview";
 
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/refund" component={Refund} />
       <Route path="/cookies" component={CookiePolicy} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/builder/review-draft" component={ParseReview} />
+      <Route path="/builder/target" component={Targeting} />
       <Route path="/builder/upload" component={ResumeBuilder} />
       <Route path="/builder/scratch" component={ResumeBuilder} />
       <Route path="/builder/ai" component={ResumeBuilder} />

@@ -215,7 +215,6 @@ export default function ResumeBuilder() {
     const resumeId = params.get('id');
     const roleParam = params.get('role');
     const countryParam = params.get('country');
-
     if (roleParam && roleParam.trim()) {
       setSetupTargetRole(roleParam.trim());
     }
@@ -328,6 +327,42 @@ export default function ResumeBuilder() {
       toast.error(`Failed to save resume: ${error.message}`);
     }
   };
+
+  // V6: consume pipeline result stashed by Targeting screen
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fromPipeline') !== '1') return;
+    try {
+      const raw = sessionStorage.getItem('hexacv_pipeline_result');
+      if (!raw) return;
+      const payload = JSON.parse(raw) as {
+        result: ParsedResume & { _pipelineMeta?: unknown };
+        role?: string;
+        region?: string;
+      };
+      sessionStorage.removeItem('hexacv_pipeline_result');
+      if (payload.role) setSetupTargetRole(payload.role);
+      if (payload.region === 'Gulf' || payload.region === 'India') {
+        setSetupMarket(payload.region);
+      }
+      // Strip meta before save; stash flags for Review
+      const { _pipelineMeta, ...resumePayload } = payload.result as any;
+      if (_pipelineMeta) {
+        try {
+          sessionStorage.setItem(
+            'hexacv_pipeline_meta',
+            JSON.stringify(_pipelineMeta)
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      void handleResumeLoad(resumePayload as ParsedResume);
+    } catch (e) {
+      console.warn('Failed to load pipeline result', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
 
   const handleResumeUpdate = async (updatedResume: Resume) => {
     try {

@@ -8,15 +8,15 @@ import ResumeHubCard from "@/components/ResumeHubCard";
 import type { Resume } from "@shared/types";
 
 const T = {
-  surface: "#131b33",
-  elevated: "#1c2747",
-  primary: "#1e40af",
-  primaryText: "#b8c4ff",
-  accent: "#ea580c",
-  text: "#e2e8f0",
-  muted: "#94a3b8",
-  outlineVariant: "#2a3a5c",
-  success: "#16a34a",
+  surface: "#FFFFFF",
+  elevated: "#FBF8F3",
+  primary: "#123832",
+  primaryText: "#123832",
+  accent: "#C5622A",
+  text: "#1C1B18",
+  muted: "#635F55",
+  outlineVariant: "#E4DFD3",
+  success: "#3F7A54",
 };
 
 /** Guest soft-cap is 3 drafts; banner at 2/3 (see ResumeBuilder / useResumeStorage). */
@@ -58,7 +58,7 @@ export default function DashboardHome() {
   };
 
   const handleNewResume = () => {
-    setLocation("/dashboard/builder");
+    setLocation("/builder/target");
   };
 
   const confirmDelete = async () => {
@@ -139,7 +139,7 @@ export default function DashboardHome() {
         type="button"
         onClick={handleNewResume}
         className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl text-base font-bold transition hover:opacity-90 active:scale-[0.99]"
-        style={{ backgroundColor: T.primary, color: "#fff" }}
+        style={{ backgroundColor: T.accent, color: "#fff" }}
       >
         <FilePlus2 className="h-5 w-5" />
         New resume
