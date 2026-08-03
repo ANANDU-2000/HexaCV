@@ -14,10 +14,30 @@ import { getDb, mockDb, updateSubscription } from "../db";
 export const RAZORPAY_PRICES_PAISE: Record<string, number> = {
   /** V6 pay-per-use: one resume build credit */
   build: 9900,
+  /** Build bundles — buy N credits at a volume discount */
+  build_3: 24900,
+  build_5: 39900,
+  build_10: 69900,
   /** Legacy subscription tiers (kept for admin/legacy routes) */
   pro: 39900,
   enterprise: 79900,
 };
+
+/** Number of build credits a verified order grants; null for legacy subscription tiers. */
+export function creditCountForBuildTier(tier: string): number | null {
+  switch (tier) {
+    case "build":
+      return 1;
+    case "build_3":
+      return 3;
+    case "build_5":
+      return 5;
+    case "build_10":
+      return 10;
+    default:
+      return null;
+  }
+}
 
 export type PaymentOrderStatus =
   | "pending"
@@ -284,11 +304,12 @@ export async function fulfillVerifiedPayment(params: {
     razorpayPaymentId: params.razorpayPaymentId || order.razorpayPaymentId,
   });
 
-  // V6: ₹99 build product grants a credit; legacy tiers still update subscription
-  if (order.tier === "build") {
+  // V6: build products grant credits (bundles grant N); legacy tiers update subscription
+  const creditCount = creditCountForBuildTier(order.tier);
+  if (creditCount != null) {
     const { grantPurchaseCredit, grantReferralRewardOnFirstPaidBuild } =
       await import("../credits");
-    await grantPurchaseCredit(order.userId, order.id);
+    await grantPurchaseCredit(order.userId, order.id, creditCount);
     try {
       await grantReferralRewardOnFirstPaidBuild(order.userId, order.id);
     } catch (e) {

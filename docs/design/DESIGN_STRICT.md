@@ -56,8 +56,8 @@ Checklist per page before merging:
 - Loading state lives **on the button itself** â€” icon replaced by a
   spinner, button disabled, label unchanged. No full-screen loading
   overlays for anything except the initial page load.
-- Icon set: stick to one icon library end to end (Tabler outline,
-  per the existing V5 spec's `ti-*` naming) â€” mixing icon families
+- Icon set: stick to one icon library end to end (lucide-react outline,
+  per the component library) — mixing icon families
   mid-app is a visual-consistency violation, not a style nitpick.
 
 ## 4. Viewport & responsive rules

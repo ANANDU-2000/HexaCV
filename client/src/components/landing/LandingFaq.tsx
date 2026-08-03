@@ -19,12 +19,12 @@ const FAQ_ITEMS = [
     a: 'Yes. Formatting and wording guidance is tuned for UAE, Saudi Arabia, and India hiring norms, including regional terminology, layout expectations, and ATS-friendly structure for those markets.',
   },
   {
-    q: 'Can I use it as a guest, and what does the free plan include?',
-    a: 'You can start as a guest with no sign-up. The free plan includes one resume workspace with limited AI usage and export. Signing in lets you save drafts, and upgrading removes the limits.',
+    q: 'Can I use it as a guest, and what does it cost?',
+    a: 'You can start as a guest with no sign-up, and guest drafts stay on your device. Your first build is free on every new account. After that, each resume build is ₹99 — no subscription and no recurring charges.',
   },
   {
     q: 'What export formats do I get?',
-    a: 'You export an ATS-friendly PDF rendered from the same templates you see in the editor preview, so what you download matches what you reviewed.',
+    a: 'You export an ATS-friendly PDF and a Word file, both rendered from the same templates you see in the editor preview — so what you download matches what you reviewed.',
   },
 ];
 

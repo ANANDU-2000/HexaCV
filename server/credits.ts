@@ -141,14 +141,18 @@ export async function grantSignupFreeCredit(userId: number): Promise<number> {
   return result.balance;
 }
 
-/** Grant +1 purchase credit for a verified ₹99 build order (idempotent). */
+/**
+ * Grant purchase credits for a verified build order (1 credit, or N for a
+ * bundle). Idempotent per order id.
+ */
 export async function grantPurchaseCredit(
   userId: number,
-  orderId: string
+  orderId: string,
+  count = 1
 ): Promise<number> {
   const result = await appendCredit({
     userId,
-    delta: 1,
+    delta: count,
     reason: "purchase",
     orderId,
     idempotencyKey: `purchase:${orderId}`,

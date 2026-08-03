@@ -9,6 +9,7 @@ import {
   FileText,
   Download,
 } from "lucide-react";
+import { BUILD_PACKS } from "@/lib/buildPacks";
 
 /**
  * Align with the live product: pay-per-build credits (₹99), first build free at
@@ -123,6 +124,52 @@ export default function Pricing() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Build packs — volume pricing */}
+        <section aria-label="Build packs" className="mt-10">
+          <div className="mb-6">
+            <h2 className="font-display text-xl font-semibold text-foreground">
+              Build packs — buy in bulk, save
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Every pack works like the single build — credits apply to any future build,
+              and the first build is still free.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {BUILD_PACKS.map((pack) => (
+              <div
+                key={pack.tier}
+                className={`relative flex flex-col rounded-2xl border bg-card p-5 ${
+                  pack.popular ? "border-accent-warm" : "border-border"
+                }`}
+              >
+                {pack.popular && (
+                  <span className="absolute right-3 top-3 rounded-full bg-accent-warm/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-warm">
+                    Popular
+                  </span>
+                )}
+                <p className="text-sm font-bold text-foreground">
+                  {pack.count} build{pack.count > 1 ? "s" : ""}
+                </p>
+                <p className="mt-1 font-display text-3xl font-semibold text-foreground">
+                  {pack.priceLabel}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{pack.perBuild}</p>
+                {pack.saveLabel && (
+                  <p className="mt-2 inline-flex self-start rounded-full bg-[color:var(--success)]/10 px-2 py-0.5 text-[11px] font-semibold text-[color:var(--success)]">
+                    {pack.saveLabel}
+                  </p>
+                )}
+                <Link href="/dashboard/billing" className="mt-4 block no-underline">
+                  <span className="inline-flex min-h-11 w-full items-center justify-center rounded-[18px] border border-border text-sm font-semibold text-foreground hover:bg-muted/60">
+                    Buy {pack.count} build{pack.count > 1 ? "s" : ""}
+                  </span>
+                </Link>
+              </div>
+            ))}
           </div>
         </section>
 

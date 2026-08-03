@@ -74,7 +74,7 @@ Never introduce a third font family. Set `font-family` on form controls explicit
 ## 5. Anti-slop checklist (every screen)
 
 - No purple/indigo gradients, blob/wave SVG decorations, or 3D robot illustrations.
-- No sparkle (✨) as an "AI did something" stand-in — use Tabler outline icons (`ti-*` per DESIGN_STRICT).
+- No sparkle (✨) as an "AI did something" stand-in — use the lucide-react outline icons already used across the app (strokeWidth 1.75).
 - No fake-precision numbers ("98.7% ATS Score!") — use found / not-found keyword lists (PLAN.md §6).
 - No stock photography of people-in-blazers — use the resume preview itself as the hero visual.
 - Copy: "Built for the job you actually applied to" beats "Unlock Your Dream Career With The Power of AI".
@@ -87,7 +87,7 @@ Never introduce a third font family. Set `font-family` on form controls explicit
 2. Desktop three-column / split layouts only ≥1024px; collapse below.
 3. Icon-only controls: min 44×44px tap target; `aria-label` required.
 4. Loading state lives on the button itself for ordinary actions; full-focus loader only for the AI pipeline wait.
-5. Icons: Tabler outline only — do not mix icon packs.
+5. Icons: lucide-react outline only — do not mix icon packs.
 
 ---
 
