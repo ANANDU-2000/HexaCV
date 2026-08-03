@@ -81,12 +81,6 @@ export default function Targeting() {
   const utils = trpc.useUtils();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation("/login?redirect=/builder/target&convert=true");
-    }
-  }, [isAuthenticated, setLocation]);
-
-  useEffect(() => {
     try {
       const raw = localStorage.getItem(TARGET_DRAFT_KEY);
       if (!raw) return;
@@ -143,9 +137,10 @@ export default function Targeting() {
   }, [role]);
 
   const balance = balanceQuery.data?.balance ?? 0;
-  const ctaLabel =
-    balanceQuery.data?.ctaLabel ||
-    (balance > 0 ? "Build my resume — free" : "Build my resume — ₹99");
+  const ctaLabel = !isAuthenticated
+    ? "Sign in to build your resume"
+    : balanceQuery.data?.ctaLabel ||
+      (balance > 0 ? "Build my resume — free" : "Build my resume — ₹99");
 
   const experienceDetails = (): string => {
     const draft = loadEntryDraft();
@@ -265,6 +260,11 @@ export default function Targeting() {
   const onCta = async () => {
     if (!role.trim()) {
       toast.error("Enter a target role");
+      return;
+    }
+    // "Sign in only when you build" — guests can fill the form but must sign in to build.
+    if (!isAuthenticated) {
+      setLocation("/login?redirect=/builder/target&convert=true");
       return;
     }
     if (balance > 0) {

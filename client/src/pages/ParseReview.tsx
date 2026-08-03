@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/shared/ui/button";
 import { Layers, ArrowRight } from "lucide-react";
 import { loadEntryDraft, type EntryDraft } from "@/lib/entryDraft";
-import { useAuth } from "@/_core/hooks/useAuth";
 
 /**
  * Pre-targeting parsed-data review — PLAN.md §3 / DESIGN_DESKTOP.
@@ -11,7 +10,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
  */
 export default function ParseReview() {
   const [, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
   const [draft, setDraft] = useState<EntryDraft | null>(null);
 
   useEffect(() => {
@@ -33,10 +31,7 @@ export default function ParseReview() {
   }
 
   const continueToTarget = () => {
-    if (!isAuthenticated) {
-      setLocation("/login?redirect=/builder/target&convert=true");
-      return;
-    }
+    // Guests proceed too — sign-in is gated at the build step, not the review.
     setLocation("/builder/target");
   };
 
