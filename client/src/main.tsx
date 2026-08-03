@@ -7,10 +7,13 @@ import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import { purgeLegacyMockUsers } from "./lib/localStorageDb";
+import { getOrCreateDeviceUid, getOrCreateGuestSessionId } from "./lib/guestSession";
+import { installClientErrorReporter } from "./lib/runtimeErrorReporter";
 import "./index.css";
 
 if (typeof window !== "undefined") {
   purgeLegacyMockUsers();
+  installClientErrorReporter();
 }
 
 // Register Service Worker for PWA support on all pages in production, or unregister in dev to prevent cache issues
@@ -109,7 +112,14 @@ const trpcClient = trpc.createClient({
             openId = parsed?.openId || "";
           }
         } catch (e) {}
-        return openId ? { "x-local-user-openid": openId } : {};
+        const headers: Record<string, string> = {};
+        if (openId) headers["x-local-user-openid"] = openId;
+        // Guest session tracking — the server only records these when no user is signed in.
+        const deviceUid = getOrCreateDeviceUid();
+        const guestSessionId = getOrCreateGuestSessionId();
+        if (deviceUid) headers["x-device-uid"] = deviceUid;
+        if (guestSessionId) headers["x-guest-session-id"] = guestSessionId;
+        return headers;
       },
       fetch(input, init) {
         return globalThis.fetch(input, {

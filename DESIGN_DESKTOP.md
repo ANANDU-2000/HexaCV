@@ -33,7 +33,7 @@ Dark mode: same hue family shifted, not a generic slate-900 — `--paper` → `#
 
 ### Anti-slop checklist (apply to every screen below)
 - No purple/indigo gradients. No blob/wave SVG background decorations. No generic 3D-render robot or floating-card illustrations.
-- No sparkle (✨) icon used as a stand-in for "AI did something" — use the Tabler outline icon set already specified in DESIGN_STRICT (`ti-*`), pick a literal icon (magnifying glass for Extract, target for Target, pencil for Rewrite, check-shield for Validate).
+- No sparkle (✨) icon used as a stand-in for "AI did something" — use the lucide-react outline icon set already used across the app, picking a literal icon (Search for Extract, Crosshair for Target, Pencil for Rewrite, ShieldCheck for Validate).
 - No fake-precision numbers ("98.7% ATS Score!") — use factual, checkable statements (keyword found/not found list, per PLAN.md §6).
 - No stock photography of generic diverse-people-in-blazers. Use the resume preview itself as the hero visual — it's more credible and more relevant.
 - Copy tone: direct, specific, slightly understated. "Built for the job you actually applied to" beats "Unlock Your Dream Career With The Power of AI ✨."

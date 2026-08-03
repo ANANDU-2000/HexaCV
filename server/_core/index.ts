@@ -3,6 +3,22 @@ import { createServer } from "http";
 import net from "net";
 import { createApp } from "./app";
 import { setupVite } from "./vite";
+import { reportServerError } from "./errorReporter";
+
+// Runtime error reporting — catch process-level crashes so they land in runtime-errors/.
+process.on("uncaughtException", (err) => {
+  reportServerError({
+    message: err?.message || "uncaughtException",
+    stack: err?.stack,
+  });
+  console.error("[uncaughtException]", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  reportServerError({ message: err.message, stack: err.stack });
+  console.error("[unhandledRejection]", reason);
+});
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {

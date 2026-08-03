@@ -41,6 +41,9 @@ const HERO_FRAME_WIDTH = 340;
 const HERO_FRAME_HEIGHT = 470;
 const HERO_SCALE = HERO_FRAME_WIDTH / PREVIEW_PAGE_WIDTH;
 
+/** Targeting prefill key — the detected role is written here so /builder/target loads it. */
+const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
+
 const HERO_TRUST = [
   { icon: CheckCircle2, text: "Grounded — nothing invented" },
   { icon: MapPin, text: "Formatted for Gulf & India" },
@@ -112,7 +115,27 @@ export default function Landing() {
       };
       persistDraft(next);
       setParsing(false);
-      // Show the target-role portion next.
+      // Auto-detect the target role from the parsed document so the rewrite targets it.
+      try {
+        const detectedRole = (
+          (parsed as any)?.header?.targetRole ||
+          (parsed as any)?.header?.jobTitle ||
+          ""
+        )
+          .toString()
+          .trim();
+        if (detectedRole) {
+          const raw = localStorage.getItem(TARGET_DRAFT_KEY);
+          const existing = raw ? JSON.parse(raw) : {};
+          localStorage.setItem(
+            TARGET_DRAFT_KEY,
+            JSON.stringify({ ...existing, role: detectedRole })
+          );
+        }
+      } catch {
+        /* ignore */
+      }
+      // Show the target-role portion next, with the detected role prefilled.
       setLocation("/builder/target");
     } catch {
       setParsing(false);
