@@ -10,6 +10,8 @@ import GroundingProof from "@/components/landing/GroundingProof";
 import OutputPreviewRow from "@/components/landing/OutputPreviewRow";
 import PricingTeaser from "@/components/landing/PricingTeaser";
 import LandingFaq from "@/components/landing/LandingFaq";
+import RegionSelectSheet, { type Region } from "@/components/RegionSelectSheet";
+import { FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { trpc } from "@/lib/trpc";
 import {
   createDraftId,
@@ -31,6 +33,9 @@ const footerLinks = {
   ],
 };
 
+/** Market chosen on the landing region sheet — prefill for the Targeting page. */
+const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
+
 export default function Landing() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -41,6 +46,7 @@ export default function Landing() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EntryDraft | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [regionOpen, setRegionOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseMutation = trpc.resume.parse.useMutation();
@@ -54,7 +60,23 @@ export default function Landing() {
   const persistDraft = useCallback((next: EntryDraft) => {
     saveEntryDraft(next);
     setDraft(next);
+    // Flow A step 3 — ask where they're applying before targeting.
+    setRegionOpen(true);
   }, []);
+
+  const handleConfirmRegion = (region: Region) => {
+    try {
+      const raw = localStorage.getItem(TARGET_DRAFT_KEY);
+      const existing = raw ? JSON.parse(raw) : {};
+      localStorage.setItem(
+        TARGET_DRAFT_KEY,
+        JSON.stringify({ ...existing, market: region })
+      );
+    } catch {
+      /* ignore */
+    }
+    setRegionOpen(false);
+  };
 
   const handleFile = async (file: File) => {
     setParseError(null);
@@ -309,11 +331,12 @@ export default function Landing() {
 
                     {mode === "scratch" && (
                       <div className="mt-4 space-y-3">
-                        <textarea
+                        <FloatingLabelTextarea
                           value={pasteText}
                           onChange={(e) => setPasteText(e.target.value)}
-                          placeholder="Paste your experience, education, and skills…"
-                          className="min-h-[160px] w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                          label="Paste your experience, education, and skills"
+                          wrapClassName="w-full"
+                          className="min-h-[160px] bg-background text-sm"
                           style={{ fontFamily: "var(--font-sans)" }}
                         />
                         <Button
@@ -326,6 +349,27 @@ export default function Landing() {
                         </Button>
                       </div>
                     )}
+                  </div>
+
+                  {/* Card C — LinkedIn (Flow B entry) */}
+                  <div className="rounded-2xl border border-border bg-card p-5">
+                    <button
+                      type="button"
+                      className="flex w-full items-start gap-4 text-left"
+                      onClick={() => setLocation("/builder/linkedin")}
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Linkedin className="h-5 w-5" strokeWidth={1.75} />
+                      </div>
+                      <div>
+                        <h2 className="font-display text-lg font-semibold text-foreground">
+                          Import from LinkedIn
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Paste your profile — we structure and rewrite it for the role
+                        </p>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
@@ -477,6 +521,12 @@ export default function Landing() {
           </div>
         </footer>
       </main>
+
+      <RegionSelectSheet
+        open={regionOpen}
+        onConfirm={handleConfirmRegion}
+        onSkip={() => setRegionOpen(false)}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, type Ref } from "react";
+import { useState, useEffect, useMemo, type Ref, type ReactNode } from "react";
+import { Pencil } from "lucide-react";
 import { Resume } from "@shared/types";
 import { cn } from "@/lib/utils";
 import { getTemplateById, getDefaultTemplate } from "@/lib/templates";
@@ -10,6 +11,61 @@ interface ResumePreviewProps {
   zoom?: number;
   contentRef?: Ref<HTMLDivElement>;
   contentId?: string;
+  /** When provided, rendered sections become clickable and call this with the section type. */
+  onSectionSelect?: (type: string) => void;
+}
+
+const SECTION_LABELS: Record<string, string> = {
+  summary: "Summary",
+  skills: "Skills",
+  experience: "Experience",
+  projects: "Projects",
+  education: "Education",
+  certifications: "Certifications",
+  achievements: "Achievements",
+  languages: "Languages",
+  references: "References",
+  custom: "Custom",
+};
+
+/**
+ * Interactive shell for preview sections — lets the user click a section in the
+ * live preview to open the contextual editor. Non-interactive when no onSelect
+ * is given (e.g. the offscreen export copy).
+ */
+function SectionShell({
+  type,
+  label,
+  onSelect,
+  children,
+}: {
+  type: string;
+  label: string;
+  onSelect?: (type: string) => void;
+  children: ReactNode;
+}) {
+  if (!onSelect) return <>{children}</>;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Edit ${label} section`}
+      onClick={() => onSelect(type)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(type);
+        }
+      }}
+      className="group relative cursor-pointer rounded-md outline-none transition-colors hover:bg-black/[0.03] focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:bg-white/[0.04]"
+    >
+      {children}
+      <span className="pointer-events-none absolute -right-1 -top-1 flex h-6 items-center gap-1 rounded-md border border-border bg-background px-2 text-[10px] font-semibold text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+        <Pencil className="h-3 w-3" />
+        Edit
+      </span>
+    </div>
+  );
 }
 
 function formatDateForResume(dateStr: string, dateFormat: string): string {
@@ -86,6 +142,7 @@ export default function ResumePreview({
   zoom = 100,
   contentRef,
   contentId = "resume-pdf-content",
+  onSectionSelect,
 }: ResumePreviewProps) {
   const [countriesList, setCountriesList] = useState<any[]>([]);
 
@@ -295,6 +352,7 @@ export default function ResumePreview({
           .map(sec => {
             if (!sec.visible) return null;
 
+            const node = (() => {
             switch (sec.type) {
               case "summary":
                 if (!sec.content.summary) return null;
@@ -726,6 +784,19 @@ export default function ResumePreview({
               default:
                 return null;
             }
+            })();
+
+            if (node == null) return null;
+            return (
+              <SectionShell
+                key={sec.id}
+                type={sec.type}
+                label={SECTION_LABELS[sec.type] || sec.type}
+                onSelect={onSectionSelect}
+              >
+                {node}
+              </SectionShell>
+            );
           })}
       </div>
     </div>

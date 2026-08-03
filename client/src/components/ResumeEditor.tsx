@@ -58,6 +58,7 @@ import {
   mergeSummaryAi,
 } from "@/lib/userEditedMerge";
 import ResumePreview from "./ResumePreview";
+import ContextualEditor from "./ContextualEditor";
 import CountryLocationFields from "./CountryLocationFields";
 import { exportResumeToPDF, exportResumeToDOCX } from "@/lib/pdfExport";
 import { buildExportFilename } from "@/lib/exportFilename";
@@ -154,6 +155,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     "saved"
   );
   const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
+  const [contextualSection, setContextualSection] = useState<string | null>(null);
   const exportPreviewRef = useRef<HTMLDivElement>(null);
 
   // Scrollbar and navigation state for horizontal stepper
@@ -393,6 +395,12 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       onUpdate(next);
       toast.success("Redo successful");
     }
+  };
+
+  // Contextual editor — clicked section in the live preview opens the slide-out.
+  const handleSectionSelect = (type: string) => {
+    setContextualSection(type);
+    setActiveEditTab(type as any);
   };
 
   const resolveExportName = (ext: "pdf" | "doc") => {
@@ -1150,7 +1158,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                  className="h-11 w-11 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
                   onClick={handleUndo}
                   disabled={historyIndex <= 0}
                   title="Undo"
@@ -1160,7 +1168,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                  className="h-11 w-11 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
                   onClick={handleRedo}
                   disabled={historyIndex >= history.length - 1}
                   title="Redo"
@@ -1220,7 +1228,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   type="button"
                   onClick={scrollLeftDirection}
                   className={cn(
-                    "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                    "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
                     canScrollLeft
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -1312,7 +1320,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   type="button"
                   onClick={scrollRightDirection}
                   className={cn(
-                    "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                    "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
                     canScrollRight
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -1926,7 +1934,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-500 h-8"
+                              className="text-red-500 min-h-11"
                               onClick={() => {
                                 const list = (
                                   getSectionContent("skills").skills || []
@@ -2018,7 +2026,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("experience", idx, "up")
                                 }
@@ -2030,7 +2038,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("experience", idx, "down")
                                 }
@@ -2049,7 +2057,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 h-8"
+                                className="text-red-500 min-h-11"
                                 onClick={() => {
                                   const list = (
                                     getSectionContent("experience")
@@ -2320,7 +2328,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() => moveItem("projects", idx, "up")}
                                 disabled={idx === 0}
                                 title="Move Up"
@@ -2330,7 +2338,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("projects", idx, "down")
                                 }
@@ -2347,7 +2355,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 h-8"
+                                className="text-red-500 min-h-11"
                                 onClick={() => {
                                   const list = (
                                     getSectionContent("projects").projects || []
@@ -2539,7 +2547,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() => moveItem("education", idx, "up")}
                                 disabled={idx === 0}
                                 title="Move Up"
@@ -2549,7 +2557,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("education", idx, "down")
                                 }
@@ -2568,7 +2576,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 h-8"
+                                className="text-red-500 min-h-11"
                                 onClick={() => {
                                   const list = (
                                     getSectionContent("education").educations ||
@@ -2829,7 +2837,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-500 h-8"
+                              className="text-red-500 min-h-11"
                               onClick={() => {
                                 const list = (
                                   getSectionContent("certifications")
@@ -2980,7 +2988,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() => moveItem("languages", idx, "up")}
                                 disabled={idx === 0}
                                 title="Move Up"
@@ -2990,7 +2998,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("languages", idx, "down")
                                 }
@@ -3009,7 +3017,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 h-8"
+                                className="text-red-500 min-h-11"
                                 onClick={() => {
                                   const list = (
                                     getSectionContent("languages").languages ||
@@ -3133,7 +3141,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("references", idx, "up")
                                 }
@@ -3145,7 +3153,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("references", idx, "down")
                                 }
@@ -3164,7 +3172,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 h-8"
+                                className="text-red-500 min-h-11"
                                 onClick={() => {
                                   const list = (
                                     getSectionContent("references")
@@ -3395,7 +3403,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("custom", sectIdx, "up")
                                 }
@@ -3407,7 +3415,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
                                 onClick={() =>
                                   moveItem("custom", sectIdx, "down")
                                 }
@@ -3832,7 +3840,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
+                        className="h-11 w-11 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
                         onClick={() => setZoom(Math.max(35, zoom - 10))}
                       >
                         <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
@@ -3843,7 +3851,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
+                        className="h-11 w-11 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
                         onClick={() => setZoom(Math.min(150, zoom + 10))}
                       >
                         <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
@@ -3856,6 +3864,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       templateId={selectedTemplate}
                       zoom={zoom}
                       contentId="resume-preview-mobile"
+                      onSectionSelect={handleSectionSelect}
                     />
                   </div>
                 </TabsContent>
@@ -4161,7 +4170,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                className="h-11 w-11 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
                 onClick={() => setZoom(Math.max(50, zoom - 10))}
               >
                 <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
@@ -4172,7 +4181,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                className="h-11 w-11 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
                 onClick={() => setZoom(Math.min(150, zoom + 10))}
               >
                 <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
@@ -4185,6 +4194,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               templateId={selectedTemplate}
               zoom={zoom}
               contentId="resume-preview-desktop"
+              onSectionSelect={handleSectionSelect}
             />
           </div>
         </aside>
@@ -4389,7 +4399,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             setActiveEditTab("layout");
           }}
           className={cn(
-            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "layout"
               ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
               : "hover:text-slate-800 dark:hover:text-slate-200"
@@ -4412,7 +4422,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             }
           }}
           className={cn(
-            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab !== "layout" &&
               activeEditTab !== "preview" &&
               activeEditTab !== "review"
@@ -4429,7 +4439,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           type="button"
           onClick={() => setActiveEditTab("preview")}
           className={cn(
-            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "preview"
               ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
               : "hover:text-slate-800 dark:hover:text-slate-200"
@@ -4444,7 +4454,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           type="button"
           onClick={() => setActiveEditTab("review")}
           className={cn(
-            "flex flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
+            "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "review"
               ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
               : "hover:text-slate-800 dark:hover:text-slate-200"
@@ -4454,6 +4464,22 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           <span className="text-[10px] font-semibold mt-0.5">Export</span>
         </button>
       </nav>
+
+      {/* Contextual editor — slides over the preview when a section is clicked */}
+      <ContextualEditor
+        resume={localResume}
+        sectionType={contextualSection}
+        onClose={() => setContextualSection(null)}
+        onUpdateSection={updateSection}
+        onRewriteSummary={() => void handleRewriteSummary()}
+        onRewriteBullets={(idx) => void handleRewriteExperienceBullets(idx)}
+        onJumpToEdit={(tab) => {
+          setContextualSection(null);
+          setActiveEditTab(tab as any);
+        }}
+        isRewritingSummary={isRewritingSummary}
+        rewritingExpId={rewritingExpId}
+      />
     </div>
   );
 }

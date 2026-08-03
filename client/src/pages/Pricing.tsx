@@ -1,162 +1,204 @@
 import { Link } from "wouter";
-import { Layers, Check, ArrowLeft } from "lucide-react";
+import {
+  Layers,
+  ArrowLeft,
+  CheckCircle2,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  FileText,
+  Download,
+} from "lucide-react";
 
-/** Align with server/payments/razorpay.ts RAZORPAY_PRICES_PAISE (39900 / 79900). */
-const PLANS = [
-  {
-    tier: "free",
-    name: "Free",
-    price: "₹0",
-    desc: "Start building — limited free AI and export.",
-    features: ["1 resume workspace", "Basic templates", "Guest-friendly start"],
-    cta: "Get started",
-    href: "/builder",
-    popular: false,
-  },
-  {
-    tier: "pro",
-    name: "Pro",
-    price: "₹399",
-    desc: "Unlimited resumes and AI rewrite tools.",
-    features: ["Unlimited resumes", "AI summary & bullets", "ATS alignment tools"],
-    cta: "Upgrade to Pro",
-    href: "/dashboard/billing",
-    popular: true,
-  },
-  {
-    tier: "enterprise",
-    name: "Enterprise",
-    price: "₹799",
-    desc: "Teams, branding, and recruiter pipeline.",
-    features: ["Everything in Pro", "Team collaboration", "Recruiter dashboard"],
-    cta: "Upgrade to Enterprise",
-    href: "/dashboard/billing",
-    popular: false,
-  },
-] as const;
+/**
+ * Align with the live product: pay-per-build credits (₹99), first build free at
+ * signup. Legacy monthly plans (pro ₹399 / enterprise ₹799) remain available only
+ * for accounts on legacy billing — see BillingPortal.
+ *
+ * Amounts match server/payments/razorpay.ts RAZORPAY_PRICES_PAISE (build: 9900).
+ */
 
-const T = {
-  bg: "#0b1326",
-  surface: "#171f33",
-  elevated: "#222a3d",
-  text: "#dae2fd",
-  muted: "#94a3b8",
-  primary: "#1e40af",
-  accent: "#ea580c",
-  border: "rgba(255,255,255,0.08)",
-};
+const BUILD_FEATURES = [
+  "One role + job description optimized resume",
+  "AI rewrite grounded in your real experience — nothing invented",
+  "ATS keyword alignment for your target role & region",
+  "PDF and Word export",
+  "No credit used if the build fails",
+];
+
+const FIRST_FREE_FEATURES = [
+  "Upload PDF/Word or paste your experience",
+  "Live resume preview and in-page editor",
+  "Every new account starts with 1 free build",
+];
 
 export default function Pricing() {
   return (
-    <div className="min-h-screen w-full" style={{ backgroundColor: T.bg, fontFamily: "Inter, sans-serif" }}>
-      <header
-        className="border-b px-4 sm:px-8 h-16 flex items-center justify-between"
-        style={{ borderColor: T.border, backgroundColor: T.surface }}
-      >
+    <div
+      className="min-h-screen bg-background text-foreground"
+      style={{ fontFamily: "var(--font-sans)" }}
+    >
+      <header className="flex h-16 items-center justify-between border-b border-border bg-background/92 px-4 backdrop-blur-md sm:px-8">
         <Link href="/" className="flex items-center gap-2.5 no-underline">
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "linear-gradient(135deg, #1e40af, #ea580c)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Layers style={{ color: "#fff" }} className="w-4 h-4" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <Layers className="h-4 w-4 text-primary-foreground" strokeWidth={1.75} />
           </div>
-          <span className="text-lg font-extrabold tracking-tight" style={{ color: T.text }}>
+          <span className="font-display text-lg font-semibold tracking-tight text-primary">
             HexaCv
           </span>
         </Link>
         <Link
           href="/"
-          className="flex items-center gap-1.5 text-sm font-medium no-underline min-h-[44px]"
-          style={{ color: T.muted }}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground no-underline hover:text-foreground"
         >
-          <ArrowLeft className="w-4 h-4" /> Home
+          <ArrowLeft className="h-4 w-4" /> Home
         </Link>
       </header>
 
-      <main className="mx-auto px-4 sm:px-8 py-12" style={{ maxWidth: 1100 }}>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center" style={{ color: T.text }}>
-          Pricing
-        </h1>
-        <p className="mt-3 text-center text-sm max-w-xl mx-auto" style={{ color: T.muted }}>
-          Choose a plan that fits your search. Amounts match live Razorpay checkout (INR).
-        </p>
-
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.tier}
-              className="rounded-2xl border p-6 flex flex-col"
-              style={{
-                borderColor: plan.popular ? T.accent : T.border,
-                backgroundColor: T.surface,
-              }}
-            >
-              {plan.popular && (
-                <span
-                  className="self-start text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md mb-3"
-                  style={{ backgroundColor: `${T.accent}22`, color: T.accent }}
-                >
-                  Popular
-                </span>
-              )}
-              <h2 className="text-xl font-bold" style={{ color: T.text }}>
-                {plan.name}
-              </h2>
-              <p className="mt-1 text-3xl font-extrabold" style={{ color: T.text }}>
-                {plan.price}
-                {plan.tier !== "free" && (
-                  <span className="text-sm font-normal" style={{ color: T.muted }}>
-                    /mo
-                  </span>
-                )}
-              </p>
-              <p className="mt-2 text-sm" style={{ color: T.muted }}>
-                {plan.desc}
-              </p>
-              <ul className="mt-5 space-y-2 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm" style={{ color: T.text }}>
-                    <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: T.accent }} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href={plan.href}
-                className="mt-6 block text-center rounded-[18px] py-3 text-sm font-bold no-underline min-h-[44px] leading-[20px]"
-                style={{
-                  backgroundColor: plan.popular ? T.accent : T.primary,
-                  color: "#fff",
-                }}
-              >
-                {plan.cta}
-              </Link>
-            </div>
-          ))}
+      <main className="mx-auto px-4 pb-16 pt-12 sm:px-8" style={{ maxWidth: 960 }}>
+        <div className="text-center">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            ₹99 per resume build. No subscription.
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
+            Pay only when you actually build a resume. Your first build is free
+            on every new account.
+          </p>
+          <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium text-foreground">
+            <Sparkles className="h-4 w-4 text-accent-warm" strokeWidth={1.75} />
+            First build free — then ₹99. No recurring charges.
+          </p>
         </div>
 
-        <p className="mt-10 text-center text-xs" style={{ color: T.muted }}>
-          By upgrading you agree to our{" "}
-          <Link href="/terms" className="no-underline" style={{ color: T.accent }}>
-            Terms of Service
-          </Link>
-          ,{" "}
-          <Link href="/privacy" className="no-underline" style={{ color: T.accent }}>
-            Privacy Policy
-          </Link>
-          , and{" "}
-          <Link href="/refund" className="no-underline" style={{ color: T.accent }}>
-            Refund Policy
-          </Link>
-          .
-        </p>
+        {/* Primary pay-per-build card */}
+        <section aria-label="Build pricing" className="mt-10">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="grid md:grid-cols-2">
+              <div className="border-b border-border p-6 sm:p-8 md:border-b-0 md:border-r">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-accent-warm/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-warm">
+                    Per build
+                  </span>
+                  <span className="rounded-full bg-[color:var(--success)]/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[color:var(--success)]">
+                    Most used
+                  </span>
+                </div>
+                <div className="mt-5 flex items-baseline gap-1.5">
+                  <span className="font-display text-5xl font-semibold text-foreground">₹99</span>
+                  <span className="text-sm text-muted-foreground">/ resume build, incl. taxes</span>
+                </div>
+                <ul className="mt-6 space-y-2.5">
+                  {BUILD_FEATURES.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-foreground">
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--success)]"
+                        strokeWidth={1.75}
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex flex-col justify-center gap-5 p-6 sm:p-8">
+                <Link href="/dashboard/billing" className="no-underline">
+                  <span className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-accent-warm px-7 py-4 text-base font-semibold text-white hover:bg-accent-warm/90">
+                    Buy a build — ₹99
+                  </span>
+                </Link>
+                <Link href="/builder" className="no-underline">
+                  <span className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-border px-7 py-4 text-base font-semibold text-foreground hover:bg-muted/60">
+                    Start your free build
+                  </span>
+                </Link>
+                <div className="space-y-2">
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    Secured checkout via Razorpay (UPI, cards, net banking).
+                  </p>
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    If the build fails, your credit is released — no charge.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Free vs paid summary */}
+        <section aria-label="How billing works" className="mt-10 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-foreground">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CheckCircle2 className="h-4 w-4" strokeWidth={1.75} />
+              </span>
+              First build — free
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Every new account includes one free build. Sign up, target your
+              role, and export before you pay anything.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {FIRST_FREE_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--success)]" strokeWidth={1.75} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-foreground">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-warm/10 text-accent-warm">
+                <Download className="h-4 w-4" strokeWidth={1.75} />
+              </span>
+              PDF &amp; Word export
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Every build includes both formats — a clean PDF for applications
+              and a Word file for quick edits.
+            </p>
+            <ul className="mt-4 space-y-2">
+              <li className="flex items-start gap-2 text-sm text-foreground">
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                ATS-friendly single-column layout
+              </li>
+              <li className="flex items-start gap-2 text-sm text-foreground">
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                Regional formatting for Gulf &amp; India
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Legacy note + legal */}
+        <section className="mt-10 space-y-6 text-center">
+          <p className="mx-auto max-w-lg text-xs leading-relaxed text-muted-foreground">
+            Legacy monthly plans (Pro ₹399 / Enterprise ₹799) remain available
+            only for accounts already on those plans —{" "}
+            <Link href="/dashboard/billing" className="no-underline text-primary hover:underline">
+              view billing
+            </Link>
+            .
+          </p>
+          <p className="text-xs text-muted-foreground">
+            By purchasing you agree to our{" "}
+            <Link href="/terms" className="no-underline text-primary hover:underline">
+              Terms of Service
+            </Link>
+            ,{" "}
+            <Link href="/privacy" className="no-underline text-primary hover:underline">
+              Privacy Policy
+            </Link>
+            , and{" "}
+            <Link href="/refund" className="no-underline text-primary hover:underline">
+              Refund Policy
+            </Link>
+            .
+          </p>
+        </section>
       </main>
     </div>
   );
