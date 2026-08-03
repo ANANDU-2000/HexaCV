@@ -1,28 +1,34 @@
 import { Link } from 'wouter';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Download, Sparkles } from 'lucide-react';
 
-// Amounts match live Pricing.tsx / Razorpay checkout (INR)
+// Matches the live ₹99-per-build model (Pricing.tsx / Razorpay build: 9900).
 const TIERS = [
   {
-    name: 'Free',
+    name: 'First build',
     price: '₹0',
     period: '',
-    desc: 'Start building with limited free AI and export.',
+    desc: 'Included with every new account. Sign up and build your first resume free.',
+    badge: 'Free',
     highlight: false,
+    icon: Sparkles,
   },
   {
-    name: 'Pro',
-    price: '₹399',
-    period: '/mo',
-    desc: 'Unlimited resumes and AI rewrite tools.',
+    name: 'Each build',
+    price: '₹99',
+    period: ' / resume',
+    desc: 'Pay only when you need another — or buy 3 builds for ₹249 and save.',
+    badge: 'Most used',
     highlight: true,
+    icon: CheckCircle2,
   },
   {
-    name: 'Enterprise',
-    price: '₹799',
-    period: '/mo',
-    desc: 'Teams, branding, and recruiter pipeline.',
+    name: 'PDF + Word',
+    price: 'Included',
+    period: '',
+    desc: 'Every build exports an ATS-friendly PDF and a Word file for quick edits.',
+    badge: '',
     highlight: false,
+    icon: Download,
   },
 ];
 
@@ -35,10 +41,10 @@ export default function PricingTeaser() {
     >
       <div className="mb-10 text-center">
         <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-          Simple pricing, start free
+          Simple pricing, no subscription
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
-          Begin as a guest at no cost. Upgrade only if you need more.
+          Your first build is free. After that, ₹99 per resume — pay only when you build.
         </p>
       </div>
 
@@ -46,11 +52,23 @@ export default function PricingTeaser() {
         {TIERS.map((tier) => (
           <div
             key={tier.name}
-            className={`rounded-2xl border bg-card p-6 text-center ${
+            className={`relative rounded-2xl border bg-card p-6 text-center ${
               tier.highlight ? 'border-accent-warm' : 'border-border'
             }`}
           >
-            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground/70">
+            {tier.badge && (
+              <span
+                className={`absolute right-4 top-4 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                  tier.highlight
+                    ? 'bg-accent-warm/10 text-accent-warm'
+                    : 'bg-[color:var(--success)]/10 text-[color:var(--success)]'
+                }`}
+              >
+                {tier.badge}
+              </span>
+            )}
+            <tier.icon className="mx-auto h-5 w-5 text-muted-foreground/70" strokeWidth={1.75} />
+            <p className="mt-3 text-sm font-bold uppercase tracking-widest text-muted-foreground/70">
               {tier.name}
             </p>
             <p className="mt-2 text-3xl font-extrabold text-foreground">

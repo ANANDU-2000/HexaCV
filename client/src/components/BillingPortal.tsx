@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { CreditCard, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import { CreditCard, ChevronDown, ChevronRight } from "lucide-react";
+import { BUILD_PACKS } from "@/lib/buildPacks";
 import { toast } from "sonner";
 
 const T = {
@@ -20,13 +21,7 @@ interface BillingProps {
   resumesCount: number;
 }
 
-/** V6: primary product is pay-per-build ₹99. Legacy tiers kept collapsed. */
-const BUILD_PLAN = {
-  tier: 'build',
-  name: '1 Resume Build',
-  price: '₹99',
-  desc: 'One role + JD optimized resume. First build free at signup.',
-};
+/** V6: primary product is pay-per-build ₹99, with build bundles. Legacy tiers kept collapsed. */
 const LEGACY_PLANS = [
   { tier: 'pro', name: 'Pro (legacy)', price: '₹399', desc: 'Legacy monthly plan' },
   { tier: 'enterprise', name: 'Enterprise (legacy)', price: '₹799', desc: 'Legacy monthly plan' },
@@ -102,8 +97,9 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
             paymentId: `pay_mock_${Date.now()}`,
             signature: "sandbox",
           });
-          toast.success(`Upgraded to ${tier} (sandbox Razorpay)`);
+          toast.success(`Payment recorded — ${tier} (sandbox Razorpay)`);
           await utils.billing.getSubscription.invalidate();
+          await utils.credits.getBalance.invalidate();
           return;
         }
 
@@ -131,8 +127,9 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
               });
-              toast.success(`Payment verified — ${tier} plan active`);
+              toast.success(`Payment verified — credits added`);
               await utils.billing.getSubscription.invalidate();
+              await utils.credits.getBalance.invalidate();
             } catch {
               toast.error("Payment received but server verification failed");
             }
@@ -167,7 +164,7 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
           Buy credits
         </h1>
         <p className="mt-1 text-sm" style={{ color: T.muted }}>
-          Pay per resume build — ₹99 each. First build free at signup. No subscription required.
+          Pay per resume build — ₹99 each, or buy in bulk and save. First build free at signup. No subscription required.
         </p>
       </div>
 
@@ -182,40 +179,61 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-xl border p-4" style={{ borderColor: T.accent, backgroundColor: T.surface }}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${T.accent}22` }}>
-              <CreditCard className="h-5 w-5" style={{ color: T.accent }} />
-            </div>
-            <div>
-              <p className="text-sm font-bold" style={{ color: T.text }}>{BUILD_PLAN.name}</p>
-              <p className="text-xs" style={{ color: T.muted }}>
-                {BUILD_PLAN.price} · {BUILD_PLAN.desc}
+      <div className="rounded-xl border p-5" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <p className="text-sm font-bold" style={{ color: T.text }}>Buy build packs</p>
+        <p className="mt-1 text-xs" style={{ color: T.muted }}>
+          1 build ₹99 — or buy a bundle and save. Credits apply to any future build.
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {BUILD_PACKS.map((pack) => (
+            <div
+              key={pack.tier}
+              className="relative rounded-lg border p-3"
+              style={{
+                borderColor: pack.popular ? T.accent : T.outlineVariant,
+                backgroundColor: T.surface,
+              }}
+            >
+              {pack.popular && (
+                <span
+                  className="absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{ backgroundColor: `${T.accent}22`, color: T.accent }}
+                >
+                  Popular
+                </span>
+              )}
+              <p className="text-sm font-bold" style={{ color: T.text }}>
+                {pack.count} build{pack.count > 1 ? "s" : ""}
               </p>
+              <p className="mt-1 text-xl font-extrabold" style={{ color: T.text }}>
+                {pack.priceLabel}
+              </p>
+              <p className="mt-0.5 text-[11px]" style={{ color: T.muted }}>
+                {pack.perBuild}
+                {pack.saveLabel ? ` · ${pack.saveLabel}` : ""}
+              </p>
+              <button
+                onClick={() => handleUpgrade(pack.tier)}
+                className="mt-3 w-full rounded-lg py-2 text-xs font-bold text-white transition hover:opacity-90 min-h-[44px]"
+                style={{ backgroundColor: pack.popular ? T.accent : T.primary }}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "Processing…" : `Buy ${pack.count}`}
+              </button>
             </div>
-          </div>
-          <button
-            onClick={() => handleUpgrade('build')}
-            className="w-full rounded-lg py-2.5 text-sm font-bold text-white transition hover:opacity-90 min-h-[44px]"
-            style={{ backgroundColor: T.accent }}
-            disabled={isProcessing}
-          >
-            {isProcessing ? 'Processing…' : 'Buy 1 build — ₹99'}
-          </button>
-          {isProcessing && <p className="text-xs mt-2 flex items-center gap-1" style={{ color: T.muted }}><RefreshCw className="h-3 w-3 animate-spin" /> Processing...</p>}
+          ))}
         </div>
+      </div>
 
-        <div className="rounded-xl border p-4 flex items-start gap-3" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: T.elevated }}>
-            <CreditCard className="h-5 w-5" style={{ color: T.primaryText }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold" style={{ color: T.text }}>Payment method</p>
-            <p className="text-xs mt-0.5" style={{ color: T.muted }}>
-              Paid via Razorpay Checkout when you upgrade. Card details stay on Razorpay — HexaCV never stores raw card data.
-            </p>
-          </div>
+      <div className="rounded-xl border p-4 flex items-start gap-3" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: T.elevated }}>
+          <CreditCard className="h-5 w-5" style={{ color: T.primaryText }} />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold" style={{ color: T.text }}>Payment method</p>
+          <p className="text-xs mt-0.5" style={{ color: T.muted }}>
+            Paid via Razorpay Checkout when you buy. Card details stay on Razorpay — HexaCV never stores raw card data.
+          </p>
         </div>
       </div>
 

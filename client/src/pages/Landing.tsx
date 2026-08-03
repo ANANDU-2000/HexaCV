@@ -4,13 +4,16 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import {
   Layers, Menu, X, ArrowRight, Linkedin, Upload, Pencil, FileText,
+  MapPin, CheckCircle2, Lock,
 } from "lucide-react";
+import ResumePreview from "@/components/ResumePreview";
+import { PREVIEW_PAGE_WIDTH, SAMPLES } from "@/lib/sampleResumes";
 import HowItWorksStrip from "@/components/landing/HowItWorksStrip";
 import GroundingProof from "@/components/landing/GroundingProof";
 import OutputPreviewRow from "@/components/landing/OutputPreviewRow";
 import PricingTeaser from "@/components/landing/PricingTeaser";
 import LandingFaq from "@/components/landing/LandingFaq";
-import RegionSelectSheet, { type Region } from "@/components/RegionSelectSheet";
+import ParseLoader from "@/components/ParseLoader";
 import { FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { trpc } from "@/lib/trpc";
 import {
@@ -33,8 +36,17 @@ const footerLinks = {
   ],
 };
 
-/** Market chosen on the landing region sheet — prefill for the Targeting page. */
-const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
+/** Hero preview — the real A4 preview scaled into the right column. */
+const HERO_FRAME_WIDTH = 340;
+const HERO_FRAME_HEIGHT = 470;
+const HERO_SCALE = HERO_FRAME_WIDTH / PREVIEW_PAGE_WIDTH;
+
+const HERO_TRUST = [
+  { icon: CheckCircle2, text: "Grounded — nothing invented" },
+  { icon: MapPin, text: "Formatted for Gulf & India" },
+  { icon: FileText, text: "PDF + Word export" },
+  { icon: Lock, text: "Guest drafts stay on your device" },
+];
 
 export default function Landing() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -46,7 +58,7 @@ export default function Landing() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EntryDraft | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [regionOpen, setRegionOpen] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseMutation = trpc.resume.parse.useMutation();
@@ -60,23 +72,7 @@ export default function Landing() {
   const persistDraft = useCallback((next: EntryDraft) => {
     saveEntryDraft(next);
     setDraft(next);
-    // Flow A step 3 — ask where they're applying before targeting.
-    setRegionOpen(true);
   }, []);
-
-  const handleConfirmRegion = (region: Region) => {
-    try {
-      const raw = localStorage.getItem(TARGET_DRAFT_KEY);
-      const existing = raw ? JSON.parse(raw) : {};
-      localStorage.setItem(
-        TARGET_DRAFT_KEY,
-        JSON.stringify({ ...existing, market: region })
-      );
-    } catch {
-      /* ignore */
-    }
-    setRegionOpen(false);
-  };
 
   const handleFile = async (file: File) => {
     setParseError(null);
@@ -85,6 +81,9 @@ export default function Landing() {
       setParseError("Please upload a PDF or DOCX file.");
       return;
     }
+    // Extraction process window while the file is parsed.
+    setParsing(true);
+    const startedAt = Date.now();
     try {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
@@ -95,6 +94,12 @@ export default function Landing() {
         filename: file.name,
         base64,
       });
+      // Keep the extraction window visible long enough to feel like real work.
+      const MIN_PARSE_MS = 1600;
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_PARSE_MS) {
+        await new Promise((r) => setTimeout(r, MIN_PARSE_MS - elapsed));
+      }
       const summary = summarizeParsed(parsed);
       const next: EntryDraft = {
         id: createDraftId(),
@@ -106,7 +111,11 @@ export default function Landing() {
         createdAt: new Date().toISOString(),
       };
       persistDraft(next);
+      setParsing(false);
+      // Show the target-role portion next.
+      setLocation("/builder/target");
     } catch {
+      setParsing(false);
       setParseError(
         "We couldn't read text from this PDF — try 'Start fresh' and paste it instead."
       );
@@ -232,18 +241,23 @@ export default function Landing() {
           >
             <div className="grid items-start gap-10 lg:grid-cols-[55%_45%]">
               <div>
+                <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground">
+                  <MapPin className="h-4 w-4 text-accent-warm" strokeWidth={1.75} />
+                  ATS-friendly resumes for Gulf &amp; India
+                </p>
                 <h1
                   className="font-display font-semibold leading-tight text-foreground"
                   style={{
-                    fontSize: "clamp(1.75rem, 4.5vw, 3rem)",
+                    fontSize: "clamp(2rem, 5vw, 3.25rem)",
                     letterSpacing: "-0.02em",
                   }}
                 >
-                  Built for the job you actually applied to
+                  Stop being ghosted.
                 </h1>
                 <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  Rewritten from your real experience. Nothing invented. First resume free —
-                  then ₹99 per build. No subscription.
+                  HexaCv rewrites your resume for the exact job you applied to — grounded in
+                  your real experience, nothing invented, formatted for Gulf &amp; India
+                  hiring. First build free, then ₹99. No subscription.
                 </p>
 
                 {/* Pricing strip — above cards on mobile priority */}
@@ -254,7 +268,7 @@ export default function Landing() {
                 <div className="mt-6 flex flex-col gap-4">
                   {/* Card A — Upload */}
                   <div
-                    className={`rounded-2xl border bg-card p-5 transition-colors ${
+                    className={`relative rounded-2xl border bg-card p-5 transition-colors ${
                       dragging ? "border-primary" : "border-border"
                     }`}
                     onDragOver={(e) => {
@@ -269,9 +283,12 @@ export default function Landing() {
                       if (file) void handleFile(file);
                     }}
                   >
+                    <span className="absolute right-4 top-4 rounded-full bg-accent-warm/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-warm">
+                      Most used
+                    </span>
                     <button
                       type="button"
-                      className="flex w-full items-start gap-4 text-left"
+                      className="flex w-full items-start gap-4 pr-24 text-left"
                       onClick={() => {
                         setMode("upload");
                         fileInputRef.current?.click();
@@ -299,9 +316,6 @@ export default function Landing() {
                         if (file) void handleFile(file);
                       }}
                     />
-                    {parseMutation.isPending && mode === "upload" && (
-                      <p className="mt-3 text-sm text-muted-foreground">Reading your file…</p>
-                    )}
                     {parseError && (
                       <p className="mt-3 text-sm text-[color:var(--destructive)]" role="alert">
                         {parseError}
@@ -408,28 +422,59 @@ export default function Landing() {
                     ? `Signed in as ${user?.name?.split(" ")[0] || "you"}.`
                     : "No account needed to upload or paste — sign in only when you build."}
                 </p>
+
+                {/* Honest trust strip — verifiable, no fabricated ratings */}
+                <ul className="mt-6 grid list-none grid-cols-1 gap-2.5 p-0 sm:grid-cols-2">
+                  {HERO_TRUST.map((item) => (
+                    <li key={item.text} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <item.icon
+                        className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--success)]"
+                        strokeWidth={1.75}
+                      />
+                      {item.text}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* Desktop hero preview */}
+              {/* Desktop hero preview — real render, Civil Engineer (Abu Dhabi) sample */}
               <div className="hidden lg:block">
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <div
+                  className="relative w-full overflow-hidden rounded-2xl border border-border bg-card shadow-[0_24px_60px_rgba(15,23,42,0.08)]"
+                  style={{ height: HERO_FRAME_HEIGHT }}
+                >
+                  <div
+                    className="pointer-events-none absolute left-1/2 top-0 origin-top"
+                    style={{
+                      width: PREVIEW_PAGE_WIDTH,
+                      transform: `translateX(-50%) scale(${HERO_SCALE})`,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <ResumePreview
+                      resume={SAMPLES[0].resume}
+                      templateId={SAMPLES[0].resume.templateId}
+                      zoom={100}
+                    />
+                  </div>
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
+                    style={{ background: "linear-gradient(transparent, var(--card))" }}
+                  />
+                </div>
+                <div className="mt-4 rounded-2xl border border-border bg-card p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Sample resume preview
+                    Sample — rewritten for Civil Engineer, Abu Dhabi
                   </p>
-                  <div className="mt-4 space-y-3 text-sm text-foreground">
-                    <p className="font-display text-xl font-semibold">Priya Nair</p>
-                    <p className="text-muted-foreground">Site Engineer · Dubai / Kochi</p>
-                    <ul className="mt-4 space-y-2 text-muted-foreground">
-                      <li className="rounded-lg border border-border bg-background px-3 py-2">
-                        Led site coordination for a 120-unit residential project
-                        <span className="mt-1 block text-xs text-primary">
-                          rewritten for: Site Engineer, Dubai
-                        </span>
-                      </li>
-                      <li className="rounded-lg border border-border bg-background px-3 py-2">
-                        Managed contractor schedules and material tracking
-                      </li>
-                    </ul>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {["Site coordination", "Structural", "Primavera", "QA/QC"].map((kw) => (
+                      <span
+                        key={kw}
+                        className="rounded-md border border-[color:var(--success)]/30 bg-[color:var(--success)]/5 px-2 py-0.5 text-xs font-medium text-[color:var(--success)]"
+                      >
+                        {kw}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -522,11 +567,7 @@ export default function Landing() {
         </footer>
       </main>
 
-      <RegionSelectSheet
-        open={regionOpen}
-        onConfirm={handleConfirmRegion}
-        onSkip={() => setRegionOpen(false)}
-      />
+      <ParseLoader open={parsing} />
     </div>
   );
 }
