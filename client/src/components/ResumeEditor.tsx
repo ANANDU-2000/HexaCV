@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Textarea } from "@/shared/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/shared/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   Download,
   Eye,
@@ -60,6 +60,8 @@ import {
 import ResumePreview from "./ResumePreview";
 import CountryLocationFields from "./CountryLocationFields";
 import { exportResumeToPDF, exportResumeToDOCX } from "@/lib/pdfExport";
+import { buildExportFilename } from "@/lib/exportFilename";
+import JdKeywordMatch from "@/components/JdKeywordMatch";
 import { toast } from "sonner";
 import { nanoid } from "nanoid";
 import { trpc } from "@/lib/trpc";
@@ -393,16 +395,32 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     }
   };
 
+  const resolveExportName = (ext: "pdf" | "doc") => {
+    const header = localResume.sections.find((s) => s.type === "header")?.content
+      ?.header as { name?: string } | undefined;
+    const targetRole =
+      (localResume as any).targetRole ||
+      (localResume as any).jobTitle ||
+      undefined;
+    return buildExportFilename({
+      name: header?.name,
+      targetRole,
+      titleFallback: localResume.title,
+      ext,
+    });
+  };
+
   const handleExportPDF = async () => {
     const element = exportPreviewRef.current;
     if (!element) {
       toast.error("Failed to prepare resume preview. Please try again.");
       return;
     }
-    toast.info("Exporting resume to PDF...");
+    const filename = resolveExportName("pdf");
+    toast.info(`Downloading ${filename}…`);
     try {
-      await exportResumeToPDF(element, `${localResume.title || "resume"}.pdf`);
-      toast.success("PDF downloaded successfully!");
+      await exportResumeToPDF(element, filename);
+      toast.success(`Downloaded ${filename}`);
     } catch (e) {
       console.error(e);
       toast.error("Failed to export PDF.");
@@ -415,13 +433,14 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       toast.error("Failed to prepare resume preview. Please try again.");
       return;
     }
-    toast.info("Exporting resume to Word document...");
+    const filename = resolveExportName("doc");
+    toast.info(`Downloading ${filename}…`);
     try {
-      await exportResumeToDOCX(element, `${localResume.title || "resume"}.doc`);
-      toast.success("Word document downloaded successfully!");
+      await exportResumeToDOCX(element, filename);
+      toast.success(`Downloaded ${filename}`);
     } catch (e) {
       console.error(e);
-      toast.error("Failed to export DOCX.");
+      toast.error("Failed to export Word document.");
     }
   };
 
@@ -1043,6 +1062,45 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       {/* Editor workspace */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
         <div className="w-full flex flex-col gap-2 sm:gap-3 h-full min-h-0">
+          <JdKeywordMatch
+            jobDescription={
+              (() => {
+                try {
+                  const meta = sessionStorage.getItem("hexacv_pipeline_meta");
+                  if (!meta) return null;
+                  const parsed = JSON.parse(meta) as { targetKeywords?: string[] };
+                  // Prefer live JD from target draft
+                  const draft = localStorage.getItem("hexacv_target_panel_draft");
+                  if (draft) {
+                    const d = JSON.parse(draft) as { jobDescription?: string };
+                    if (d.jobDescription) return d.jobDescription;
+                  }
+                  return (parsed.targetKeywords || []).join(" ");
+                } catch {
+                  return null;
+                }
+              })()
+            }
+            resumeText={getResumeTextContent()}
+            regionTips={
+              (() => {
+                try {
+                  const draft = localStorage.getItem("hexacv_target_panel_draft");
+                  if (!draft) return null;
+                  const d = JSON.parse(draft) as { market?: string };
+                  if (d.market === "Gulf") {
+                    return "Gulf tip: include visa/nationality only if you supplied it.";
+                  }
+                  if (d.market === "India") {
+                    return "India tip: keep structure clear and ATS keywords grounded in your experience.";
+                  }
+                  return null;
+                } catch {
+                  return null;
+                }
+              })()
+            }
+          />
           {/* Toggle Mode header on mobile, regular title + quick settings on desktop */}
           <div
             className={cn(

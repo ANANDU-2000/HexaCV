@@ -4,7 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -43,75 +44,104 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-surface-container: var(--card);
   --color-outline-variant: var(--border);
+  --color-verified-green: var(--verified-green);
+  --color-accent-warm: var(--accent-warm);
+  --color-primary-dark: var(--primary-dark);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
 }
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #2563eb;
+  /* Ledger palette — DESIGN.md / DESIGN_DESKTOP.md §0 */
+  --ink: #1C1B18;
+  --paper: #FBF8F3;
+  --surface: #FFFFFF;
+  --background: #FBF8F3;
+  --foreground: #1C1B18;
+  --card: #FFFFFF;
+  --card-foreground: #1C1B18;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1B18;
+  --primary: #123832;
   --primary-foreground: #ffffff;
-  --secondary: #0f766e;
+  --primary-dark: #0D2B26;
+  --primary-hover: #0D2B26;
+  --secondary: #123832;
   --secondary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #475569;
-  --accent: #e2e8f0;
-  --accent-foreground: #0f172a;
-  --destructive: #e11d48;
+  --muted: #F3EFE6;
+  --muted-foreground: #635F55;
+  --accent: #C5622A;
+  --accent-foreground: #ffffff;
+  --accent-warm: #C5622A;
+  --verified-green: #3F7A54;
+  --success: #3F7A54;
+  --warning: #B8862E;
+  --destructive: #B3261E;
   --destructive-foreground: #ffffff;
-  --border: #cbd5e1;
-  --input: #f1f5f9;
-  --ring: #2563eb;
+  --border: #E4DFD3;
+  --input: #F3EFE6;
+  --ring: #123832;
   --radius: 12px;
-  --sidebar: #f8fafc;
-  --sidebar-foreground: #0f172a;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #cbd5e1;
-  --sidebar-ring: #2563eb;
-  --chart-1: #2563eb;
-  --chart-2: #0f766e;
-  --chart-3: #06b6d4;
-  --chart-4: #3b82f6;
-  --chart-5: #60a5fa;
+  --sidebar: #123832;
+  --sidebar-foreground: #FBF8F3;
+  --sidebar-primary: #7FBFA8;
+  --sidebar-primary-foreground: #123832;
+  --sidebar-accent: #0D2B26;
+  --sidebar-accent-foreground: #FBF8F3;
+  --sidebar-border: #0D2B26;
+  --sidebar-ring: #7FBFA8;
+  --chart-1: #123832;
+  --chart-2: #3F7A54;
+  --chart-3: #C5622A;
+  --chart-4: #B8862E;
+  --chart-5: #7FBFA8;
 }
 
 .dark {
-  --primary: #b8c4ff;
-  --primary-foreground: #002584;
-  --sidebar-primary: #b8c4ff;
-  --sidebar-primary-foreground: #002584;
-  --background: #0b1326;
-  --foreground: #dae2fd;
-  --card: #131b2e;
-  --card-foreground: #dae2fd;
-  --popover: #131b2e;
-  --popover-foreground: #dae2fd;
-  --secondary: #adc6ff;
-  --secondary-foreground: #002e6a;
-  --muted: #171f33;
-  --muted-foreground: #c4c5d5;
-  --accent: #171f33;
-  --accent-foreground: #dae2fd;
-  --destructive: #ffb4ab;
-  --destructive-foreground: #690005;
-  --border: #2d3449;
-  --input: #171f33;
-  --ring: #b8c4ff;
-  --chart-1: #b8c4ff;
-  --chart-2: #adc6ff;
-  --chart-3: #93ccff;
-  --chart-4: #cce5ff;
-  --chart-5: #dde1ff;
-  --sidebar: #131b2e;
-  --sidebar-foreground: #dae2fd;
-  --sidebar-accent: #171f33;
-  --sidebar-accent-foreground: #dae2fd;
-  --sidebar-border: #2d3449;
-  --sidebar-ring: #b8c4ff;
+  --ink: #F5F2EB;
+  --paper: #15130F;
+  --surface: #1E1B15;
+  --primary: #7FBFA8;
+  --primary-foreground: #15130F;
+  --primary-dark: #5A9A84;
+  --primary-hover: #5A9A84;
+  --sidebar-primary: #7FBFA8;
+  --sidebar-primary-foreground: #15130F;
+  --background: #15130F;
+  --foreground: #F5F2EB;
+  --card: #1E1B15;
+  --card-foreground: #F5F2EB;
+  --popover: #1E1B15;
+  --popover-foreground: #F5F2EB;
+  --secondary: #7FBFA8;
+  --secondary-foreground: #15130F;
+  --muted: #2A261E;
+  --muted-foreground: #A8A296;
+  --accent: #C5622A;
+  --accent-foreground: #ffffff;
+  --accent-warm: #C5622A;
+  --verified-green: #3F7A54;
+  --success: #3F7A54;
+  --warning: #B8862E;
+  --destructive: #B3261E;
+  --destructive-foreground: #ffffff;
+  --border: #3A3428;
+  --input: #2A261E;
+  --ring: #7FBFA8;
+  --chart-1: #7FBFA8;
+  --chart-2: #3F7A54;
+  --chart-3: #C5622A;
+  --chart-4: #B8862E;
+  --chart-5: #A8A296;
+  --sidebar: #1E1B15;
+  --sidebar-foreground: #F5F2EB;
+  --sidebar-accent: #2A261E;
+  --sidebar-accent-foreground: #F5F2EB;
+  --sidebar-border: #3A3428;
+  --sidebar-ring: #7FBFA8;
 }
 
 @layer base {
@@ -274,9 +304,9 @@
 
 /* Glassmorphism ambient glow base */
 .glass-bg {
-  background-color: #f8fafc;
+  background-color: var(--background);
   background-image: 
-      radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.04), transparent 50%),
+      radial-gradient(circle at 15% 50%, color-mix(in srgb, var(--primary) 4%, transparent), transparent 50%),
       radial-gradient(circle at 85% 30%, rgba(15, 118, 110, 0.04), transparent 50%);
   background-attachment: fixed;
 }
@@ -335,14 +365,17 @@
 }
 
   .gradient-text {
-    background: linear-gradient(135deg, #2563eb, #0f766e);
+    background: linear-gradient(135deg, #123832, #3F7A54);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     color: transparent;
   }
   .dark .gradient-text {
-    background: linear-gradient(135deg, #b8c4ff, #80d5cb);
+    background: linear-gradient(135deg, #7FBFA8, #3F7A54);
+  }
+  .font-display {
+    font-family: var(--font-display);
   }
 
   .resume-editor-grid-2 {
@@ -369,7 +402,7 @@
   }
 
   .text-glow {
-    text-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+    text-shadow: 0 0 20px rgba(18, 56, 50, 0.2);
   }
 
   /* Infinite marquee animation for company logos */
@@ -395,10 +428,10 @@
   /* Pulse glow for buttons */
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+      box-shadow: 0 0 0 0 rgba(18, 56, 50, 0.4);
     }
     50% {
-      box-shadow: 0 0 20px 4px rgba(37, 99, 235, 0.2);
+      box-shadow: 0 0 20px 4px rgba(18, 56, 50, 0.2);
     }
   }
 
@@ -419,10 +452,10 @@
   .text-shimmer {
     background: linear-gradient(
       to right,
-      #2563eb 20%,
-      #60a5fa 40%,
-      #0f766e 60%,
-      #2563eb 80%
+      #123832 20%,
+      #3F7A54 40%,
+      #C5622A 60%,
+      #123832 80%
     );
     background-size: 200% auto;
     -webkit-background-clip: text;
@@ -434,10 +467,10 @@
   .dark .text-shimmer {
     background: linear-gradient(
       to right,
-      #b8c4ff 20%,
-      #e2e8f0 40%,
-      #80d5cb 60%,
-      #b8c4ff 80%
+      #7FBFA8 20%,
+      #F5F2EB 40%,
+      #3F7A54 60%,
+      #7FBFA8 80%
     );
     background-size: 200% auto;
     -webkit-background-clip: text;

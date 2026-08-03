@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Search, Check, ChevronDown, Briefcase, FileText, ArrowLeft, Link } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Textarea } from '@/shared/ui/textarea';
+import { Label } from '@/shared/ui/label';
+import { Badge } from '@/shared/ui/badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
+} from '@/shared/ui/popover';
 import {
   Command,
   CommandInput,
@@ -18,7 +18,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandEmpty,
-} from '@/components/ui/command';
+} from '@/shared/ui/command';
 import { ALL_COUNTRIES, type CountryInfo } from '@shared/countriesData';
 import { getPresetJobs } from '@/lib/jobDescriptions';
 import { cn } from '@/lib/utils';

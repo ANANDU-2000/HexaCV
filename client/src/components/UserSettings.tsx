@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useIsMobile } from "@/hooks/useMobile";
+import { useIsMobile } from "@/shared/hooks/useMobile";
 import {
   User, Palette, Bell, Shield, Trash2, Eye, EyeOff,
   ChevronDown, ChevronRight, Check, RefreshCw, Moon, Sun, AlertTriangle

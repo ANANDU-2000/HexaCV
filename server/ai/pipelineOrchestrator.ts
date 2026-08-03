@@ -454,17 +454,38 @@ ${input.jobDescription ? `Job Description: ${input.jobDescription}` : ""}${feedb
   return parseJsonContent(response.choices[0]?.message.content, "rewrite");
 }
 
+export type PipelineStageName =
+  | "extract"
+  | "target"
+  | "rewrite"
+  | "validate"
+  | "polish";
+
 /**
  * Run Extract → Target → Rewrite → validate → C3 evaluate (1 rewrite retry on fail).
+ * Optional onStage reports progress for the V6 pipeline loader.
  */
 export async function runResumePipeline(
   input: ResumePipelineInput,
-  opts?: TrackedInvokeOptions
+  opts?: TrackedInvokeOptions,
+  onStage?: (stage: PipelineStageName) => void | Promise<void>
 ): Promise<any> {
+  const report = async (stage: PipelineStageName) => {
+    try {
+      await onStage?.(stage);
+    } catch {
+      /* progress reporting must never break the pipeline */
+    }
+  };
+
+  await report("extract");
   const extract = await stageExtract(input.sourceText, opts);
+  await report("target");
   const target = await stageTarget(input, opts);
 
+  await report("rewrite");
   let rewritten = await stageRewrite(input, extract, target, opts);
+  await report("validate");
   let validated = validateGeneratedResume(rewritten);
   // Evaluate raw + post-validate: banned on raw; content on cleaned
   let evaluation = evaluateRewriteDeterministic(rewritten, input.sourceText);
@@ -492,6 +513,7 @@ export async function runResumePipeline(
       overall: evaluation.overall,
       reasons: evaluation.reasons,
     });
+    await report("rewrite");
     rewritten = await stageRewrite(
       input,
       extract,
@@ -499,6 +521,7 @@ export async function runResumePipeline(
       opts,
       evaluation.reasons
     );
+    await report("validate");
     validated = validateGeneratedResume(rewritten);
     evaluation = evaluateRewriteDeterministic(rewritten, input.sourceText);
     if (!resumeHasRealContent(validated)) {
@@ -541,7 +564,17 @@ export async function runResumePipeline(
     );
   }
 
-  return validated;
+  await report("polish");
+  // Attach evaluation flags for Review amber markers (client may ignore)
+  return {
+    ...validated,
+    _pipelineMeta: {
+      evaluation,
+      targetKeywords: (target as any)?.keywords || [],
+      region: input.market || null,
+      role: input.jobTitle || null,
+    },
+  };
 }
 
 async function loadRegionalAtsInstructions(

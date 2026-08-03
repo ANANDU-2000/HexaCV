@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { 
@@ -91,8 +91,8 @@ export const mockDb = {
     { id: "app-1", jobId: "job-1", resumeId: null, applicantName: "Jane Smith", applicantEmail: "jane.smith@gmail.com", matchScore: 85, status: "shortlisted", resumeContent: "React, CSS, state management expert with 5 years experience.", createdAt: new Date() }
   ] as any[],
   subscriptions: [
-    { id: "sub-1", userId: 1, tier: "enterprise", status: "active", provider: "stripe", referenceId: "sub_123", startDate: new Date(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
-    { id: "sub-2", userId: 2, tier: "pro", status: "active", provider: "stripe", referenceId: "sub_456", startDate: new Date(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }
+    { id: "sub-1", userId: 1, tier: "enterprise", status: "active", provider: "razorpay", referenceId: "sub_123", startDate: new Date(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+    { id: "sub-2", userId: 2, tier: "pro", status: "active", provider: "razorpay", referenceId: "sub_456", startDate: new Date(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }
   ] as any[],
   supportTickets: [] as any[],
   countries: [] as any[],
@@ -142,6 +142,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
         lastSignedIn: new Date(),
         evaluationOptOut: false,
       });
+      // V6: first-time signup free credit (mock path)
+      try {
+        const { grantSignupFreeCredit } = await import("./credits");
+        await grantSignupFreeCredit(nextId);
+      } catch (e) {
+        console.warn("[Database] signup free credit (mock) failed:", e);
+      }
     }
     return;
   }
@@ -185,10 +192,33 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
+    const before = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.openId, user.openId))
+      .limit(1);
+    const isNewUser = before.length === 0;
+
     await db.insert(users).values(values).onConflictDoUpdate({
       target: users.openId,
       set: updateSet,
     });
+
+    if (isNewUser) {
+      const created = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.openId, user.openId))
+        .limit(1);
+      if (created[0]?.id) {
+        try {
+          const { grantSignupFreeCredit } = await import("./credits");
+          await grantSignupFreeCredit(created[0].id);
+        } catch (e) {
+          console.warn("[Database] signup free credit failed:", e);
+        }
+      }
+    }
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -289,23 +319,52 @@ export async function getResume(id: string) {
 export async function listResumes(userId: number) {
   const db = await getDb();
   if (!db) {
-    return mockDb.resumes.filter(r => r.userId === userId).sort((a,b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    return mockDb.resumes
+      .filter(r => r.userId === userId && !r.deletedAt)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
-  return db.select().from(resumes).where(eq(resumes.userId, userId)).orderBy(desc(resumes.updatedAt));
+  return db
+    .select()
+    .from(resumes)
+    .where(and(eq(resumes.userId, userId), isNull(resumes.deletedAt)))
+    .orderBy(desc(resumes.updatedAt));
 }
 
+/** Soft-delete: sets deletedAt. Hard purge is a 30-day cron follow-up. */
 export async function deleteResume(id: string, userId: number) {
   const db = await getDb();
+  const now = new Date();
   if (!db) {
     const idx = mockDb.resumes.findIndex(r => r.id === id && r.userId === userId);
     if (idx > -1) {
-      mockDb.resumes.splice(idx, 1);
+      mockDb.resumes[idx] = { ...mockDb.resumes[idx], deletedAt: now, updatedAt: now };
       return true;
     }
     return false;
   }
-  await db.delete(resumes).where(and(eq(resumes.id, id), eq(resumes.userId, userId)));
+  await db
+    .update(resumes)
+    .set({ deletedAt: now })
+    .where(and(eq(resumes.id, id), eq(resumes.userId, userId)));
   return true;
+}
+
+/** Clears deletedAt so the resume reappears in list. */
+export async function restoreResume(id: string, userId: number) {
+  const db = await getDb();
+  if (!db) {
+    const idx = mockDb.resumes.findIndex(r => r.id === id && r.userId === userId);
+    if (idx > -1) {
+      mockDb.resumes[idx] = { ...mockDb.resumes[idx], deletedAt: null, updatedAt: new Date() };
+      return mockDb.resumes[idx];
+    }
+    return undefined;
+  }
+  await db
+    .update(resumes)
+    .set({ deletedAt: null })
+    .where(and(eq(resumes.id, id), eq(resumes.userId, userId)));
+  return getResume(id);
 }
 
 export async function createJobDescription(data: InsertJobDescriptionDb) {

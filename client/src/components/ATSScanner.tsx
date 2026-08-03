@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Sparkles, CheckCircle2, AlertCircle, RefreshCw, ChevronDown, ChevronRight, FileText, Gauge, Lightbulb, ArrowUp, ListChecks } from "lucide-react";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 const T = {
   surface: '#131b33',

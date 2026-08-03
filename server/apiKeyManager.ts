@@ -103,20 +103,6 @@ export const API_KEYS_SCHEMA: Omit<ApiKeyMeta, "isConfigured" | "maskedValue" | 
     providerUrl: "https://dashboard.razorpay.com/app/keys",
   },
   {
-    keyName: "STRIPE_SECRET_KEY",
-    label: "Stripe Secret Key",
-    category: "Payments",
-    description: "Legacy Stripe secret (demoted — Razorpay is primary; Stripe webhook only for legacy subs).",
-    providerUrl: "https://dashboard.stripe.com/apikeys",
-  },
-  {
-    keyName: "STRIPE_WEBHOOK_SECRET",
-    label: "Stripe Webhook Secret",
-    category: "Payments",
-    description: "Webhook signature secret (whsec_...) for verifying billing event webhooks.",
-    providerUrl: "https://dashboard.stripe.com/webhooks",
-  },
-  {
     keyName: "JWT_SECRET",
     label: "JWT Session Secret",
     category: "Security & Auth",
@@ -266,13 +252,6 @@ export async function testApiKey(keyName: string): Promise<{ success: boolean; m
         return { success: true, message: "OpenRouter API key verified successfully! Models fetched." };
       }
       return { success: false, message: `OpenRouter returned HTTP ${res.status}` };
-    }
-
-    if (keyName === "STRIPE_SECRET_KEY") {
-      if (!keyVal.startsWith("sk_")) {
-        return { success: false, message: "Stripe key formatting warning: Secret keys usually start with sk_live_ or sk_test_" };
-      }
-      return { success: true, message: "Stripe secret key format validated successfully." };
     }
 
     return { success: true, message: `${keyName} format check passed and is configured.` };
@@ -556,4 +535,18 @@ export async function upsertModelRoute(
 /** Snapshot of cached routes (call ensureModelRoutingLoaded first). */
 export function getCachedModelRoutingRows(): ModelRoutingDb[] {
   return [...(modelRoutingCache?.rows ?? [])];
+}
+
+/**
+ * A3 — first cached model_routing row for a model id (lowest priority wins
+ * when the same model appears on multiple stages).
+ */
+export function getModelRoutingRowByModel(
+  model: string
+): ModelRoutingDb | undefined {
+  const key = (model || "").trim();
+  if (!key) return undefined;
+  const matched = (modelRoutingCache?.rows ?? []).filter((r) => r.model === key);
+  if (matched.length === 0) return undefined;
+  return [...matched].sort((a, b) => a.priority - b.priority)[0];
 }

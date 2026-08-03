@@ -5,26 +5,31 @@ import { CreditCard, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const T = {
-  surface: '#131b33',
-  elevated: '#1c2747',
-  primary: '#1e40af',
-  primaryText: '#b8c4ff',
-  accent: '#ea580c',
-  text: '#e2e8f0',
-  muted: '#94a3b8',
-  outlineVariant: '#2a3a5c',
-  success: '#16a34a',
+  surface: '#FFFFFF',
+  elevated: '#FBF8F3',
+  primary: '#123832',
+  primaryText: '#123832',
+  accent: '#C5622A',
+  text: '#1C1B18',
+  muted: '#635F55',
+  outlineVariant: '#E4DFD3',
+  success: '#3F7A54',
 };
 
 interface BillingProps {
   resumesCount: number;
 }
 
-/** Align with Razorpay amounts in server/payments/razorpay.ts (₹399 / ₹799). */
-const PLANS = [
-  { tier: 'free', name: 'Free', price: '₹0', desc: '1 resume, basic export' },
-  { tier: 'pro', name: 'Pro', price: '₹399', desc: 'Unlimited resumes, AI tools' },
-  { tier: 'enterprise', name: 'Enterprise', price: '₹799', desc: 'Teams, branding, recruiter pipeline' },
+/** V6: primary product is pay-per-build ₹99. Legacy tiers kept collapsed. */
+const BUILD_PLAN = {
+  tier: 'build',
+  name: '1 Resume Build',
+  price: '₹99',
+  desc: 'One role + JD optimized resume. First build free at signup.',
+};
+const LEGACY_PLANS = [
+  { tier: 'pro', name: 'Pro (legacy)', price: '₹399', desc: 'Legacy monthly plan' },
+  { tier: 'enterprise', name: 'Enterprise (legacy)', price: '₹799', desc: 'Legacy monthly plan' },
 ];
 
 declare global {
@@ -152,78 +157,52 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
     }
   };
 
-  const currentPlan = PLANS.find((p) => p.tier === currentTier) || PLANS[0];
+  const creditsQuery = trpc.credits.getBalance.useQuery();
+  const balance = creditsQuery.data?.balance ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: T.text }}>
-          Billing
+          Buy credits
         </h1>
         <p className="mt-1 text-sm" style={{ color: T.muted }}>
-          Manage your subscription, payment method, and invoices.
+          Pay per resume build — ₹99 each. First build free at signup. No subscription required.
         </p>
       </div>
 
-      {inGrace && (
-        <div
-          className="rounded-xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3"
-          style={{ borderColor: T.accent, backgroundColor: `${T.accent}18` }}
-          role="status"
-        >
-          <div className="flex-1">
-            <p className="text-sm font-bold" style={{ color: T.text }}>
-              Payment issue — grace period active
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: T.muted }}>
-              Your {currentPlan.name} access continues
-              {graceUntilLabel ? ` until ${graceUntilLabel}` : ''}. Renew to keep your plan without interruption.
-            </p>
-          </div>
-          {currentTier !== 'free' && (
-            <button
-              type="button"
-              onClick={() => handleUpgrade(currentTier)}
-              className="shrink-0 rounded-lg px-4 py-2 text-xs font-bold text-white min-h-[44px]"
-              style={{ backgroundColor: T.accent }}
-              aria-label={`Renew ${currentPlan.name} plan`}
-            >
-              Renew now
-            </button>
-          )}
-        </div>
-      )}
+      <div className="rounded-xl border p-5" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <p className="text-sm font-bold" style={{ color: T.text }}>
+          Credit balance: {balance}
+        </p>
+        <p className="mt-1 text-xs" style={{ color: T.muted }}>
+          {balance > 0
+            ? `${balance} build${balance === 1 ? "" : "s"} ready`
+            : "0 credits — buy one below to continue"}
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-xl border p-4" style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}>
+        <div className="rounded-xl border p-4" style={{ borderColor: T.accent, backgroundColor: T.surface }}>
           <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: T.elevated }}>
-              <CreditCard className="h-5 w-5" style={{ color: T.primaryText }} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${T.accent}22` }}>
+              <CreditCard className="h-5 w-5" style={{ color: T.accent }} />
             </div>
             <div>
-              <p className="text-sm font-bold" style={{ color: T.text }}>{currentPlan.name} Plan</p>
+              <p className="text-sm font-bold" style={{ color: T.text }}>{BUILD_PLAN.name}</p>
               <p className="text-xs" style={{ color: T.muted }}>
-                {currentPlan.price}/mo
-                {sub?.status ? ` · ${sub.status}` : ''}
-                {sub?.provider ? ` · ${sub.provider}` : ''}
-                {resumesCount >= 0 ? ` · ${resumesCount} resume${resumesCount === 1 ? '' : 's'}` : ''}
+                {BUILD_PLAN.price} · {BUILD_PLAN.desc}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => handleUpgrade('pro')}
-              className="flex-1 rounded-lg py-2 text-xs font-bold text-white transition hover:opacity-90 min-h-[44px]"
-              style={{ backgroundColor: T.primary }}>
-              {currentTier === 'pro' ? 'Manage' : currentTier === 'enterprise' ? 'Manage' : 'Upgrade'}
-            </button>
-            {currentTier !== 'enterprise' && (
-              <button onClick={() => handleUpgrade('enterprise')}
-                className="flex-1 rounded-lg py-2 text-xs font-bold transition min-h-[44px]"
-                style={{ backgroundColor: T.elevated, color: T.text }}>
-                {currentTier === 'enterprise' ? 'Manage' : 'Enterprise'}
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => handleUpgrade('build')}
+            className="w-full rounded-lg py-2.5 text-sm font-bold text-white transition hover:opacity-90 min-h-[44px]"
+            style={{ backgroundColor: T.accent }}
+            disabled={isProcessing}
+          >
+            {isProcessing ? 'Processing…' : 'Buy 1 build — ₹99'}
+          </button>
           {isProcessing && <p className="text-xs mt-2 flex items-center gap-1" style={{ color: T.muted }}><RefreshCw className="h-3 w-3 animate-spin" /> Processing...</p>}
         </div>
 
@@ -273,12 +252,15 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
           type="button"
           aria-label={plansOpen ? "Collapse plan comparison" : "Expand plan comparison"}
         >
-          <span className="text-sm font-bold" style={{ color: T.text }}>Compare Plans</span>
+          <span className="text-sm font-bold" style={{ color: T.text }}>Legacy subscription plans</span>
           {plansOpen ? <ChevronDown className="h-4 w-4" style={{ color: T.muted }} /> : <ChevronRight className="h-4 w-4" style={{ color: T.muted }} />}
         </button>
         {plansOpen && (
           <div className="px-4 pb-4 space-y-2">
-            {PLANS.map((plan) => {
+            <p className="text-xs" style={{ color: T.muted }}>
+              Prefer pay-per-build above. Legacy monthly plans remain available for existing accounts.
+            </p>
+            {LEGACY_PLANS.map((plan) => {
               const active = plan.tier === currentTier;
               return (
                 <div key={plan.tier} className="flex items-center justify-between rounded-lg border px-3 py-2.5"
@@ -291,11 +273,11 @@ export default function BillingPortal({ resumesCount }: BillingProps) {
                     <span className="text-sm font-bold" style={{ color: T.text }}>{plan.price}<span className="text-xs font-normal" style={{ color: T.muted }}>/mo</span></span>
                     {active ? (
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: `${T.success}20`, color: T.success }}>Active</span>
-                    ) : plan.tier !== 'free' ? (
+                    ) : (
                       <button type="button" onClick={() => handleUpgrade(plan.tier)}
                         className="rounded-lg px-3 py-1.5 text-xs font-bold text-white min-h-[44px]"
                         style={{ backgroundColor: T.primary }}>Upgrade</button>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               );

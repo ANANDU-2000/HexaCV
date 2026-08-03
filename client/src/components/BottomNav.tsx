@@ -1,9 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
-  Briefcase,
-  Building,
   CreditCard,
   FileText,
   Gift,
@@ -11,25 +9,19 @@ import {
   MoreHorizontal,
   Settings,
   ShieldCheck,
-  Store,
-  Users,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
 const navItems = [
-  { icon: FileText, label: "Builder", path: "/dashboard/builder" },
+  { icon: FileText, label: "Builder", path: "/builder/target" },
   { icon: Zap, label: "ATS", path: "/dashboard/ats" },
-  { icon: Briefcase, label: "Jobs", path: "/dashboard/jobs" },
-  { icon: Store, label: "Marketplace", path: "/dashboard/marketplace" },
+  { icon: Gift, label: "Refer", path: "/dashboard/affiliate" },
+  { icon: CreditCard, label: "Credits", path: "/dashboard/billing" },
 ];
 
 const moreItems = [
-  { icon: Users, label: "Recruiter Portal", path: "/dashboard/recruiter" },
-  { icon: Gift, label: "Affiliate Program", path: "/dashboard/affiliate" },
-  { icon: Building, label: "Organization", path: "/dashboard/organization" },
-  { icon: CreditCard, label: "Billing & Subscriptions", path: "/dashboard/billing" },
   { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];

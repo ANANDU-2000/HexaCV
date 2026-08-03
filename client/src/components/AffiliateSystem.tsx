@@ -60,10 +60,10 @@ export default function AffiliateSystem({ userId }: AffiliateProps) {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: T.text }}>
-          Affiliate Program
+          Refer & Earn
         </h1>
         <p className="mt-1 text-sm" style={{ color: T.muted }}>
-          Share your referral link and earn 20% commission on Pro upgrades.
+          Share your link. Get 1 free build credit when they complete their first paid build.
         </p>
       </div>
 
@@ -75,7 +75,7 @@ export default function AffiliateSystem({ userId }: AffiliateProps) {
           </div>
           <div>
             <p className="text-sm font-bold" style={{ color: T.text }}>Your Referral Link</p>
-            <p className="text-xs" style={{ color: T.muted }}>Share this link to earn commissions</p>
+            <p className="text-xs" style={{ color: T.muted }}>Share this link to earn free build credits</p>
           </div>
         </div>
         <div className="flex gap-2">

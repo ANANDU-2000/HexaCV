@@ -1,11 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -18,28 +18,25 @@ import {
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@/shared/ui/sidebar";
 import { getLoginUrl } from "@/const";
-import { useIsMobile } from "@/hooks/useMobile";
+import { useIsMobile } from "@/shared/hooks/useMobile";
 import { 
-  FileText, Zap, Store, Briefcase, Users, Gift, Building, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
+  FileText, Zap, Users, Gift, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
   BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { BottomNav } from './BottomNav';
-import { Button } from "./ui/button";
+import { Button } from "@/shared/ui/button";
+import { trpc } from "@/lib/trpc";
 
 const menuItems = [
-  { icon: FileText, label: "Resume Builder", path: "/dashboard/builder" },
+  { icon: FileText, label: "Resume Builder", path: "/builder/target" },
   { icon: Zap, label: "ATS Scanner", path: "/dashboard/ats" },
-  { icon: Store, label: "Marketplace", path: "/dashboard/marketplace" },
-  { icon: Briefcase, label: "Job Board", path: "/dashboard/jobs" },
-  { icon: Users, label: "Recruiter Portal", path: "/dashboard/recruiter" },
-  { icon: Gift, label: "Affiliate Program", path: "/dashboard/affiliate" },
-  { icon: Building, label: "Organization", path: "/dashboard/organization" },
-  { icon: CreditCard, label: "Billing & Subscriptions", path: "/dashboard/billing" },
+  { icon: Gift, label: "Refer & Earn", path: "/dashboard/affiliate" },
+  { icon: CreditCard, label: "Buy credits", path: "/dashboard/billing" },
   { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true }
 ];
 
@@ -68,7 +65,7 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
+  const { loading } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -105,6 +102,16 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const creditsQuery = trpc.credits.getBalance.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const creditBalance = creditsQuery.data?.balance ?? null;
+  const creditPillLabel =
+    creditBalance == null
+      ? null
+      : creditBalance > 0
+        ? `${creditBalance} build${creditBalance === 1 ? "" : "s"} left`
+        : "0 credits — ₹99 per build";
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const { state, toggleSidebar } = useSidebar();
@@ -212,7 +219,12 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-3 space-y-2">
+            {creditPillLabel && !isAdminRoute && (
+              <div className="group-data-[collapsible=icon]:hidden rounded-full border border-border bg-muted px-3 py-2 text-center text-xs font-semibold text-foreground">
+                {creditPillLabel}
+              </div>
+            )}
             {user || isAdminRoute ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -288,18 +300,23 @@ function DashboardLayoutContent({
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
+                  <span className="tracking-tight text-foreground font-display">
                     {activeMenuItem?.label ?? "Menu"}
                   </span>
                 </div>
               </div>
             </div>
+            {creditPillLabel && (
+              <span className="mr-2 rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
+                {creditPillLabel}
+              </span>
+            )}
           </div>
         )}
-        <main className={`flex-1 p-4 ${isMobile && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') ? "pb-20" : ""}`}>{children}</main>
+        <main className={`flex-1 p-4 ${isMobile ? "pb-20" : ""}`}>{children}</main>
       </SidebarInset>
 
-      {isMobile && !isAdminRoute && !location.startsWith('/dashboard/builder/scratch') && !location.startsWith('/dashboard/builder/ai') && !location.startsWith('/dashboard/builder/edit') && <BottomNav />}
+      {isMobile && !isAdminRoute && <BottomNav />}
     </>
   );
 }

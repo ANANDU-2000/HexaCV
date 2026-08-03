@@ -11,6 +11,7 @@ export function useResumeStorage() {
   const createResumeMutation = trpc.resume.create.useMutation();
   const updateResumeMutation = trpc.resume.update.useMutation();
   const deleteResumeMutation = trpc.resume.delete.useMutation();
+  const restoreResumeMutation = trpc.resume.restore.useMutation();
 
   const saveBackupMutation = trpc.backup.save.useMutation();
   const deleteBackupMutation = trpc.backup.delete.useMutation();
@@ -20,7 +21,7 @@ export function useResumeStorage() {
   const BACKUPS_KEY_PREFIX = "hexacv_local_backups_";
 
   // 1. Resumes Local Storage IO
-  const getLocalResumes = useCallback((): Resume[] => {
+  const getLocalResumesIncludingDeleted = useCallback((): Array<Resume & { deletedAt?: string | null }> => {
     try {
       const data = localStorage.getItem(RESUMES_KEY);
       return data ? JSON.parse(data) : [];
@@ -29,7 +30,12 @@ export function useResumeStorage() {
     }
   }, []);
 
-  const saveLocalResumes = useCallback((resumes: Resume[]) => {
+  /** Active (non-soft-deleted) local drafts only. */
+  const getLocalResumes = useCallback((): Resume[] => {
+    return getLocalResumesIncludingDeleted().filter(r => !r.deletedAt);
+  }, [getLocalResumesIncludingDeleted]);
+
+  const saveLocalResumes = useCallback((resumes: Array<Resume & { deletedAt?: string | null }>) => {
     localStorage.setItem(RESUMES_KEY, JSON.stringify(resumes));
   }, []);
 
@@ -120,17 +126,19 @@ export function useResumeStorage() {
         }
       } catch (err) {
         console.warn("[ResumeStorage] Cloud save failed, saving to local storage:", err);
-        const local = getLocalResumes();
-        const existingIdx = local.findIndex(r => r.id === resume.id);
+        const local = getLocalResumesIncludingDeleted();
+        const existingIdx = local.findIndex(r => r.id === resume.id && !r.deletedAt);
 
         if (existingIdx > -1) {
           local[existingIdx] = {
             ...resume,
+            deletedAt: null,
             updatedAt: new Date()
           };
         } else {
           local.push({
             ...resume,
+            deletedAt: null,
             createdAt: new Date(),
             updatedAt: new Date()
           });
@@ -139,20 +147,23 @@ export function useResumeStorage() {
         return resume;
       }
     } else {
-      const local = getLocalResumes();
-      const existingIdx = local.findIndex(r => r.id === resume.id);
+      const local = getLocalResumesIncludingDeleted();
+      const activeCount = local.filter(r => !r.deletedAt).length;
+      const existingIdx = local.findIndex(r => r.id === resume.id && !r.deletedAt);
 
       if (existingIdx > -1) {
         local[existingIdx] = {
           ...resume,
+          deletedAt: null,
           updatedAt: new Date()
         };
       } else {
-        if (local.length >= 3) {
+        if (activeCount >= 3) {
           throw new Error("GUEST_LIMIT_REACHED");
         }
         local.push({
           ...resume,
+          deletedAt: null,
           createdAt: new Date(),
           updatedAt: new Date()
         });
@@ -160,7 +171,7 @@ export function useResumeStorage() {
       saveLocalResumes(local);
       return resume;
     }
-  }, [isAuthenticated, getLocalResumes, saveLocalResumes, createResumeMutation, updateResumeMutation, utils]);
+  }, [isAuthenticated, getLocalResumesIncludingDeleted, saveLocalResumes, createResumeMutation, updateResumeMutation, utils]);
 
   const deleteResume = useCallback(async (id: string) => {
     if (isAuthenticated) {
@@ -168,17 +179,43 @@ export function useResumeStorage() {
         await deleteResumeMutation.mutateAsync({ id });
         await utils.resume.list.invalidate();
       } catch (err) {
-        console.warn("[ResumeStorage] Cloud delete failed, removing locally:", err);
-        const local = getLocalResumes();
-        const updated = local.filter(r => r.id !== id);
+        console.warn("[ResumeStorage] Cloud soft-delete failed, marking locally:", err);
+        const local = getLocalResumesIncludingDeleted();
+        const updated = local.map(r =>
+          r.id === id ? { ...r, deletedAt: new Date().toISOString(), updatedAt: new Date() } : r
+        );
         saveLocalResumes(updated);
       }
     } else {
-      const local = getLocalResumes();
-      const updated = local.filter(r => r.id !== id);
+      const local = getLocalResumesIncludingDeleted();
+      const updated = local.map(r =>
+        r.id === id ? { ...r, deletedAt: new Date().toISOString(), updatedAt: new Date() } : r
+      );
       saveLocalResumes(updated);
     }
-  }, [isAuthenticated, getLocalResumes, saveLocalResumes, deleteResumeMutation, utils]);
+  }, [isAuthenticated, getLocalResumesIncludingDeleted, saveLocalResumes, deleteResumeMutation, utils]);
+
+  const restoreResume = useCallback(async (id: string) => {
+    if (isAuthenticated) {
+      try {
+        await restoreResumeMutation.mutateAsync({ id });
+        await utils.resume.list.invalidate();
+      } catch (err) {
+        console.warn("[ResumeStorage] Cloud restore failed, clearing local deletedAt:", err);
+        const local = getLocalResumesIncludingDeleted();
+        const updated = local.map(r =>
+          r.id === id ? { ...r, deletedAt: null, updatedAt: new Date() } : r
+        );
+        saveLocalResumes(updated);
+      }
+    } else {
+      const local = getLocalResumesIncludingDeleted();
+      const updated = local.map(r =>
+        r.id === id ? { ...r, deletedAt: null, updatedAt: new Date() } : r
+      );
+      saveLocalResumes(updated);
+    }
+  }, [isAuthenticated, getLocalResumesIncludingDeleted, saveLocalResumes, restoreResumeMutation, utils]);
 
   // 2. Cloud Backups (e.g. cover letters, ATS reports, job matches)
   const getLocalBackups = useCallback((type: string): any[] => {
@@ -309,6 +346,7 @@ export function useResumeStorage() {
     listResumes,
     saveResume,
     deleteResume,
+    restoreResume,
     listBackups,
     saveBackup,
     deleteBackup,

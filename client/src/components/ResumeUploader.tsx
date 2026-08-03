@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/shared/ui/button';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Loader2, Upload, CheckCircle, AlertCircle, ChevronRight, FileText, UploadCloud } from 'lucide-react';
 import { ParsedResume } from '@shared/types';
 import { trpc } from '@/lib/trpc';

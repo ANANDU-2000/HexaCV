@@ -30,13 +30,13 @@ import ResumeEditor from '@/components/ResumeEditor';
 import ResumeLinkedInImporter from '@/components/ResumeLinkedInImporter';
 import ResumeScratchBuilder from '@/components/ResumeScratchBuilder';
 import ResumeUploader from '@/components/ResumeUploader';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
+import { Textarea } from '@/shared/ui/textarea';
 import { matchPresetJobByTitle } from '@/lib/jobDescriptions';
 import { ensureStandardResumeSections } from '@/lib/resumeSections';
 import { cn } from '@/lib/utils';
@@ -92,12 +92,16 @@ const BUILDER_MODES: Array<{
 ];
 
 const getModeFromLocation = (location: string): BuilderMode => {
-  const [path, queryString] = location.split('?');
+  const [path, queryFromLocation] = location.split('?');
   const routeMode = path.split('/').filter(Boolean)[1];
   if (routeMode === 'upload' || routeMode === 'scratch' || routeMode === 'ai' || routeMode === 'linkedin') {
     return routeMode;
   }
 
+  // wouter's useLocation is pathname-only; also read window search for ?mode=
+  const queryString =
+    queryFromLocation ||
+    (typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : '');
   const queryMode = new URLSearchParams(queryString || '').get('mode');
   if (queryMode === 'upload' || queryMode === 'scratch' || queryMode === 'ai' || queryMode === 'linkedin') {
     return queryMode;
@@ -114,6 +118,58 @@ const marketToCountryCode = (market: string) => {
   return '';
 };
 
+const countryCodeToMarket = (code: string) => {
+  const c = code.trim().toUpperCase();
+  if (c === 'IN') return 'India';
+  if (['AE', 'SA', 'QA', 'KW', 'OM', 'BH'].includes(c)) return 'Gulf';
+  if (c === 'US') return 'US';
+  return 'Global';
+};
+
+const TARGET_DRAFT_KEY = 'hexacv_target_panel_draft';
+
+type TargetDraft = {
+  role: string;
+  experience: string;
+  market: string;
+  jobDescription: string;
+};
+
+function loadTargetDraft(): TargetDraft | null {
+  try {
+    const raw = localStorage.getItem(TARGET_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as TargetDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveTargetDraft(draft: TargetDraft) {
+  try {
+    localStorage.setItem(TARGET_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function clearTargetDraft() {
+  try {
+    localStorage.removeItem(TARGET_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Soft heuristic: pasted text that looks like a resume (email + date ranges), not a JD. */
+function looksLikeResumeNotJd(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 120) return false;
+  const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(t);
+  const dateHits = (t.match(/\b(19|20)\d{2}\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b/gi) || []).length;
+  return hasEmail && dateHits >= 2;
+}
+
 export default function ResumeBuilder() {
   const { isAuthenticated } = useAuth();
   const storage = useResumeStorage();
@@ -125,10 +181,12 @@ export default function ResumeBuilder() {
   const [targetProfile, setTargetProfile] = useState<TargetProfile | null>(null);
   const [showTargetPanel, setShowTargetPanel] = useState(false);
   const [pendingMode, setPendingMode] = useState<BuilderMode | null>(null);
-  const [setupTargetRole, setSetupTargetRole] = useState('');
-  const [setupExperience, setSetupExperience] = useState('3-5 yrs');
-  const [setupMarket, setSetupMarket] = useState('Global');
-  const [setupJobDescription, setSetupJobDescription] = useState('');
+
+  const initialDraft = typeof window !== 'undefined' ? loadTargetDraft() : null;
+  const [setupTargetRole, setSetupTargetRole] = useState(initialDraft?.role || '');
+  const [setupExperience, setSetupExperience] = useState(initialDraft?.experience || '3-5 yrs');
+  const [setupMarket, setSetupMarket] = useState(initialDraft?.market || 'Global');
+  const [setupJobDescription, setSetupJobDescription] = useState(initialDraft?.jobDescription || '');
 
   const currentModeConfig = useMemo(
     () => BUILDER_MODES.find((item) => item.mode === mode),
@@ -139,14 +197,62 @@ export default function ResumeBuilder() {
     try {
       const list = await storage.listResumes();
       setResumesList(list);
+      return list;
     } catch (error) {
       console.error('Failed to load resumes list:', error);
+      return [] as Resume[];
     }
   };
 
   useEffect(() => {
     fetchResumes();
   }, [activeResume]);
+
+  // Deep-link: /builder?id=X opens that resume in the live editor (DashboardHome edit redirects here).
+  // Also: ?role= & ?country= prefill TargetPanel fields (SEO example pages).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resumeId = params.get('id');
+    const roleParam = params.get('role');
+    const countryParam = params.get('country');
+    if (roleParam && roleParam.trim()) {
+      setSetupTargetRole(roleParam.trim());
+    }
+    if (countryParam && countryParam.trim()) {
+      setSetupMarket(countryCodeToMarket(countryParam));
+    }
+    if (roleParam || countryParam) {
+      setShowTargetPanel(true);
+    }
+
+    if (!resumeId) return;
+
+    let cancelled = false;
+    (async () => {
+      const list = await fetchResumes();
+      if (cancelled) return;
+      const matched = list.find((r) => r.id === resumeId);
+      if (matched) {
+        setActiveResume(matched);
+      } else {
+        toast.message('That draft was not found. Pick one from your list.');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location]);
+
+  // Persist in-progress TargetPanel fields so refresh does not lose a pasted JD.
+  useEffect(() => {
+    saveTargetDraft({
+      role: setupTargetRole,
+      experience: setupExperience,
+      market: setupMarket,
+      jobDescription: setupJobDescription,
+    });
+  }, [setupTargetRole, setupExperience, setupMarket, setupJobDescription]);
 
   const navigateToMode = (nextMode: BuilderMode) => {
     setActiveResume(null);
@@ -222,6 +328,42 @@ export default function ResumeBuilder() {
     }
   };
 
+  // V6: consume pipeline result stashed by Targeting screen
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fromPipeline') !== '1') return;
+    try {
+      const raw = sessionStorage.getItem('hexacv_pipeline_result');
+      if (!raw) return;
+      const payload = JSON.parse(raw) as {
+        result: ParsedResume & { _pipelineMeta?: unknown };
+        role?: string;
+        region?: string;
+      };
+      sessionStorage.removeItem('hexacv_pipeline_result');
+      if (payload.role) setSetupTargetRole(payload.role);
+      if (payload.region === 'Gulf' || payload.region === 'India') {
+        setSetupMarket(payload.region);
+      }
+      // Strip meta before save; stash flags for Review
+      const { _pipelineMeta, ...resumePayload } = payload.result as any;
+      if (_pipelineMeta) {
+        try {
+          sessionStorage.setItem(
+            'hexacv_pipeline_meta',
+            JSON.stringify(_pipelineMeta)
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      void handleResumeLoad(resumePayload as ParsedResume);
+    } catch (e) {
+      console.warn('Failed to load pipeline result', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+
   const handleResumeUpdate = async (updatedResume: Resume) => {
     try {
       const saved = await storage.saveResume(updatedResume);
@@ -266,6 +408,7 @@ export default function ResumeBuilder() {
       jobDescription: setupJobDescription,
     });
     setShowTargetPanel(false);
+    clearTargetDraft();
     toast.success('Target profile saved.');
 
     if (pendingMode) {
@@ -828,6 +971,12 @@ function TargetPanel({
               rows={4}
               className="rounded-xl border-slate-200 bg-white text-sm leading-6 dark:bg-slate-950"
             />
+            {looksLikeResumeNotJd(setupJobDescription) && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                This looks more like a resume than a job posting (email plus date ranges). You can still continue.
+                Pasting the employer JD usually produces better role targeting.
+              </p>
+            )}
           </div>
         </div>
 

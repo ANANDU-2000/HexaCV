@@ -5,6 +5,7 @@ import {
   ensureModelRoutingLoaded,
   getOrderedModelsForStage,
   getCachedModelRoutingRows,
+  getModelRoutingRowByModel,
   isAiPaused,
 } from "./apiKeyManager";
 import { getDb, mockDb } from "./db";
@@ -368,10 +369,23 @@ export function getModelRpd(model: string): number {
   return pruneAndCount(model, MS_PER_DAY, Date.now());
 }
 
-/** True when at/above 80% RPM or 90% RPD (pre-emptive failover). */
-export function isModelNearLimit(model: string): boolean {
-  const rpmLimit = getRpmLimit();
-  const rpdLimit = getRpdLimit();
+function resolvePositiveLimit(
+  value: number | null | undefined,
+  fallback: number
+): number {
+  return value != null && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+/**
+ * True when at/above 80% RPM or 90% RPD (pre-emptive failover).
+ * Prefer per-row model_routing limits; ENV only when row limits are nullish.
+ */
+export function isModelNearLimit(
+  model: string,
+  limits?: { rpmLimit?: number | null; rpdLimit?: number | null } | null
+): boolean {
+  const rpmLimit = resolvePositiveLimit(limits?.rpmLimit, getRpmLimit());
+  const rpdLimit = resolvePositiveLimit(limits?.rpdLimit, getRpdLimit());
   const rpm = getModelRpm(model);
   const rpd = getModelRpd(model);
   return rpm >= rpmLimit * 0.8 || rpd >= rpdLimit * 0.9;
@@ -414,7 +428,8 @@ export function selectModelForCall(
   for (const model of ordered) {
     if (options?.cheapOnly && isPremiumModel(model)) continue;
     if (isCircuitOpen(model)) continue;
-    if (!isModelNearLimit(model)) {
+    const row = getModelRoutingRowByModel(model);
+    if (!isModelNearLimit(model, row)) {
       return model;
     }
   }
