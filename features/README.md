@@ -12,6 +12,7 @@ window, contextual editor, floating labels, 44px tap targets).
 
 | # | Feature | File | Status |
 |---|---------|------|--------|
+| — | **End-to-end workflows** | [workflows.md](workflows.md) | Flow A · Flow B · guest · billing · pipeline |
 | 1 | Landing page | [landing.md](landing.md) | Implemented + **NEW** hero |
 | 2 | PDF/DOCX upload & extraction | [upload-and-extraction.md](upload-and-extraction.md) | Implemented + **NEW** extraction window |
 | 3 | Target role, region & JD | [targeting.md](targeting.md) | Implemented + **NEW** guest access / Confirm & Pay |
