@@ -1,0 +1,80 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id              Int              @id @default(autoincrement())
+  openId          String           @unique
+  name            String?
+  email           String?
+  loginMethod     String?
+  role            Role             @default(USER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastSignedIn    DateTime         @default(now())
+  resumes         Resume[]
+  jobDescriptions JobDescription[]
+  subscriptions   Subscription[]
+  supportTickets  SupportTicket[]
+}
+
+model Resume {
+  id               String          @id @default(uuid())
+  userId           Int
+  user             User            @relation(fields: [userId], references: [id])
+  title            String
+  templateId       String
+  jobDescriptionId String?
+  content          Json
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model JobDescription {
+  id          String   @id @default(uuid())
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id])
+  title       String
+  description String
+  keywords    Json
+  isCustom    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Subscription {
+  id          String    @id @default(uuid())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  tier        String    // e.g. "free", "premium"
+  status      String    // e.g. "active", "cancelled"
+  provider    String    // e.g. "stripe", "razorpay"
+  referenceId String?
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+}
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  description String
+  status      String   @default("open") // open, closed, in-progress
+  priority    String   @default("medium") // low, medium, high
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

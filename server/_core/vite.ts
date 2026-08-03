@@ -11,6 +11,11 @@ export async function setupVite(app: Express, server: Server) {
     middlewareMode: true,
     hmr: { server },
     allowedHosts: true as const,
+    fs: {
+      strict: true,
+      allow: [path.resolve(import.meta.dirname, "../..")],
+      deny: ["**/.*"],
+    },
   };
 
   const vite = await createViteServer({

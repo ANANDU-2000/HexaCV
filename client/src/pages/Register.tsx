@@ -21,6 +21,15 @@ function guestHref(redirect: string): string {
   if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
     return "/builder";
   }
+  // Auth-gated account/admin pages would bounce a guest straight back to /login (infinite loop).
+  // Route them to the guest-capable builder instead.
+  if (
+    redirect.startsWith("/dashboard/") ||
+    redirect.startsWith("/admin") ||
+    redirect.startsWith("/url")
+  ) {
+    return "/builder";
+  }
   return redirect;
 }
 

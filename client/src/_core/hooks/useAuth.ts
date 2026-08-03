@@ -1,6 +1,6 @@
-import { getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
-import { getCurrentLocalUser, logoutLocalUser } from "@/lib/localStorageDb";
+import { getLoginUrl } from "../../const";
+import { trpc } from "../../lib/trpc";
+import { getCurrentLocalUser, logoutLocalUser } from "../../lib/localStorageDb";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 

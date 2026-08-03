@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/shared/ui/button";
-import { Layers, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { loadEntryDraft } from "@/lib/entryDraft";
+import { FloatingLabelInput, FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { toast } from "sonner";
 import PipelineLoader from "@/components/PipelineLoader";
 
@@ -61,6 +69,7 @@ export default function Targeting() {
   const [building, setBuilding] = useState(false);
   const [buildId, setBuildId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
 
   const balanceQuery = trpc.credits.getBalance.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -70,12 +79,6 @@ export default function Targeting() {
   const createCheckout = trpc.billing.createCheckoutSession.useMutation();
   const verifyPayment = trpc.billing.verifyRazorpayPayment.useMutation();
   const utils = trpc.useUtils();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation("/login?redirect=/builder/target&convert=true");
-    }
-  }, [isAuthenticated, setLocation]);
 
   useEffect(() => {
     try {
@@ -134,9 +137,10 @@ export default function Targeting() {
   }, [role]);
 
   const balance = balanceQuery.data?.balance ?? 0;
-  const ctaLabel =
-    balanceQuery.data?.ctaLabel ||
-    (balance > 0 ? "Build my resume — free" : "Build my resume — ₹99");
+  const ctaLabel = !isAuthenticated
+    ? "Sign in to build your resume"
+    : balanceQuery.data?.ctaLabel ||
+      (balance > 0 ? "Build my resume — free" : "Build my resume — ₹99");
 
   const experienceDetails = (): string => {
     const draft = loadEntryDraft();
@@ -188,6 +192,7 @@ export default function Targeting() {
   };
 
   const payForBuild = async () => {
+    setConfirmPayOpen(false);
     setPaying(true);
     try {
       const order = await createCheckout.mutateAsync({ tier: "build" });
@@ -257,10 +262,15 @@ export default function Targeting() {
       toast.error("Enter a target role");
       return;
     }
+    // "Sign in only when you build" — guests can fill the form but must sign in to build.
+    if (!isAuthenticated) {
+      setLocation("/login?redirect=/builder/target&convert=true");
+      return;
+    }
     if (balance > 0) {
       await runPipeline();
     } else {
-      await payForBuild();
+      setConfirmPayOpen(true);
     }
   };
 
@@ -328,11 +338,9 @@ export default function Targeting() {
 
         {/* Role */}
         <div className="relative mt-6">
-          <label htmlFor="target-role" className="mb-2 block text-sm font-medium text-foreground">
-            Target role
-          </label>
-          <input
+          <FloatingLabelInput
             id="target-role"
+            label="Target role"
             value={role}
             onChange={(e) => {
               setRole(e.target.value);
@@ -340,8 +348,8 @@ export default function Targeting() {
             }}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            placeholder="e.g. Site Engineer"
-            className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+            className="bg-card"
+            wrapClassName="w-full"
             style={{ fontFamily: "var(--font-sans)" }}
             autoComplete="off"
           />
@@ -381,11 +389,12 @@ export default function Targeting() {
           </button>
           {jdOpen && (
             <>
-              <textarea
+              <FloatingLabelTextarea
                 value={jd}
                 onChange={(e) => setJd(e.target.value)}
-                placeholder="Paste the JD for a better keyword match…"
-                className="mt-2 min-h-[140px] w-full rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                label="Paste the job description"
+                wrapClassName="mt-2 w-full"
+                className="bg-card text-sm"
                 style={{ fontFamily: "var(--font-sans)" }}
               />
               {!jd.trim() && (
@@ -419,6 +428,78 @@ export default function Targeting() {
           {paying ? "Opening payment…" : ctaLabel}
         </Button>
       </div>
+
+      {/* Confirm & Pay screen (Flow A step 7) */}
+      {confirmPayOpen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-background"
+          style={{ fontFamily: "var(--font-sans)" }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm payment"
+        >
+          <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+            <button
+              type="button"
+              onClick={() => setConfirmPayOpen(false)}
+              aria-label="Go back"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-foreground hover:bg-muted"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="text-sm font-medium text-muted-foreground">
+              {user?.name?.split(" ")[0] || "Guest"}
+            </span>
+          </header>
+
+          <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6">
+            <h1 className="font-display text-2xl font-semibold text-foreground">
+              Confirm &amp; Pay
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              One build credit for a resume tailored to this role.
+            </p>
+
+            <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Resume
+              </p>
+              <p className="mt-1 text-base font-semibold text-foreground">
+                {role.trim() || "Untitled role"} · {region}
+              </p>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                <span className="text-sm text-muted-foreground">Price</span>
+                <span className="font-display text-lg font-semibold text-foreground">
+                  ₹99{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (Inclusive of taxes)
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              className="mt-6 min-h-12 w-full rounded-[18px] bg-accent-warm text-base font-semibold text-white hover:bg-accent-warm/90"
+              disabled={paying}
+              onClick={() => void payForBuild()}
+            >
+              {paying ? "Opening payment…" : "Pay Securely with Razorpay"}
+            </Button>
+
+            <div className="mt-6 space-y-2.5">
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                Encrypted checkout · UPI, cards, net banking
+              </p>
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                No credit used if the build fails
+              </p>
+            </div>
+          </main>
+        </div>
+      )}
     </div>
   );
 }

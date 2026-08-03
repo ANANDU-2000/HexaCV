@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HexaCv - Upload Resume</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed": "#dbe1ff",
+                      "background": "#faf8ff",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#bc4800",
+                      "surface-container-low": "#f3f3fe",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-container": "#99efe5",
+                      "on-tertiary-fixed-variant": "#7d2d00",
+                      "tertiary-fixed-dim": "#ffb596",
+                      "secondary-fixed-dim": "#80d5cb",
+                      "primary": "#004ac6",
+                      "on-secondary-fixed": "#00201d",
+                      "secondary-fixed": "#9cf2e8",
+                      "on-error-container": "#93000a",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#ededf9",
+                      "surface-dim": "#d9d9e5",
+                      "on-tertiary-container": "#ffede6",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-primary-fixed": "#00174b",
+                      "tertiary": "#943700",
+                      "surface-tint": "#0053db",
+                      "surface-variant": "#e1e2ed",
+                      "surface": "#faf8ff",
+                      "outline-variant": "#c3c6d7",
+                      "surface-bright": "#faf8ff",
+                      "on-primary-container": "#eeefff",
+                      "on-background": "#191b23",
+                      "error": "#ba1a1a",
+                      "secondary": "#006a63",
+                      "inverse-on-surface": "#f0f0fb",
+                      "on-secondary-container": "#006f67",
+                      "surface-container-highest": "#e1e2ed",
+                      "surface-container-high": "#e7e7f3",
+                      "on-surface-variant": "#434655",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "inverse-primary": "#b4c5ff",
+                      "tertiary-fixed": "#ffdbcd",
+                      "on-secondary-fixed-variant": "#00504a",
+                      "primary-container": "#2563eb",
+                      "on-tertiary-fixed": "#360f00",
+                      "on-surface": "#191b23",
+                      "inverse-surface": "#2e3039",
+                      "on-primary": "#ffffff",
+                      "outline": "#737686"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "margin-mobile": "16px",
+                      "unit": "4px",
+                      "max-width": "1280px",
+                      "gutter": "24px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "xs": "4px",
+                      "margin-desktop": "48px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "display": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "caption": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            background-image: radial-gradient(circle at 100% 0%, theme('colors.primary-fixed-dim'), transparent 50%),
+                              radial-gradient(circle at 0% 100%, theme('colors.surface-container-low'), transparent 50%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0px 8px 32px rgba(0, 0, 0, 0.05);
+        }
+        .dashed-zone {
+            background: rgba(37, 99, 235, 0.05);
+            border: 2px dashed theme('colors.primary-container');
+            transition: all 0.2s ease-in-out;
+        }
+        .dashed-zone:hover {
+            background: rgba(37, 99, 235, 0.08);
+            border-color: theme('colors.primary');
+        }
+        .secondary-block {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transition: all 0.2s ease-in-out;
+        }
+        .secondary-block:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: scale(1.01);
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased flex flex-col items-center justify-center pt-24 pb-12">
+<!-- Top Navigation (Transactional Layout - Suppressed main nav, simplified to Back action) -->
+<nav class="fixed top-0 w-full z-50 flex items-center px-margin-desktop py-4 max-w-max-width mx-auto bg-white/80 backdrop-blur-md border-b border-white/40 shadow-sm">
+<a class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+            Back to Landing
+        </a>
+<div class="ml-auto font-headline-md text-headline-md font-bold text-primary">
+            HexaCv
+        </div>
+</nav>
+<!-- Main Content Area -->
+<main class="w-full max-w-2xl px-margin-mobile md:px-0">
+<!-- Central Glass Card -->
+<div class="glass-card rounded-xl p-lg md:p-margin-desktop flex flex-col gap-xl">
+<!-- Header Section -->
+<div class="text-center flex flex-col items-center gap-sm">
+<div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">cloud_upload</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Let's Get Started</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Upload your existing resume to parse, or build from scratch.</p>
+</div>
+<!-- Drag-and-Drop Zone -->
+<div class="dashed-zone rounded-lg p-xl flex flex-col items-center justify-center text-center gap-md cursor-pointer group">
+<span class="material-symbols-outlined text-primary-container text-5xl group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 0;">upload_file</span>
+<div>
+<p class="font-body-lg text-body-lg font-medium text-on-surface">Drag and drop your file here</p>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Supports PDF, DOCX, or TXT</p>
+</div>
+<button class="mt-2 bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md py-3 px-6 rounded-lg transition-colors shadow-sm hover:shadow-md">
+                    Browse Files
+                </button>
+</div>
+<!-- Divider -->
+<div class="relative flex items-center py-4">
+<div class="flex-grow border-t border-surface-dim"></div>
+<span class="flex-shrink-0 mx-4 font-caption text-caption text-on-surface-variant font-medium tracking-widest">OR</span>
+<div class="flex-grow border-t border-surface-dim"></div>
+</div>
+<!-- Secondary Option -->
+<button class="secondary-block rounded-lg p-md flex items-center gap-md w-full text-left group">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">edit_document</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-md text-label-md text-on-surface">Start from Scratch</h3>
+<p class="font-caption text-caption text-on-surface-variant">Use our step-by-step builder to create a new CV.</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">chevron_right</span>
+</button>
+</div>
+</main>
+</body></html>
