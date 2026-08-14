@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/shared/ui/button";
 import {
-  Layers,
   ChevronDown,
   ChevronUp,
   ChevronLeft,
@@ -15,6 +14,8 @@ import { loadEntryDraft } from "@/lib/entryDraft";
 import { FloatingLabelInput, FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { toast } from "sonner";
 import PipelineLoader from "@/components/PipelineLoader";
+import SiteHeader from "@/shared/layout/SiteHeader";
+import SiteFooter from "@/shared/layout/SiteFooter";
 
 const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
 
@@ -299,15 +300,9 @@ export default function Targeting() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 pb-28 pt-10" style={{ fontFamily: "var(--font-sans)" }}>
-      <div className="mx-auto w-full max-w-[640px]">
-        <Link href="/" className="mb-8 flex items-center gap-2 no-underline">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Layers className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="font-display text-lg font-semibold text-primary">HexaCv</span>
-        </Link>
-
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+      <SiteHeader />
+      <div className="mx-auto w-full max-w-[640px] flex-1 px-4 pb-28 pt-10">
         <h1 className="font-display text-3xl font-semibold text-foreground">
           Who are you applying to?
         </h1>
@@ -432,8 +427,7 @@ export default function Targeting() {
       {/* Confirm & Pay screen (Flow A step 7) */}
       {confirmPayOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-background"
-          style={{ fontFamily: "var(--font-sans)" }}
+          className="fixed inset-0 z-50 flex flex-col bg-background font-sans"
           role="dialog"
           aria-modal="true"
           aria-label="Confirm payment"
@@ -500,6 +494,9 @@ export default function Targeting() {
           </main>
         </div>
       )}
+      <div className="pb-20 sm:pb-0">
+        <SiteFooter />
+      </div>
     </div>
   );
 }

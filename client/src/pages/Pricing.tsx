@@ -1,7 +1,5 @@
 import { Link } from "wouter";
 import {
-  Layers,
-  ArrowLeft,
   CheckCircle2,
   Lock,
   ShieldCheck,
@@ -10,6 +8,8 @@ import {
   Download,
 } from "lucide-react";
 import { BUILD_PACKS } from "@/lib/buildPacks";
+import SiteHeader from "@/shared/layout/SiteHeader";
+import SiteFooter from "@/shared/layout/SiteFooter";
 
 /**
  * Align with the live product: pay-per-build credits (₹99), first build free at
@@ -35,28 +35,10 @@ const FIRST_FREE_FEATURES = [
 
 export default function Pricing() {
   return (
-    <div
-      className="min-h-screen bg-background text-foreground"
-      style={{ fontFamily: "var(--font-sans)" }}
-    >
-      <header className="flex h-16 items-center justify-between border-b border-border bg-background/92 px-4 backdrop-blur-md sm:px-8">
-        <Link href="/" className="flex items-center gap-2.5 no-underline">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Layers className="h-4 w-4 text-primary-foreground" strokeWidth={1.75} />
-          </div>
-          <span className="font-display text-lg font-semibold tracking-tight text-primary">
-            HexaCv
-          </span>
-        </Link>
-        <Link
-          href="/"
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground no-underline hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Home
-        </Link>
-      </header>
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+      <SiteHeader />
 
-      <main className="mx-auto px-4 pb-16 pt-12 sm:px-8" style={{ maxWidth: 960 }}>
+      <main className="mx-auto w-full flex-1 px-4 pb-16 pt-12 sm:px-8" style={{ maxWidth: 960 }}>
         <div className="text-center">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             ₹99 per resume build. No subscription.
@@ -225,28 +207,29 @@ export default function Pricing() {
           <p className="mx-auto max-w-lg text-xs leading-relaxed text-muted-foreground">
             Legacy monthly plans (Pro ₹399 / Enterprise ₹799) remain available
             only for accounts already on those plans —{" "}
-            <Link href="/dashboard/billing" className="no-underline text-primary hover:underline">
+            <Link href="/dashboard/billing" className="text-primary no-underline hover:underline">
               view billing
             </Link>
             .
           </p>
           <p className="text-xs text-muted-foreground">
             By purchasing you agree to our{" "}
-            <Link href="/terms" className="no-underline text-primary hover:underline">
+            <Link href="/terms" className="text-primary no-underline hover:underline">
               Terms of Service
             </Link>
             ,{" "}
-            <Link href="/privacy" className="no-underline text-primary hover:underline">
+            <Link href="/privacy" className="text-primary no-underline hover:underline">
               Privacy Policy
             </Link>
             , and{" "}
-            <Link href="/refund" className="no-underline text-primary hover:underline">
+            <Link href="/refund" className="text-primary no-underline hover:underline">
               Refund Policy
             </Link>
             .
           </p>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

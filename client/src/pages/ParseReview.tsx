@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/shared/ui/button";
-import { Layers, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { loadEntryDraft, type EntryDraft } from "@/lib/entryDraft";
+import SiteHeader from "@/shared/layout/SiteHeader";
+import SiteFooter from "@/shared/layout/SiteFooter";
 
 /**
  * Pre-targeting parsed-data review — PLAN.md §3 / DESIGN_DESKTOP.
@@ -24,8 +26,12 @@ export default function ParseReview() {
 
   if (!draft) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground">Loading your draft…</p>
+      <div className="flex min-h-screen flex-col bg-background font-sans">
+        <SiteHeader />
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-muted-foreground">Loading your draft…</p>
+        </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -36,15 +42,9 @@ export default function ParseReview() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10" style={{ fontFamily: "var(--font-sans)" }}>
-      <div className="mx-auto max-w-lg">
-        <Link href="/" className="mb-8 flex items-center gap-2 no-underline">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Layers className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="font-display text-lg font-semibold text-primary">HexaCv</span>
-        </Link>
-
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-10">
         <h1 className="font-display text-2xl font-semibold text-foreground">
           Does this look right?
         </h1>
@@ -106,7 +106,8 @@ export default function ParseReview() {
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
-      </div>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

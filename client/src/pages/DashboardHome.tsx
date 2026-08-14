@@ -7,18 +7,6 @@ import { useResumeStorage } from "@/_core/hooks/useResumeStorage";
 import ResumeHubCard from "@/components/ResumeHubCard";
 import type { Resume } from "@shared/types";
 
-const T = {
-  surface: "#FFFFFF",
-  elevated: "#FBF8F3",
-  primary: "#123832",
-  primaryText: "#123832",
-  accent: "#C5622A",
-  text: "#1C1B18",
-  muted: "#635F55",
-  outlineVariant: "#E4DFD3",
-  success: "#3F7A54",
-};
-
 /** Guest soft-cap is 3 drafts; banner at 2/3 (see ResumeBuilder / useResumeStorage). */
 const GUEST_DRAFT_CAP = 3;
 const GUEST_BANNER_AT = 2;
@@ -93,15 +81,15 @@ export default function DashboardHome() {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 font-sans">
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: T.text }}>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
           {user?.name?.split(" ")[0]
             ? `Hi, ${user.name.split(" ")[0]}`
             : "Your resumes"}
         </h1>
-        <p className="mt-1 text-sm" style={{ color: T.muted }}>
+        <p className="mt-1 text-sm text-muted-foreground">
           Open a draft or start a new one.
         </p>
       </div>
@@ -109,25 +97,19 @@ export default function DashboardHome() {
       {/* [guest-banner] Persistent at 2/3 of the 3-draft guest cap */}
       {showGuestBanner && (
         <div
-          className="rounded-xl border px-4 py-3 text-sm"
-          style={{
-            borderColor: T.accent,
-            backgroundColor: `${T.accent}18`,
-            color: T.text,
-          }}
+          className="rounded-xl border border-accent-warm bg-accent-warm/10 px-4 py-3 text-sm text-foreground"
           role="status"
         >
-          <p className="font-semibold" style={{ color: T.accent }}>
+          <p className="font-semibold text-accent-warm">
             Guest drafts stay on this device ({guestDraftCount}/{GUEST_DRAFT_CAP})
           </p>
-          <p className="mt-1" style={{ color: T.muted }}>
+          <p className="mt-1 text-muted-foreground">
             Sign in to sync them and free the local slot before you hit the cap.
           </p>
           <button
             type="button"
             onClick={() => setLocation("/login?convert=true")}
-            className="mt-3 min-h-[44px] rounded-xl px-4 text-sm font-semibold"
-            style={{ backgroundColor: T.accent, color: "#fff" }}
+            className="mt-3 min-h-11 rounded-[18px] bg-accent-warm px-4 text-sm font-semibold text-white hover:bg-accent-warm/90"
           >
             Sign in to keep drafts
           </button>
@@ -138,8 +120,7 @@ export default function DashboardHome() {
       <button
         type="button"
         onClick={handleNewResume}
-        className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl text-base font-bold transition hover:opacity-90 active:scale-[0.99]"
-        style={{ backgroundColor: T.accent, color: "#fff" }}
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-accent-warm text-base font-bold text-white transition hover:bg-accent-warm/90 active:scale-[0.99]"
       >
         <FilePlus2 className="h-5 w-5" />
         New resume
@@ -151,8 +132,7 @@ export default function DashboardHome() {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-[440px] animate-pulse rounded-2xl"
-              style={{ backgroundColor: T.elevated }}
+              className="h-[440px] animate-pulse rounded-2xl bg-muted"
             />
           ))}
         </div>
@@ -160,19 +140,15 @@ export default function DashboardHome() {
 
       {/* [empty-state] Landing Step 3 voice — not "No resumes yet" */}
       {!loading && resumes.length === 0 && (
-        <div
-          className="flex flex-col items-center justify-center gap-4 rounded-2xl border px-6 py-16 text-center"
-          style={{ borderColor: T.outlineVariant, backgroundColor: T.surface }}
-        >
-          <p className="max-w-sm text-base font-medium" style={{ color: T.text }}>
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6 py-16 text-center">
+          <p className="max-w-sm text-base font-medium text-foreground">
             Upload a resume or write from scratch. Improve clarity and ATS compatibility —
             starting with one draft.
           </p>
           <button
             type="button"
             onClick={handleNewResume}
-            className="min-h-[44px] rounded-xl px-5 text-sm font-semibold"
-            style={{ backgroundColor: T.primary, color: "#fff" }}
+            className="min-h-11 rounded-[18px] bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             New resume
           </button>
@@ -196,21 +172,20 @@ export default function DashboardHome() {
       {/* Delete confirmation modal */}
       {pendingDeleteId && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[color:var(--ink)]/60 p-4 sm:items-center"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-resume-title"
           onClick={() => !deleting && setPendingDeleteId(null)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border p-5"
-            style={{ borderColor: T.outlineVariant, backgroundColor: T.elevated }}
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="delete-resume-title" className="text-lg font-bold" style={{ color: T.text }}>
+            <h2 id="delete-resume-title" className="font-display text-lg font-semibold text-foreground">
               Remove this resume?
             </h2>
-            <p className="mt-2 text-sm" style={{ color: T.muted }}>
+            <p className="mt-2 text-sm text-muted-foreground">
               It will leave your list. You can undo from the toast for a short window. Permanent
               purge after 30 days is a follow-up.
             </p>
@@ -219,8 +194,7 @@ export default function DashboardHome() {
                 type="button"
                 disabled={deleting}
                 onClick={confirmDelete}
-                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-60"
-                style={{ backgroundColor: T.accent, color: "#fff" }}
+                className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[18px] bg-accent-warm text-sm font-semibold text-white hover:bg-accent-warm/90 disabled:opacity-60"
               >
                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Remove
@@ -229,8 +203,7 @@ export default function DashboardHome() {
                 type="button"
                 disabled={deleting}
                 onClick={() => setPendingDeleteId(null)}
-                className="min-h-[44px] flex-1 rounded-xl border text-sm font-semibold"
-                style={{ borderColor: T.outlineVariant, color: T.text }}
+                className="min-h-11 flex-1 rounded-[18px] border border-border text-sm font-semibold text-foreground disabled:opacity-60"
               >
                 Cancel
               </button>

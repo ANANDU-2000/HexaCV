@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/shared/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import {
-  Layers, Menu, X, ArrowRight, Linkedin, Upload, Pencil, FileText,
+  ArrowRight, Linkedin, Upload, Pencil, FileText,
   MapPin, CheckCircle2, Lock,
 } from "lucide-react";
 import ResumePreview from "@/components/ResumePreview";
@@ -22,19 +22,8 @@ import {
   summarizeParsed,
   type EntryDraft,
 } from "@/lib/entryDraft";
-
-const footerLinks = {
-  product: [
-    { label: "Resume Builder", href: "/builder/target" },
-    { label: "Pricing", href: "/pricing" },
-  ],
-  legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Cookie Policy", href: "/cookies" },
-    { label: "Refund Policy", href: "/refund" },
-  ],
-};
+import SiteHeader from "@/shared/layout/SiteHeader";
+import SiteFooter from "@/shared/layout/SiteFooter";
 
 /** Hero preview — the real A4 preview scaled into the right column. */
 const HERO_FRAME_WIDTH = 340;
@@ -52,10 +41,8 @@ const HERO_TRUST = [
 ];
 
 export default function Landing() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [mode, setMode] = useState<"idle" | "upload" | "scratch">("idle");
   const [pasteText, setPasteText] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
@@ -65,12 +52,6 @@ export default function Landing() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseMutation = trpc.resume.parse.useMutation();
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const persistDraft = useCallback((next: EntryDraft) => {
     saveEntryDraft(next);
@@ -168,93 +149,9 @@ export default function Landing() {
     }
   };
 
-  const navLinks = [
-    { label: "How it works", href: "#how-it-works" },
-    { label: "Pricing", href: "/pricing" },
-  ];
-
-  const nav = (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "border-b border-border bg-background/92 backdrop-blur-md"
-          : "border-b border-transparent bg-transparent"
-      }`}
-    >
-      <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-8" style={{ maxWidth: 1280 }}>
-        <Link href="/" className="flex items-center gap-2.5 no-underline">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary" aria-hidden="true">
-            <Layers className="h-4 w-4 text-primary-foreground" strokeWidth={1.75} />
-          </div>
-          <span className="font-display text-lg font-semibold tracking-tight text-primary">
-            HexaCv
-          </span>
-        </Link>
-
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground no-underline transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="hidden items-center gap-3 md:flex">
-          {!isAuthenticated ? (
-            <Link href="/login" className="no-underline">
-              <Button variant="ghost" className="min-h-11 text-foreground">
-                Log in
-              </Button>
-            </Link>
-          ) : (
-            <>
-              <Link href="/dashboard" className="no-underline">
-                <Button variant="outline" className="min-h-11 rounded-lg border-border">
-                  Dashboard
-                </Button>
-              </Link>
-              <Button variant="ghost" className="min-h-11 text-muted-foreground" onClick={() => logout()}>
-                Sign out
-              </Button>
-            </>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center md:hidden"
-          aria-label="Toggle navigation"
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
-    </header>
-  );
-
   return (
-    <div className="bg-background text-foreground" style={{ fontFamily: "var(--font-sans)" }}>
-      {nav}
-
-      {menuOpen && (
-        <div className="fixed inset-x-0 top-16 z-40 border-b border-border bg-background p-4 md:hidden">
-          <div className="flex flex-col gap-3">
-            {!isAuthenticated ? (
-              <Link href="/login" className="no-underline" onClick={() => setMenuOpen(false)}>
-                <Button variant="outline" className="w-full min-h-11">Log in</Button>
-              </Link>
-            ) : (
-              <Link href="/dashboard" className="no-underline" onClick={() => setMenuOpen(false)}>
-                <Button variant="outline" className="w-full min-h-11">Dashboard</Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+    <div className="bg-background font-sans text-foreground">
+      <SiteHeader transparentOnScroll />
 
       <main style={{ paddingTop: 64 }}>
         <section aria-label="Hero" className="relative overflow-hidden">
@@ -532,62 +429,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <footer aria-label="Site footer" className="bg-[color:var(--ink)]">
-          <div className="mx-auto px-4 py-12 sm:px-8" style={{ maxWidth: 1280 }}>
-            <div className="grid grid-cols-1 gap-10 border-b border-white/10 pb-10 sm:grid-cols-3">
-              <div className="flex flex-col gap-3">
-                <span className="font-display text-lg font-semibold text-white">HexaCv</span>
-                <p className="max-w-[280px] text-sm leading-relaxed text-white/60">
-                  Grounded resume AI for Gulf &amp; India job seekers. Built by HexaStack Solutions.
-                </p>
-              </div>
-              <div>
-                <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-accent-warm">
-                  Product
-                </h4>
-                <div className="flex flex-col gap-3">
-                  {footerLinks.product.map((link) => (
-                    <Link
-                      key={link.label}
-                      href={link.href}
-                      className="text-sm font-medium text-white/60 no-underline hover:text-white"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-accent-warm">
-                  Legal
-                </h4>
-                <div className="flex flex-col gap-3">
-                  {footerLinks.legal.map((link) => (
-                    <Link
-                      key={link.label}
-                      href={link.href}
-                      className="text-sm font-medium text-white/60 no-underline hover:text-white"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col items-center justify-between gap-4 pt-8 text-xs text-white/40 sm:flex-row">
-              <p>© {new Date().getFullYear()} HexaStack Solutions. All rights reserved.</p>
-              <a
-                href="https://www.linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="HexaStack on LinkedIn"
-                className="inline-flex min-h-11 min-w-11 items-center justify-center text-white/50"
-              >
-                <Linkedin className="h-4 w-4" strokeWidth={1.75} />
-              </a>
-            </div>
-          </div>
-        </footer>
+        <SiteFooter />
       </main>
 
       <ParseLoader open={parsing} />
