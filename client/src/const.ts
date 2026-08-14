@@ -9,6 +9,24 @@ export function canUseOAuthPortal(): boolean {
   return Boolean(oauthPortalUrl?.trim() && appId?.trim());
 }
 
+/**
+ * Safe post-auth-page destination for "Continue as guest".
+ * Auth-gated account/admin routes would bounce a guest back to /login.
+ */
+export function guestHref(redirect: string): string {
+  if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
+    return "/builder";
+  }
+  if (
+    redirect.startsWith("/dashboard/") ||
+    redirect.startsWith("/admin") ||
+    redirect.startsWith("/url")
+  ) {
+    return "/builder";
+  }
+  return redirect;
+}
+
 /** Live Manus OAuth URL, or `/login` when portal env is missing. */
 export const getLoginUrl = (type: "signIn" | "signUp" = "signIn") => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL as

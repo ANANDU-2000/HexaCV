@@ -49,7 +49,7 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Resume, TemplateId, ParsedResume, ResumeSection } from "@shared/types";
+import { Resume, ParsedResume, ResumeSection } from "@shared/types";
 import { PRESET_JOBS, matchPresetJobByTitle } from "@/lib/jobDescriptions";
 import { ensureStandardResumeSections } from "@/lib/resumeSections";
 import {
@@ -105,9 +105,6 @@ interface ResumeEditorProps {
 
 export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   const [localResume, setLocalResume] = useState<Resume>(resume);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(
-    resume.templateId as TemplateId
-  );
   const [selectedJob, setSelectedJob] = useState<string>(
     resume.jobDescriptionId || ""
   );
@@ -508,7 +505,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
     let keywordScore = 0;
     let completenessScore = 0;
-    let readabilityScore = 80; // base score
+    let readabilityScore = 90;
 
     const matchedKeywords: string[] = [];
     const missingKeywords: string[] = [];
@@ -582,9 +579,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       (filledCount / importantSections.length) * 100
     );
 
-    // 3. Readability & Formatting
-    if (selectedTemplate === "technical-compact") readabilityScore = 85;
-    if (selectedTemplate === "classic-ats-blue") readabilityScore = 90;
+    // 3. Readability & Formatting — Classic ATS Blue
 
     // 4. Localization Validation & regional hiring alignment checks
     const locationErrors: string[] = [];
@@ -3861,7 +3856,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   <div className="flex-1 min-h-0 overflow-hidden flex border-y border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-[#131b2e] sm:rounded-xl sm:border">
                     <ResumePreview
                       resume={localResume}
-                      templateId={selectedTemplate}
+                      templateId="classic-ats-blue"
                       zoom={zoom}
                       contentId="resume-preview-mobile"
                       onSectionSelect={handleSectionSelect}
@@ -4191,7 +4186,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           <div className="flex-1 min-h-0 overflow-hidden">
             <ResumePreview
               resume={localResume}
-              templateId={selectedTemplate}
+              templateId="classic-ats-blue"
               zoom={zoom}
               contentId="resume-preview-desktop"
               onSectionSelect={handleSectionSelect}
@@ -4206,7 +4201,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       >
         <ResumePreview
           resume={localResume}
-          templateId={selectedTemplate}
+          templateId="classic-ats-blue"
           zoom={100}
           contentRef={exportPreviewRef}
           contentId="resume-pdf-content"

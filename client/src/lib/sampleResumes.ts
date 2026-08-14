@@ -9,7 +9,6 @@ import type { Resume, ResumeSection } from '@shared/types';
 export const PREVIEW_PAGE_WIDTH = 794; // A4 at 96dpi, matches ResumePreview
 
 export interface SampleSpec {
-  templateId: string;
   label: string;
   name: string;
   jobTitle: string;
@@ -75,10 +74,10 @@ export function buildSampleResume(spec: SampleSpec): Resume {
   ];
 
   return {
-    id: `sample-${spec.templateId}`,
+    id: `sample-${spec.label.replace(/\s+/g, '-').toLowerCase()}`,
     userId: 'sample',
     title: spec.label,
-    templateId: spec.templateId,
+    templateId: 'classic-ats-blue',
     sections,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -89,7 +88,6 @@ export const SAMPLES: { label: string; resume: Resume }[] = [
   {
     label: 'Civil Engineer, Abu Dhabi format',
     resume: buildSampleResume({
-      templateId: 'classic-ats-blue',
       label: 'Civil Engineer',
       name: 'Rashid Al Mansouri',
       jobTitle: 'Civil Engineer',
@@ -109,7 +107,6 @@ export const SAMPLES: { label: string; resume: Resume }[] = [
   {
     label: 'Frontend Engineer, UAE format',
     resume: buildSampleResume({
-      templateId: 'classic-ats-blue',
       label: 'Frontend Engineer',
       name: 'Aisha Rahman',
       jobTitle: 'Frontend Engineer',
@@ -129,7 +126,6 @@ export const SAMPLES: { label: string; resume: Resume }[] = [
   {
     label: 'Data Scientist, India format',
     resume: buildSampleResume({
-      templateId: 'minimal-executive',
       label: 'Data Scientist',
       name: 'Rohan Iyer',
       jobTitle: 'Data Scientist',
@@ -149,7 +145,6 @@ export const SAMPLES: { label: string; resume: Resume }[] = [
   {
     label: 'DevOps Engineer, Saudi format',
     resume: buildSampleResume({
-      templateId: 'technical-compact',
       label: 'DevOps Engineer',
       name: 'Omar Al Harbi',
       jobTitle: 'DevOps Engineer',

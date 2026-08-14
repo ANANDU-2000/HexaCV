@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo, type Ref, type ReactNode } from "react";
 import { Pencil } from "lucide-react";
 import { Resume } from "@shared/types";
 import { cn } from "@/lib/utils";
-import { getTemplateById, getDefaultTemplate } from "@/lib/templates";
-import type { ResumeTemplate } from "@shared/types";
+import { getDefaultTemplate } from "@/lib/templates";
 
 interface ResumePreviewProps {
   resume: Resume;
+  /** Ignored: Classic ATS Blue is the only template. Kept so existing call sites stay unchanged. */
   templateId?: string;
   zoom?: number;
   contentRef?: Ref<HTMLDivElement>;
@@ -138,7 +138,6 @@ function BulletList({ items, color }: { items: string[]; color: string }) {
 
 export default function ResumePreview({
   resume,
-  templateId,
   zoom = 100,
   contentRef,
   contentId = "resume-pdf-content",
@@ -146,12 +145,12 @@ export default function ResumePreview({
 }: ResumePreviewProps) {
   const [countriesList, setCountriesList] = useState<any[]>([]);
 
-  const template: ResumeTemplate = useMemo(
-    () => getTemplateById(templateId || "") || getDefaultTemplate(),
-    [templateId]
-  );
+  const template = getDefaultTemplate();
   const { colors: tc, cornerRadius } = template.styles;
-  const isDark = tc.background !== "#ffffff";
+  const bgColor = "#ffffff";
+  const textColor = "#1e293b";
+  const mutedColor = "#64748b";
+  const lightText = "#475569";
 
   useEffect(() => {
     const fetchCountries = async () => {
@@ -242,18 +241,10 @@ export default function ResumePreview({
         l.label.toLowerCase().includes("website")
     )?.url || "";
 
-  const bgColor = isDark ? tc.background : "#ffffff";
-  const textColor = isDark ? tc.text : "#1e293b";
-  const mutedColor = isDark ? tc.border : "#64748b";
-  const lightText = isDark ? tc.secondary : "#475569";
-  const cardBg = isDark ? "#171f33" : "#ffffff";
-  const elevatedBg = isDark ? "#222a3d" : "#f8fafc";
-  const cardRadius = Math.max(cornerRadius, 12);
-
   return (
     <div
       className="w-full h-full p-2 sm:p-4 overflow-auto flex justify-center items-start"
-      style={{ backgroundColor: isDark ? "#0b1326" : "#f1f5f9" }}
+      style={{ backgroundColor: "#f1f5f9" }}
     >
       <div
         id={contentId}
@@ -413,11 +404,6 @@ export default function ResumePreview({
                       <div
                         key={exp.id || idx}
                         className="mb-4 last:mb-0 pdf-avoid-break"
-                        style={{
-                          backgroundColor: isDark ? cardBg : "transparent",
-                          borderRadius: `${cardRadius}px`,
-                          padding: isDark ? "0.75rem" : "0",
-                        }}
                       >
                         <div className="flex justify-between items-baseline flex-wrap gap-x-2">
                           <h3
@@ -466,11 +452,6 @@ export default function ResumePreview({
                         <div
                           key={proj.id || idx}
                           className="mb-2 last:mb-0 pdf-avoid-break"
-                          style={{
-                            backgroundColor: isDark ? cardBg : "transparent",
-                            borderRadius: `${cardRadius}px`,
-                            padding: isDark ? "0.75rem" : "0",
-                          }}
                         >
                           <p className="text-[13px]">
                             <span
@@ -552,11 +533,6 @@ export default function ResumePreview({
                         <div
                           key={edu.id || idx}
                           className="mb-2 last:mb-0 pdf-avoid-break"
-                          style={{
-                            backgroundColor: isDark ? cardBg : "transparent",
-                            borderRadius: `${cardRadius}px`,
-                            padding: isDark ? "0.75rem" : "0",
-                          }}
                         >
                           <div className="flex justify-between items-baseline flex-wrap gap-x-2">
                             <h3
@@ -669,11 +645,6 @@ export default function ResumePreview({
                         <div
                           key={ref.id || idx}
                           className="text-[12px]"
-                          style={{
-                            backgroundColor: isDark ? cardBg : "transparent",
-                            borderRadius: `${cardRadius}px`,
-                            padding: isDark ? "0.75rem" : "0",
-                          }}
                         >
                           <p className="font-bold" style={{ color: textColor }}>
                             {ref.name}
@@ -740,13 +711,6 @@ export default function ResumePreview({
                                 <div
                                   key={item.id || itemIdx}
                                   className="mb-2 last:mb-0 pdf-avoid-break"
-                                  style={{
-                                    backgroundColor: isDark
-                                      ? cardBg
-                                      : "transparent",
-                                    borderRadius: `${cardRadius}px`,
-                                    padding: isDark ? "0.75rem" : "0",
-                                  }}
                                 >
                                   <div className="flex justify-between items-baseline flex-wrap gap-x-2">
                                     <h3

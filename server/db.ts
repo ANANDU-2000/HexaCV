@@ -76,9 +76,7 @@ export const mockDb = {
   ] as any[],
   marketplaceItems: [
     { id: "mkt-1", title: "Classic ATS Blue Template", description: "Standard single-column ATS optimized resume template.", type: "template", content: "classic-ats-blue", authorId: 1, price: 0, rating: "4.9", downloads: 142, isPremium: false, createdAt: new Date() },
-    { id: "mkt-2", title: "Modern Sidebar Lite Template", description: "Creative dual-column layout template featuring side contacts.", type: "template", content: "modern-sidebar-lite", authorId: 1, price: 0, rating: "4.7", downloads: 98, isPremium: false, createdAt: new Date() },
-    { id: "mkt-3", title: "FAANG Software Engineer CV", description: "Verified resume structure that secured offers at Meta, Google, and Amazon.", type: "resume", content: "{}", authorId: 2, price: 499, rating: "5.0", downloads: 41, isPremium: true, createdAt: new Date() },
-    { id: "mkt-4", title: "Executive Minimal Template", description: "Sleek, high-end minimal typography layout.", type: "template", content: "minimal-executive", authorId: 1, price: 299, rating: "4.8", downloads: 12, isPremium: true, createdAt: new Date() }
+    { id: "mkt-3", title: "FAANG Software Engineer CV", description: "Verified resume structure that secured offers at Meta, Google, and Amazon.", type: "resume", content: "{}", authorId: 2, price: 499, rating: "5.0", downloads: 41, isPremium: true, createdAt: new Date() }
   ] as any[],
   affiliateReferrals: [
     { id: "aff-1", referrerId: 1, refereeId: 3, email: "john@example.com", clicks: 12, status: "converted", commissionEarned: 500, createdAt: new Date() },

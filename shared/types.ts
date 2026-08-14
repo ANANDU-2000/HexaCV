@@ -120,7 +120,7 @@ export interface Resume {
 }
 
 // Template Types
-export type TemplateId = 'classic-ats-blue' | 'minimal-executive' | 'modern-sidebar-lite' | 'technical-compact' | 'crystalline-professional';
+export type TemplateId = 'classic-ats-blue';
 
 export interface TemplateStyles {
   colors: {

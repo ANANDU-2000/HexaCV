@@ -107,7 +107,7 @@ export function useResumeStorage() {
         } else {
           const res = await createResumeMutation.mutateAsync({
             title: resume.title,
-            templateId: resume.templateId,
+            templateId: "classic-ats-blue",
             content: serializedContent,
             jobDescriptionId: resume.jobDescriptionId || undefined,
           });
@@ -312,7 +312,7 @@ export function useResumeStorage() {
         const serializedContent = JSON.stringify({ sections: r.sections });
         await createResumeMutation.mutateAsync({
           title: r.title,
-          templateId: r.templateId,
+          templateId: "classic-ats-blue",
           content: serializedContent,
           jobDescriptionId: r.jobDescriptionId || undefined
         });

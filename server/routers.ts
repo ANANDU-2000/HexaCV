@@ -169,7 +169,7 @@ export const appRouter = router({
     create: protectedProcedure
       .input(z.object({
         title: z.string(),
-        templateId: z.string(),
+        templateId: z.literal("classic-ats-blue"),
         content: z.string(), // JSON string representing the Resume content
         jobDescriptionId: z.string().optional(),
       }))

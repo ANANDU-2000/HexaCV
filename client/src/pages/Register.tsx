@@ -2,25 +2,9 @@ import { Button } from "@/shared/ui/button";
 import { Chrome } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { canUseOAuthPortal, getLoginUrl } from "@/const";
+import { canUseOAuthPortal, getLoginUrl, guestHref } from "@/const";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
-
-function guestHref(redirect: string): string {
-  if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
-    return "/builder";
-  }
-  // Auth-gated account/admin pages would bounce a guest straight back to /login (infinite loop).
-  // Route them to the guest-capable builder instead.
-  if (
-    redirect.startsWith("/dashboard/") ||
-    redirect.startsWith("/admin") ||
-    redirect.startsWith("/url")
-  ) {
-    return "/builder";
-  }
-  return redirect;
-}
 
 export default function Register() {
   const params = new URLSearchParams(window.location.search);
