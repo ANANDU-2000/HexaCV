@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -47,6 +47,7 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Resume, ParsedResume, ResumeSection } from "@shared/types";
@@ -96,6 +97,104 @@ const EDITOR_FLOW_STEPS = WIZARD_STEPS.filter(step => step.key !== "preview");
 function resolveWizardKey(tab: string): string {
   if ((MORE_SECTION_KEYS as readonly string[]).includes(tab)) return "more";
   return tab;
+}
+
+const EDITOR_CONTROL_CLASS =
+  "rounded-lg border-border bg-muted text-foreground focus-visible:ring-ring text-sm";
+const EDITOR_INPUT_CLASS = `h-10 ${EDITOR_CONTROL_CLASS}`;
+const EDITOR_LABEL_CLASS = "text-xs font-semibold text-muted-foreground";
+const EDITOR_ADD_BUTTON_CLASS =
+  "shrink-0 gap-1.5 h-8 text-xs font-semibold border-border hover:bg-muted hover:text-foreground rounded-lg";
+const EDITOR_ENTRY_CARD_CLASS =
+  "border border-border p-5 rounded-xl space-y-4 bg-muted hover:border-muted-foreground/40 transition-colors";
+
+function WizardTabIntro({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 pb-4 border-b border-border">
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+          <Icon className="w-4.5 h-4.5 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-bold text-foreground text-[15px] leading-tight">{title}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function EditableEntryCard({
+  icon: Icon,
+  title,
+  index,
+  count,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  index: number;
+  count: number;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className={EDITOR_ENTRY_CARD_CLASS}>
+      <div className="flex justify-between items-center">
+        <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+          <Icon className="w-3 h-3 text-muted-foreground" />
+          {title}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 text-muted-foreground hover:text-foreground"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            title="Move Up"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 text-muted-foreground hover:text-foreground"
+            onClick={onMoveDown}
+            disabled={index === count - 1}
+            title="Move Down"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive min-h-11"
+            onClick={onDelete}
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 interface ResumeEditorProps {
@@ -1061,7 +1160,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     resolvedTab === EDITOR_FLOW_STEPS[EDITOR_FLOW_STEPS.length - 1].key;
 
   return (
-    <div className="w-full h-full font-sans text-slate-800 dark:text-slate-200 pb-[72px] lg:pb-0">
+    <div className="w-full h-full font-sans text-foreground pb-[72px] lg:pb-0">
       {/* Editor workspace */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
         <div className="w-full flex flex-col gap-2 sm:gap-3 h-full min-h-0">
@@ -1107,15 +1206,15 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           {/* Toggle Mode header on mobile, regular title + quick settings on desktop */}
           <div
             className={cn(
-              "glass-panel border border-slate-200 dark:border-white/10 rounded-xl shadow-sm shrink-0 overflow-hidden",
+              "glass-panel border border-border rounded-xl shadow-sm shrink-0 overflow-hidden",
               activeEditTab === "preview" && "lg:block"
             )}
           >
             {/* Row 1: Title + Action Buttons */}
-            <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-slate-200 dark:border-white/10">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
-                  <Sparkles className="w-4.5 h-4.5 text-white" />
+                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-primary rounded-xl flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4.5 h-4.5 text-primary-foreground" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 group/title">
@@ -1128,18 +1227,18 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           title: e.target.value,
                         })
                       }
-                      className="bg-transparent border-none p-0 m-0 font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight focus:ring-0 focus:outline-none focus:border-b focus:border-slate-350 dark:focus:border-slate-700 w-full max-w-[180px] sm:max-w-[260px] truncate"
+                      className="bg-transparent border-none p-0 m-0 font-bold text-foreground text-sm leading-tight focus:ring-0 focus:outline-none focus:border-b focus:border-primary w-full max-w-[180px] sm:max-w-[260px] truncate"
                       placeholder="Resume Title"
                     />
-                    <Edit3 className="w-3.5 h-3.5 text-slate-400 opacity-50 group-hover/title:opacity-100 transition-opacity shrink-0" />
+                    <Edit3 className="w-3.5 h-3.5 text-muted-foreground opacity-50 group-hover/title:opacity-100 transition-opacity shrink-0" />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-success">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                       Auto-saved
                     </span>
-                    <span className="text-slate-550">·</span>
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-550 dark:text-slate-400">
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
                       {activeEditTab === "review"
                         ? "Review & Export"
                         : activeEditTab === "preview"
@@ -1153,35 +1252,35 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-11 w-11 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                  className="h-11 w-11 border-border rounded-lg bg-card hover:bg-muted"
                   onClick={handleUndo}
                   disabled={historyIndex <= 0}
                   title="Undo"
                 >
-                  <Undo className="w-3.5 h-3.5 text-slate-600 dark:text-slate-350" />
+                  <Undo className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-11 w-11 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                  className="h-11 w-11 border-border rounded-lg bg-card hover:bg-muted"
                   onClick={handleRedo}
                   disabled={historyIndex >= history.length - 1}
                   title="Redo"
                 >
-                  <Redo className="w-3.5 h-3.5 text-slate-600 dark:text-slate-350" />
+                  <Redo className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               </div>
             </div>
             {/* Row 2: Layout + Target Job */}
-            <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-slate-100/50 dark:bg-slate-950/20">
-              <div className="flex items-center gap-1.5 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1 px-2.5 shadow-xs">
-                <Settings className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+            <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-muted">
+              <div className="flex items-center gap-1.5 bg-card border border-border rounded-lg py-1 px-2.5 shadow-xs">
+                <Settings className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] font-bold text-foreground">
                   ATS Emerald
                 </span>
               </div>
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
                   Target:
                 </span>
                 <Select
@@ -1193,16 +1292,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 >
                   <SelectTrigger
                     id="quick-job-select"
-                    className="h-8 text-[11px] font-semibold rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 min-w-0 w-full max-w-[210px] shadow-xs"
+                    className="h-8 text-[11px] font-semibold rounded-lg border-border bg-card text-foreground min-w-0 w-full max-w-[210px] shadow-xs"
                   >
                     <SelectValue placeholder="Select target job..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200">
+                  <SelectContent className="bg-popover border-border text-popover-foreground">
                     {PRESET_JOBS.map(j => (
                       <SelectItem
                         key={j.id}
                         value={j.id}
-                        className="text-xs text-slate-800 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white"
+                        className="text-xs text-foreground focus:bg-muted focus:text-foreground"
                       >
                         {j.title}
                       </SelectItem>
@@ -1214,7 +1313,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           </div>
 
           {/* Editor Card with guided steps */}
-          <Card className="glass-panel border-slate-200 dark:border-white/10 overflow-hidden flex flex-col flex-1 min-h-0 bg-slate-50/80 dark:bg-slate-900/10 shadow-sm p-0 rounded-xl">
+          <Card className="glass-panel border-border overflow-hidden flex flex-col flex-1 min-h-0 bg-muted shadow-sm p-0 rounded-xl">
             {/* Horizontal Stepper Progress Indicator (Visible only during editor steps 1-12) */}
             {FORM_STEPS.some(s => s.key === activeEditTab) ? (
               <div className="relative group/stepper shrink-0 w-full overflow-hidden">
@@ -1223,7 +1322,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   type="button"
                   onClick={scrollLeftDirection}
                   className={cn(
-                    "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                    "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-card/90 shadow-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
                     canScrollLeft
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -1234,7 +1333,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 {/* Left Gradient Fade Overlay */}
                 <div
                   className={cn(
-                    "absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-slate-100 dark:from-[#0b1326] via-slate-100/70 dark:via-[#0b1326]/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                    "absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-muted via-muted/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
                     canScrollLeft ? "opacity-100" : "opacity-0"
                   )}
                 />
@@ -1242,7 +1341,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 {/* Scrollable Steps Wrapper */}
                 <div
                   ref={stepperRef}
-                  className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth px-8 py-3 bg-slate-100/80 dark:bg-slate-950/40 backdrop-blur-sm border-b border-slate-200/50 dark:border-white/5 select-none"
+                  className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth px-8 py-3 bg-muted backdrop-blur-sm border-b border-border select-none"
                 >
                   {FORM_STEPS.map((step, idx) => {
                     const Icon = step.icon;
@@ -1266,20 +1365,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           className={cn(
                             "flex items-center gap-2 p-1.5 px-3 rounded-xl text-xs font-bold transition-all border outline-none cursor-pointer",
                             isActive
-                              ? "bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]"
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm scale-[1.02]"
                               : isDone
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/60 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-500/15 dark:hover:bg-emerald-900/15"
-                                : "bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:text-slate-200"
+                                ? "bg-success/10 text-success border-success/30 hover:bg-success/15"
+                                : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
                           )}
                         >
                           <span
                             className={cn(
                               "w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black border",
                               isActive
-                                ? "bg-white/20 border-slate-300 dark:border-white/30 text-white"
+                                ? "bg-primary-foreground/20 border-primary-foreground/30 text-primary-foreground"
                                 : isDone
-                                  ? "bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-500/30 dark:text-emerald-300"
-                                  : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500"
+                                  ? "bg-success/10 border-success/30 text-success"
+                                  : "bg-muted border-border text-muted-foreground"
                             )}
                           >
                             {isDone ? "✓" : step.id}
@@ -1292,8 +1391,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             className={cn(
                               "w-4 h-[2px] rounded-full shrink-0",
                               isDone
-                                ? "bg-emerald-500"
-                                : "bg-slate-300 dark:bg-white/10"
+                                ? "bg-success"
+                                : "bg-border"
                             )}
                           />
                         )}
@@ -1305,7 +1404,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 {/* Right Gradient Fade Overlay */}
                 <div
                   className={cn(
-                    "absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-slate-100 dark:from-[#0b1326] via-slate-100/70 dark:via-[#0b1326]/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                    "absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-muted via-muted/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
                     canScrollRight ? "opacity-100" : "opacity-0"
                   )}
                 />
@@ -1315,7 +1414,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   type="button"
                   onClick={scrollRightDirection}
                   className={cn(
-                    "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                    "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-card/90 shadow-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
                     canScrollRight
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -1328,21 +1427,21 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               /* Premium Phase Tracker for review and mobile preview */
               <div
                 className={cn(
-                  "items-center justify-center gap-3 py-3 bg-slate-100/80 dark:bg-slate-950/40 border-b border-slate-200/50 dark:border-white/5 select-none text-[11px] font-bold shrink-0 overflow-x-auto px-3",
+                  "items-center justify-center gap-3 py-3 bg-muted border-b border-border select-none text-[11px] font-bold shrink-0 overflow-x-auto px-3",
                   activeEditTab === "preview" ? "hidden lg:flex" : "flex"
                 )}
               >
                 <button
                   type="button"
                   onClick={() => setActiveEditTab("header")}
-                  className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 hover:opacity-85 transition-opacity"
+                  className="flex items-center gap-2 text-success hover:opacity-85 transition-opacity"
                 >
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 flex items-center justify-center text-[10px] font-black">
+                  <span className="w-5 h-5 rounded-full bg-success/10 border border-success/30 flex items-center justify-center text-[10px] font-black">
                     ✓
                   </span>
                   <span>1. Resume Editor</span>
                 </button>
-                <div className="w-8 h-[2px] bg-emerald-500" />
+                <div className="w-8 h-[2px] bg-success" />
 
                 <button
                   type="button"
@@ -1350,16 +1449,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   className={cn(
                     "flex items-center gap-2 transition-opacity hover:opacity-85",
                     activeEditTab === "review"
-                      ? "text-blue-600 dark:text-blue-450"
-                      : "text-emerald-600 dark:text-emerald-400"
+                      ? "text-primary"
+                      : "text-success"
                   )}
                 >
                   <span
                     className={cn(
                       "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border",
                       activeEditTab === "review"
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-success/10 border-success/30 text-success"
                     )}
                   >
                     {activeEditTab === "review" ? "2" : "✓"}
@@ -1370,8 +1469,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   className={cn(
                     "w-8 h-[2px] lg:hidden",
                     activeEditTab === "preview"
-                      ? "bg-emerald-500"
-                      : "bg-slate-350 dark:bg-white/10"
+                      ? "bg-success"
+                      : "bg-border"
                   )}
                 />
 
@@ -1381,16 +1480,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   className={cn(
                     "flex items-center gap-2 transition-opacity hover:opacity-85 lg:hidden",
                     activeEditTab === "preview"
-                      ? "text-blue-600 dark:text-blue-455"
-                      : "text-slate-450 dark:text-slate-400"
+                      ? "text-primary"
+                      : "text-muted-foreground"
                   )}
                 >
                   <span
                     className={cn(
                       "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border",
                       activeEditTab === "preview"
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted border-border text-muted-foreground"
                     )}
                   >
                     3
@@ -1415,32 +1514,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               >
                 {/* HEADER TAB */}
                 <TabsContent value="header" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Contact Information
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                        Your name, title, and contact details that appear at the
-                        top of your resume.
-                      </p>
-                    </div>
-                  </div>
+                  <WizardTabIntro
+                    icon={User}
+                    title="Contact Information"
+                    description="Your name, title, and contact details that appear at the top of your resume."
+                  />
                   <div className="grid resume-editor-grid-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-name"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        Full Name <span className="text-red-400">*</span>
+                      <Label htmlFor="edit-name" className={EDITOR_LABEL_CLASS}>
+                        Full Name <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="edit-name"
                         placeholder="e.g. John Doe"
-                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
+                        className={EDITOR_INPUT_CLASS}
                         value={getSectionContent("header").header?.name || ""}
                         onChange={e =>
                           updateSection("header", {
@@ -1453,16 +1540,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-jobtitle"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
+                      <Label htmlFor="edit-jobtitle" className={EDITOR_LABEL_CLASS}>
                         Job Title
                       </Label>
                       <Input
                         id="edit-jobtitle"
                         placeholder="e.g. Full-Stack Developer"
-                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
+                        className={EDITOR_INPUT_CLASS}
                         value={
                           getSectionContent("header").header?.jobTitle || ""
                         }
@@ -1477,16 +1561,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-targetrole"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
+                      <Label htmlFor="edit-targetrole" className={EDITOR_LABEL_CLASS}>
                         Target Role
                       </Label>
                       <Input
                         id="edit-targetrole"
                         placeholder="e.g. Senior Software Engineer"
-                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
+                        className={EDITOR_INPUT_CLASS}
                         value={
                           getSectionContent("header").header?.targetRole || ""
                         }
@@ -1501,21 +1582,18 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-email"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        Email Address <span className="text-red-400">*</span>
+                      <Label htmlFor="edit-email" className={EDITOR_LABEL_CLASS}>
+                        Email Address <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="edit-email"
                         type="email"
                         placeholder="you@email.com"
                         className={cn(
-                          "h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm",
+                          EDITOR_INPUT_CLASS,
                           !isValidEmail(
                             getSectionContent("header").header?.email
-                          ) && "border-red-500 focus-visible:ring-red-500"
+                          ) && "border-destructive focus-visible:ring-destructive"
                         )}
                         value={getSectionContent("header").header?.email || ""}
                         onChange={e =>
@@ -1530,7 +1608,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       {!isValidEmail(
                         getSectionContent("header").header?.email
                       ) && (
-                        <span className="text-[10px] text-red-500 font-medium block">
+                        <span className="text-[10px] text-destructive font-medium block">
                           Please enter a valid email address.
                         </span>
                       )}
@@ -1597,25 +1675,28 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-200 dark:border-white/10 pt-5 space-y-4">
+                  <div className="border-t border-border pt-5 space-y-4">
                     <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-indigo-400" />
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      <Globe className="w-4 h-4 text-primary" />
+                      <h4 className="text-sm font-bold text-foreground">
                         Social & Website Profiles
                       </h4>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1">
-                        <Label htmlFor="edit-linkedin">LinkedIn URL</Label>
+                        <Label htmlFor="edit-linkedin" className={EDITOR_LABEL_CLASS}>
+                          LinkedIn URL
+                        </Label>
                         <Input
                           id="edit-linkedin"
                           placeholder="linkedin.com/in/username"
                           className={cn(
+                            EDITOR_INPUT_CLASS,
                             !isValidUrl(
                               getSectionContent("header").header?.links?.find(
                                 (l: any) => l.label.toLowerCase() === "linkedin"
                               )?.url
-                            ) && "border-red-500 focus-visible:ring-red-500"
+                            ) && "border-destructive focus-visible:ring-destructive"
                           )}
                           value={
                             getSectionContent("header").header?.links?.find(
@@ -1655,22 +1736,25 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             (l: any) => l.label.toLowerCase() === "linkedin"
                           )?.url
                         ) && (
-                          <span className="text-[10px] text-red-500 font-medium block">
+                          <span className="text-[10px] text-destructive font-medium block">
                             Please enter a valid URL.
                           </span>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="edit-github">GitHub URL</Label>
+                        <Label htmlFor="edit-github" className={EDITOR_LABEL_CLASS}>
+                          GitHub URL
+                        </Label>
                         <Input
                           id="edit-github"
                           placeholder="github.com/username"
                           className={cn(
+                            EDITOR_INPUT_CLASS,
                             !isValidUrl(
                               getSectionContent("header").header?.links?.find(
                                 (l: any) => l.label.toLowerCase() === "github"
                               )?.url
-                            ) && "border-red-500 focus-visible:ring-red-500"
+                            ) && "border-destructive focus-visible:ring-destructive"
                           )}
                           value={
                             getSectionContent("header").header?.links?.find(
@@ -1710,26 +1794,27 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             (l: any) => l.label.toLowerCase() === "github"
                           )?.url
                         ) && (
-                          <span className="text-[10px] text-red-500 font-medium block">
+                          <span className="text-[10px] text-destructive font-medium block">
                             Please enter a valid URL.
                           </span>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="edit-portfolio">
+                        <Label htmlFor="edit-portfolio" className={EDITOR_LABEL_CLASS}>
                           Portfolio Website URL
                         </Label>
                         <Input
                           id="edit-portfolio"
                           placeholder="yourportfolio.com"
                           className={cn(
+                            EDITOR_INPUT_CLASS,
                             !isValidUrl(
                               getSectionContent("header").header?.links?.find(
                                 (l: any) =>
                                   l.label.toLowerCase() === "portfolio" ||
                                   l.label.toLowerCase() === "website"
                               )?.url
-                            ) && "border-red-500 focus-visible:ring-red-500"
+                            ) && "border-destructive focus-visible:ring-destructive"
                           )}
                           value={
                             getSectionContent("header").header?.links?.find(
@@ -1775,7 +1860,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               l.label.toLowerCase() === "website"
                           )?.url
                         ) && (
-                          <span className="text-[10px] text-red-500 font-medium block">
+                          <span className="text-[10px] text-destructive font-medium block">
                             Please enter a valid URL.
                           </span>
                         )}
@@ -1786,26 +1871,14 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* SUMMARY TAB */}
                 <TabsContent value="summary" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <AlignLeft className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Professional Summary
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                        A brief paragraph highlighting your career goals, key
-                        skills, and achievements.
-                      </p>
-                    </div>
-                  </div>
+                  <WizardTabIntro
+                    icon={AlignLeft}
+                    title="Professional Summary"
+                    description="A brief paragraph highlighting your career goals, key skills, and achievements."
+                  />
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <Label
-                        htmlFor="edit-summary"
-                        className="text-xs font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400"
-                      >
+                      <Label htmlFor="edit-summary" className={EDITOR_LABEL_CLASS}>
                         Profile Description
                       </Label>
                       <Button
@@ -1813,16 +1886,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                         size="sm"
                         onClick={() => handleRewriteSummary()}
                         disabled={isRewritingSummary}
-                        className="bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200 gap-1.5 h-8 font-bold text-xs"
+                        className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary gap-1.5 h-8 font-bold text-xs"
                       >
                         {isRewritingSummary ? (
                           <>
-                            <span className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                            <span className="w-3 h-3 border-2 border-success border-t-transparent rounded-full animate-spin" />
                             Rewriting...
                           </>
                         ) : (
                           <>
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                            <Sparkles className="w-3.5 h-3.5 text-success" />
                             Rewrite with AI
                           </>
                         )}
@@ -1839,11 +1912,11 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                         })
                       }
                       rows={8}
-                      className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm leading-relaxed"
+                      className={`${EDITOR_CONTROL_CLASS} leading-relaxed`}
                     />
                     {feedbackTarget === "summary" && (
                       <div className="flex items-center gap-2 pt-2">
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           Was this AI rewrite helpful?
                         </span>
                         <Button
@@ -1875,49 +1948,40 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* SKILLS TAB */}
                 <TabsContent value="skills" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Code className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Skills & Technologies
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Group your skills by category for ATS scanners and
-                          hiring managers.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur = getSectionContent("skills").skills || [];
-                        updateSection("skills", {
-                          skills: [...cur, { category: "", skills: [] }],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Category
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={Code}
+                    title="Skills & Technologies"
+                    description="Group your skills by category for ATS scanners and hiring managers."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-border hover:bg-muted hover:text-foreground rounded-lg"
+                        onClick={() => {
+                          const cur = getSectionContent("skills").skills || [];
+                          updateSection("skills", {
+                            skills: [...cur, { category: "", skills: [] }],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Category
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-3">
                     {(getSectionContent("skills").skills || []).map(
                       (group: any, idx: number) => (
                         <div
                           key={idx}
-                          className="border border-slate-200 dark:border-white/10 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          className="border border-border p-4 rounded-xl space-y-3 bg-muted hover:border-muted-foreground/40 transition-colors"
                         >
                           <div className="flex justify-between items-center">
                             <Input
                               placeholder="e.g. Languages"
                               value={group.category}
-                              className="max-w-xs font-semibold"
+                              className={cn(EDITOR_INPUT_CLASS, "max-w-xs font-semibold")}
                               onChange={e => {
                                 const list = [
                                   ...getSectionContent("skills").skills,
@@ -1929,7 +1993,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-500 min-h-11"
+                              className="text-destructive min-h-11"
                               onClick={() => {
                                 const list = (
                                   getSectionContent("skills").skills || []
@@ -1942,6 +2006,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           </div>
                           <Input
                             placeholder="Skills comma separated: React, Vue"
+                            className={EDITOR_INPUT_CLASS}
                             value={group.skills.join(", ")}
                             onChange={e => {
                               const list = [
@@ -1962,120 +2027,68 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* EXPERIENCE TAB */}
                 <TabsContent value="experience" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Briefcase className="w-4.5 h-4.5 text-sky-600 dark:text-sky-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Work Experience
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          List your roles in reverse chronological order.
-                          Include measurable achievements.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("experience").experiences || [];
-                        updateSection("experience", {
-                          experiences: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              company: "",
-                              role: "",
-                              startDate: "",
-                              endDate: "",
-                              current: false,
-                              description: [],
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Position
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={Briefcase}
+                    title="Work Experience"
+                    description="List your roles in reverse chronological order. Include measurable achievements."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EDITOR_ADD_BUTTON_CLASS}
+                        onClick={() => {
+                          const cur =
+                            getSectionContent("experience").experiences || [];
+                          updateSection("experience", {
+                            experiences: [
+                              ...cur,
+                              {
+                                id: nanoid(),
+                                company: "",
+                                role: "",
+                                startDate: "",
+                                endDate: "",
+                                current: false,
+                                description: [],
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Position
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-4">
                     {(getSectionContent("experience").experiences || []).map(
-                      (exp: any, idx: number) => (
-                        <div
+                      (exp: any, idx: number, experiences: any[]) => (
+                        <EditableEntryCard
                           key={exp.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          icon={Briefcase}
+                          title={`Position ${idx + 1}`}
+                          index={idx}
+                          count={experiences.length}
+                          onMoveUp={() => moveItem("experience", idx, "up")}
+                          onMoveDown={() => moveItem("experience", idx, "down")}
+                          onDelete={() => {
+                            const list = (
+                              getSectionContent("experience").experiences || []
+                            ).filter((e: any) => e.id !== exp.id);
+                            updateSection("experience", {
+                              experiences: list,
+                            });
+                          }}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Briefcase className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Position {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("experience", idx, "up")
-                                }
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("experience", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("experience")
-                                      .experiences || []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("experience")
-                                      .experiences || []
-                                  ).filter((e: any) => e.id !== exp.id);
-                                  updateSection("experience", {
-                                    experiences: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <Label className={EDITOR_LABEL_CLASS}>
                                 Company Name
                               </Label>
                               <Input
                                 value={exp.company}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("experience")
@@ -2089,12 +2102,12 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <Label className={EDITOR_LABEL_CLASS}>
                                 Job Title
                               </Label>
                               <Input
                                 value={exp.role}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("experience")
@@ -2108,12 +2121,12 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <Label className={EDITOR_LABEL_CLASS}>
                                 Start Date
                               </Label>
                               <Input
                                 value={exp.startDate}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("experience")
@@ -2127,13 +2140,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <Label className={EDITOR_LABEL_CLASS}>
                                 End Date
                               </Label>
                               <Input
                                 value={exp.endDate}
                                 disabled={exp.current}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("experience")
@@ -2164,9 +2177,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   experiences: list,
                                 });
                               }}
-                              className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                              className="w-4 h-4 rounded text-primary focus:ring-ring border-border bg-muted"
                             />
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            <span className={EDITOR_LABEL_CLASS}>
                               Currently Work Here
                             </span>
                           </div>
@@ -2185,11 +2198,11 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 onClick={() =>
                                   handleRewriteExperienceBullets(idx)
                                 }
-                                className="h-7 text-[10px] font-bold gap-1 bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200"
+                                className="h-7 text-[10px] font-bold gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary"
                               >
                                 {rewritingExpId === (exp.id || String(idx)) ? (
                                   <>
-                                    <span className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                                    <span className="w-3 h-3 border-2 border-success border-t-transparent rounded-full animate-spin" />
                                     Rewriting...
                                   </>
                                 ) : (
@@ -2225,11 +2238,12 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 });
                               }}
                               rows={3}
+                              className={EDITOR_CONTROL_CLASS}
                             />
                             {feedbackTarget === "bullets" &&
                               rewritingExpId === null && (
                               <div className="flex items-center gap-2 pt-2">
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-muted-foreground">
                                   Was this AI rewrite helpful?
                                 </span>
                                 <Button
@@ -2257,7 +2271,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               </div>
                             )}
                           </div>
-                        </div>
+                        </EditableEntryCard>
                       )
                     )}
                   </div>
@@ -2265,112 +2279,65 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* PROJECTS TAB */}
                 <TabsContent value="projects" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Folder className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Projects
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Showcase personal, open-source, or freelance projects
-                          with technologies used.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("projects").projects || [];
-                        updateSection("projects", {
-                          projects: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              name: "",
-                              description: "",
-                              technologies: [],
-                              link: "",
-                              date: "",
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Project
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={Folder}
+                    title="Projects"
+                    description="Showcase personal, open-source, or freelance projects with technologies used."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EDITOR_ADD_BUTTON_CLASS}
+                        onClick={() => {
+                          const cur =
+                            getSectionContent("projects").projects || [];
+                          updateSection("projects", {
+                            projects: [
+                              ...cur,
+                              {
+                                id: nanoid(),
+                                name: "",
+                                description: "",
+                                technologies: [],
+                                link: "",
+                                date: "",
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Project
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-4">
                     {(getSectionContent("projects").projects || []).map(
-                      (proj: any, idx: number) => (
-                        <div
+                      (proj: any, idx: number, projects: any[]) => (
+                        <EditableEntryCard
                           key={proj.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          icon={Folder}
+                          title={`Project ${idx + 1}`}
+                          index={idx}
+                          count={projects.length}
+                          onMoveUp={() => moveItem("projects", idx, "up")}
+                          onMoveDown={() => moveItem("projects", idx, "down")}
+                          onDelete={() => {
+                            const list = (
+                              getSectionContent("projects").projects || []
+                            ).filter((p: any) => p.id !== proj.id);
+                            updateSection("projects", { projects: list });
+                          }}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Folder className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Project {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() => moveItem("projects", idx, "up")}
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("projects", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (getSectionContent("projects").projects || [])
-                                    .length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("projects").projects || []
-                                  ).filter((p: any) => p.id !== proj.id);
-                                  updateSection("projects", { projects: list });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <Label className={EDITOR_LABEL_CLASS}>
                                 Project Name
                               </Label>
                               <Input
                                 value={proj.name}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("projects").projects,
@@ -2384,6 +2351,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Label className="text-xs">Date</Label>
                               <Input
                                 value={proj.date}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("projects").projects,
@@ -2399,6 +2367,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               </Label>
                               <Input
                                 value={proj.technologies.join(", ")}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("projects").projects,
@@ -2416,8 +2385,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Input
                                 value={proj.link}
                                 className={cn(
+                                  EDITOR_INPUT_CLASS,
                                   !isValidUrl(proj.link) &&
-                                    "border-red-500 focus-visible:ring-red-500"
+                                    "border-destructive focus-visible:ring-destructive"
                                 )}
                                 onChange={e => {
                                   const list = [
@@ -2428,7 +2398,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 }}
                               />
                               {!isValidUrl(proj.link) && (
-                                <span className="text-[10px] text-red-500 font-medium block">
+                                <span className="text-[10px] text-destructive font-medium block">
                                   Please enter a valid URL.
                                 </span>
                               )}
@@ -2439,6 +2409,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Label className="text-xs">Description</Label>
                             <Textarea
                               value={proj.description}
+                              className={EDITOR_CONTROL_CLASS}
                               onChange={e => {
                                 const list = [
                                   ...getSectionContent("projects").projects,
@@ -2449,7 +2420,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               rows={2}
                             />
                           </div>
-                        </div>
+                        </EditableEntryCard>
                       )
                     )}
                   </div>
@@ -2457,141 +2428,90 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* EDUCATION TAB */}
                 <TabsContent value="education" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <GraduationCap className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+                  <WizardTabIntro
+                    icon={GraduationCap}
+                    title="Education"
+                    description="Your academic background including degrees, institutions, and graduation dates."
+                    action={
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={EDITOR_ADD_BUTTON_CLASS}
+                          onClick={() => {
+                            const cur =
+                              getSectionContent("education").educations || [];
+                            const cleaned = cur.map((e: any) => ({
+                              ...e,
+                              field:
+                                (e.field || "").includes("•") ||
+                                (e.field || "").length > 80 ||
+                                /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
+                                  e.field || ""
+                                )
+                                  ? ""
+                                  : e.field,
+                            }));
+                            updateSection("education", { educations: cleaned });
+                            toast.success("Cleaned up Education data!");
+                          }}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
+                          Clean Fields
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={EDITOR_ADD_BUTTON_CLASS}
+                          onClick={() => {
+                            const cur =
+                              getSectionContent("education").educations || [];
+                            updateSection("education", {
+                              educations: [
+                                ...cur,
+                                {
+                                  id: nanoid(),
+                                  institution: "",
+                                  degree: "",
+                                  field: "",
+                                  graduationDate: "",
+                                  gpa: "",
+                                },
+                              ],
+                            });
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add Education
+                        </Button>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Education
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Your academic background including degrees,
-                          institutions, and graduation dates.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                        onClick={() => {
-                          const cur =
-                            getSectionContent("education").educations || [];
-                          const cleaned = cur.map((e: any) => ({
-                            ...e,
-                            field:
-                              (e.field || "").includes("•") ||
-                              (e.field || "").length > 80 ||
-                              /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
-                                e.field || ""
-                              )
-                                ? ""
-                                : e.field,
-                          }));
-                          updateSection("education", { educations: cleaned });
-                          toast.success("Cleaned up Education data!");
-                        }}
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                        Clean Fields
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                        onClick={() => {
-                          const cur =
-                            getSectionContent("education").educations || [];
-                          updateSection("education", {
-                            educations: [
-                              ...cur,
-                              {
-                                id: nanoid(),
-                                institution: "",
-                                degree: "",
-                                field: "",
-                                graduationDate: "",
-                                gpa: "",
-                              },
-                            ],
-                          });
-                        }}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Add Education
-                      </Button>
-                    </div>
-                  </div>
+                    }
+                  />
 
                   <div className="space-y-4">
                     {(getSectionContent("education").educations || []).map(
-                      (edu: any, idx: number) => (
-                        <div
+                      (edu: any, idx: number, educations: any[]) => (
+                        <EditableEntryCard
                           key={edu.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          icon={GraduationCap}
+                          title={`Education ${idx + 1}`}
+                          index={idx}
+                          count={educations.length}
+                          onMoveUp={() => moveItem("education", idx, "up")}
+                          onMoveDown={() => moveItem("education", idx, "down")}
+                          onDelete={() => {
+                            const list = (
+                              getSectionContent("education").educations || []
+                            ).filter((e: any) => e.id !== edu.id);
+                            updateSection("education", { educations: list });
+                          }}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <GraduationCap className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Education {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() => moveItem("education", idx, "up")}
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("education", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("education").educations ||
-                                    []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("education").educations ||
-                                    []
-                                  ).filter((e: any) => e.id !== edu.id);
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
                           <div className="grid resume-editor-grid-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Institution</Label>
                               <Input
                                 value={edu.institution}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("education")
@@ -2608,6 +2528,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Label className="text-xs">Degree</Label>
                               <Input
                                 value={edu.degree}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("education")
@@ -2624,6 +2545,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Label className="text-xs">Field of Study</Label>
                               <Input
                                 value={edu.field}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("education")
@@ -2640,6 +2562,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Label className="text-xs">Graduation Date</Label>
                               <Input
                                 value={edu.graduationDate}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("education")
@@ -2656,6 +2579,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Label className="text-xs">GPA</Label>
                               <Input
                                 value={edu.gpa}
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("education")
@@ -2669,7 +2593,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               />
                             </div>
                           </div>
-                        </div>
+                        </EditableEntryCard>
                       )
                     )}
                   </div>
@@ -2677,21 +2601,11 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* MORE — optional sections hub */}
                 <TabsContent value="more" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <LayoutList className="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        More (optional)
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Add credentials, achievements, languages, references,
-                        custom sections, or layout — skip anything you do not
-                        need.
-                      </p>
-                    </div>
-                  </div>
+                  <WizardTabIntro
+                    icon={LayoutList}
+                    title="More (optional)"
+                    description="Add credentials, achievements, languages, references, custom sections, or layout — skip anything you do not need."
+                  />
                   <div className="grid gap-2 sm:grid-cols-2">
                     {(
                       [
@@ -2721,20 +2635,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           key={item.key}
                           type="button"
                           onClick={() => setActiveEditTab(item.key)}
-                          className="flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 px-4 py-3 text-left hover:border-blue-400/50 transition-colors"
+                          className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-muted px-4 py-3 text-left hover:border-primary/50 transition-colors"
                         >
-                          <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          <Icon className="h-4 w-4 text-primary shrink-0" />
+                          <span className="text-sm font-semibold text-foreground">
                             {item.label}
                           </span>
-                          <ChevronRight className="ml-auto h-4 w-4 text-slate-400" />
+                          <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
                         </button>
                       );
                     })}
                   </div>
                   <Button
                     onClick={() => setActiveEditTab("review")}
-                    className="w-full min-h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                    className="w-full min-h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                   >
                     Continue to Review & Export
                   </Button>
@@ -2742,112 +2656,63 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* CERTIFICATIONS TAB */}
                 <TabsContent value="certifications" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Award className="w-4.5 h-4.5 text-orange-600 dark:text-orange-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Certifications & Credentials
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Professional certifications, licenses, or credentials
-                          you have earned.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("certifications").certifications ||
-                          [];
-                        updateSection("certifications", {
-                          certifications: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              name: "",
-                              issuer: "",
-                              date: "",
-                              link: "",
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Certification
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={Award}
+                    title="Certifications & Credentials"
+                    description="Professional certifications, licenses, or credentials you have earned."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EDITOR_ADD_BUTTON_CLASS}
+                        onClick={() => {
+                          const cur =
+                            getSectionContent("certifications")
+                              .certifications || [];
+                          updateSection("certifications", {
+                            certifications: [
+                              ...cur,
+                              {
+                                id: nanoid(),
+                                name: "",
+                                issuer: "",
+                                date: "",
+                                link: "",
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Certification
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-4">
                     {(
                       getSectionContent("certifications").certifications || []
-                    ).map((cert: any, idx: number) => (
-                      <div
+                    ).map((cert: any, idx: number, certifications: any[]) => (
+                      <EditableEntryCard
                         key={cert.id || idx}
-                        className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                        icon={Award}
+                        title={`Certification ${idx + 1}`}
+                        index={idx}
+                        count={certifications.length}
+                        onMoveUp={() => moveItem("certifications", idx, "up")}
+                        onMoveDown={() =>
+                          moveItem("certifications", idx, "down")
+                        }
+                        onDelete={() => {
+                          const list = (
+                            getSectionContent("certifications")
+                              .certifications || []
+                          ).filter((c: any) => c.id !== cert.id);
+                          updateSection("certifications", {
+                            certifications: list,
+                          });
+                        }}
                       >
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                            <Award className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                            Certification {idx + 1}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() =>
-                                moveItem("certifications", idx, "up")
-                              }
-                              disabled={idx === 0}
-                              title="Move Up"
-                            >
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() =>
-                                moveItem("certifications", idx, "down")
-                              }
-                              disabled={
-                                idx ===
-                                (
-                                  getSectionContent("certifications")
-                                    .certifications || []
-                                ).length -
-                                  1
-                              }
-                              title="Move Down"
-                            >
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 min-h-11"
-                              onClick={() => {
-                                const list = (
-                                  getSectionContent("certifications")
-                                    .certifications || []
-                                ).filter((c: any) => c.id !== cert.id);
-                                updateSection("certifications", {
-                                  certifications: list,
-                                });
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs">
@@ -2855,6 +2720,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             </Label>
                             <Input
                               value={cert.name}
+                              className={EDITOR_INPUT_CLASS}
                               onChange={e => {
                                 const list = [
                                   ...getSectionContent("certifications")
@@ -2871,6 +2737,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Label className="text-xs">Issuer</Label>
                             <Input
                               value={cert.issuer}
+                              className={EDITOR_INPUT_CLASS}
                               onChange={e => {
                                 const list = [
                                   ...getSectionContent("certifications")
@@ -2887,6 +2754,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Label className="text-xs">Issue Date</Label>
                             <Input
                               value={cert.date}
+                              className={EDITOR_INPUT_CLASS}
                               onChange={e => {
                                 const list = [
                                   ...getSectionContent("certifications")
@@ -2904,8 +2772,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Input
                               value={cert.link}
                               className={cn(
+                                EDITOR_INPUT_CLASS,
                                 !isValidUrl(cert.link) &&
-                                  "border-red-500 focus-visible:ring-red-500"
+                                  "border-destructive focus-visible:ring-destructive"
                               )}
                               onChange={e => {
                                 const list = [
@@ -2919,121 +2788,72 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               }}
                             />
                             {!isValidUrl(cert.link) && (
-                              <span className="text-[10px] text-red-500 font-medium block">
+                              <span className="text-[10px] text-destructive font-medium block">
                                 Please enter a valid URL.
                               </span>
                             )}
                           </div>
                         </div>
-                      </div>
+                      </EditableEntryCard>
                     ))}
                   </div>
                 </TabsContent>
 
                 {/* LANGUAGES TAB */}
                 <TabsContent value="languages" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Globe className="w-4.5 h-4.5 text-teal-650 dark:text-teal-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Languages
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Languages you speak and your proficiency level in
-                          each.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("languages").languages || [];
-                        updateSection("languages", {
-                          languages: [
-                            ...cur,
-                            { language: "", proficiency: "" },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Language
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={Globe}
+                    title="Languages"
+                    description="Languages you speak and your proficiency level in each."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EDITOR_ADD_BUTTON_CLASS}
+                        onClick={() => {
+                          const cur =
+                            getSectionContent("languages").languages || [];
+                          updateSection("languages", {
+                            languages: [
+                              ...cur,
+                              { language: "", proficiency: "" },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Language
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-4">
                     {(getSectionContent("languages").languages || []).map(
-                      (lang: any, idx: number) => (
-                        <div
+                      (lang: any, idx: number, languages: any[]) => (
+                        <EditableEntryCard
                           key={idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          icon={Globe}
+                          title={`Language ${idx + 1}`}
+                          index={idx}
+                          count={languages.length}
+                          onMoveUp={() => moveItem("languages", idx, "up")}
+                          onMoveDown={() => moveItem("languages", idx, "down")}
+                          onDelete={() => {
+                            const list = (
+                              getSectionContent("languages").languages || []
+                            ).filter((_: any, i: number) => i !== idx);
+                            updateSection("languages", {
+                              languages: list,
+                            });
+                          }}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Globe className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Language {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() => moveItem("languages", idx, "up")}
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("languages", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("languages").languages ||
-                                    []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("languages").languages ||
-                                    []
-                                  ).filter((_: any, i: number) => i !== idx);
-                                  updateSection("languages", {
-                                    languages: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Language *</Label>
                               <Input
                                 value={lang.language}
                                 placeholder="e.g. French"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("languages").languages,
@@ -3050,6 +2870,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Input
                                 value={lang.proficiency}
                                 placeholder="e.g. Professional Working, Native"
+                                className={EDITOR_INPUT_CLASS}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("languages").languages,
@@ -3062,12 +2883,12 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               />
                             </div>
                           </div>
-                        </div>
+                        </EditableEntryCard>
                       )
                     )}
                     {(getSectionContent("languages").languages || []).length ===
                       0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">
+                      <p className="text-xs text-muted-foreground italic">
                         No languages added. Add languages to showcase bilingual
                         or multilingual skills.
                       </p>
@@ -3077,112 +2898,60 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* REFERENCES TAB */}
                 <TabsContent value="references" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Users className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Professional References
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          People who can vouch for your work quality and
-                          character.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("references").references || [];
-                        updateSection("references", {
-                          references: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              name: "",
-                              company: "",
-                              title: "",
-                              email: "",
-                              phone: "",
-                              availableOnRequest: false,
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Reference
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={Users}
+                    title="Professional References"
+                    description="People who can vouch for your work quality and character."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EDITOR_ADD_BUTTON_CLASS}
+                        onClick={() => {
+                          const cur =
+                            getSectionContent("references").references || [];
+                          updateSection("references", {
+                            references: [
+                              ...cur,
+                              {
+                                id: nanoid(),
+                                name: "",
+                                company: "",
+                                title: "",
+                                email: "",
+                                phone: "",
+                                availableOnRequest: false,
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Reference
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-4">
                     {(getSectionContent("references").references || []).map(
-                      (ref: any, idx: number) => (
-                        <div
+                      (ref: any, idx: number, references: any[]) => (
+                        <EditableEntryCard
                           key={ref.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          icon={Users}
+                          title={`Reference ${idx + 1}`}
+                          index={idx}
+                          count={references.length}
+                          onMoveUp={() => moveItem("references", idx, "up")}
+                          onMoveDown={() => moveItem("references", idx, "down")}
+                          onDelete={() => {
+                            const list = (
+                              getSectionContent("references").references || []
+                            ).filter((r: any) => r.id !== ref.id);
+                            updateSection("references", {
+                              references: list,
+                            });
+                          }}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Users className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Reference {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("references", idx, "up")
-                                }
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("references", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("references")
-                                      .references || []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("references")
-                                      .references || []
-                                  ).filter((r: any) => r.id !== ref.id);
-                                  updateSection("references", {
-                                    references: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
                           <div className="flex items-center space-x-2 pb-1">
                             <input
                               type="checkbox"
@@ -3197,11 +2966,11 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   references: list,
                                 });
                               }}
-                              className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                              className="w-4 h-4 rounded text-primary focus:ring-ring border-border bg-muted"
                             />
                             <Label
                               htmlFor={`ref-available-${ref.id}`}
-                              className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                              className="text-xs font-semibold text-muted-foreground cursor-pointer"
                             >
                               Available upon request
                             </Label>
@@ -3214,6 +2983,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 <Input
                                   value={ref.name}
                                   placeholder="e.g. Jane Doe"
+                                  className={EDITOR_INPUT_CLASS}
                                   onChange={e => {
                                     const list = [
                                       ...getSectionContent("references")
@@ -3231,6 +3001,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 <Input
                                   value={ref.company}
                                   placeholder="e.g. Google"
+                                  className={EDITOR_INPUT_CLASS}
                                   onChange={e => {
                                     const list = [
                                       ...getSectionContent("references")
@@ -3248,6 +3019,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 <Input
                                   value={ref.title}
                                   placeholder="e.g. Director of Engineering"
+                                  className={EDITOR_INPUT_CLASS}
                                   onChange={e => {
                                     const list = [
                                       ...getSectionContent("references")
@@ -3267,8 +3039,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   value={ref.email}
                                   placeholder="jane.doe@example.com"
                                   className={cn(
+                                    EDITOR_INPUT_CLASS,
                                     !isValidEmail(ref.email) &&
-                                      "border-red-500 focus-visible:ring-red-500"
+                                      "border-destructive focus-visible:ring-destructive"
                                   )}
                                   onChange={e => {
                                     const list = [
@@ -3282,7 +3055,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   }}
                                 />
                                 {!isValidEmail(ref.email) && (
-                                  <span className="text-[9px] text-red-500 font-semibold block">
+                                  <span className="text-[9px] text-destructive font-semibold block">
                                     Invalid email format.
                                   </span>
                                 )}
@@ -3293,8 +3066,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   value={ref.phone}
                                   placeholder="e.g. +1 (555) 019-2834"
                                   className={cn(
+                                    EDITOR_INPUT_CLASS,
                                     !isValidPhone(ref.phone) &&
-                                      "border-red-500 focus-visible:ring-red-500"
+                                      "border-destructive focus-visible:ring-destructive"
                                   )}
                                   onChange={e => {
                                     const list = [
@@ -3308,19 +3082,19 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                   }}
                                 />
                                 {!isValidPhone(ref.phone) && (
-                                  <span className="text-[9px] text-red-500 font-semibold block">
+                                  <span className="text-[9px] text-destructive font-semibold block">
                                     Invalid phone number.
                                   </span>
                                 )}
                               </div>
                             </div>
                           )}
-                        </div>
+                        </EditableEntryCard>
                       )
                     )}
                     {(getSectionContent("references").references || [])
                       .length === 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">
+                      <p className="text-xs text-muted-foreground italic">
                         No references added. Add references or select "Available
                         upon request".
                       </p>
@@ -3330,57 +3104,51 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* CUSTOM SECTIONS TAB */}
                 <TabsContent value="custom" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <LayoutList className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Custom Sections
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Add volunteer work, patents, publications, or any
-                          other section.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("custom").customSections || [];
-                        updateSection("custom", {
-                          customSections: [
-                            ...cur,
-                            { id: nanoid(), title: "", items: [] },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Custom Section
-                    </Button>
-                  </div>
+                  <WizardTabIntro
+                    icon={LayoutList}
+                    title="Custom Sections"
+                    description="Add volunteer work, patents, publications, or any other section."
+                    action={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EDITOR_ADD_BUTTON_CLASS}
+                        onClick={() => {
+                          const cur =
+                            getSectionContent("custom").customSections || [];
+                          updateSection("custom", {
+                            customSections: [
+                              ...cur,
+                              { id: nanoid(), title: "", items: [] },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Custom Section
+                      </Button>
+                    }
+                  />
 
                   <div className="space-y-6">
                     {(getSectionContent("custom").customSections || []).map(
                       (sect: any, sectIdx: number) => (
                         <div
                           key={sect.id || sectIdx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
+                          className={EDITOR_ENTRY_CARD_CLASS}
                         >
                           <div className="flex justify-between items-center gap-3">
                             <div className="flex-1 max-w-sm">
-                              <Label className="text-xs font-bold text-slate-500">
+                              <Label className="text-xs font-bold text-muted-foreground">
                                 Section Title *
                               </Label>
                               <Input
                                 value={sect.title}
                                 placeholder="e.g. Volunteer Work, Patents"
-                                className="font-bold h-9 mt-1"
+                                className={cn(
+                                  EDITOR_CONTROL_CLASS,
+                                  "font-bold h-9 mt-1"
+                                )}
                                 onChange={e => {
                                   const list = [
                                     ...getSectionContent("custom")
@@ -3398,7 +3166,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-muted-foreground hover:text-foreground"
                                 onClick={() =>
                                   moveItem("custom", sectIdx, "up")
                                 }
@@ -3410,7 +3178,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
+                                className="h-11 w-11 text-muted-foreground hover:text-foreground"
                                 onClick={() =>
                                   moveItem("custom", sectIdx, "down")
                                 }
@@ -3429,7 +3197,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 h-8 font-bold"
+                                className="text-destructive h-8 font-bold"
                                 onClick={() => {
                                   const list = (
                                     getSectionContent("custom")
@@ -3446,15 +3214,15 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           </div>
 
                           {/* Items in custom section */}
-                          <div className="space-y-3 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3 rounded-lg">
+                          <div className="space-y-3 bg-muted border border-border p-3 rounded-lg">
                             <div className="flex justify-between items-center">
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                                 Section Items
                               </span>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 text-xs border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5"
+                                className="h-7 text-xs border-border hover:bg-muted"
                                 onClick={() => {
                                   const list = [
                                     ...getSectionContent("custom")
@@ -3483,17 +3251,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 (item: any, itemIdx: number) => (
                                   <div
                                     key={item.id || itemIdx}
-                                    className="border border-slate-200/50 dark:border-white/5 p-3 rounded-md bg-slate-50/50 dark:bg-white/5 space-y-2"
+                                    className="border border-border p-3 rounded-md bg-muted space-y-2"
                                   >
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400">
+                                      <span className="text-[10px] font-bold text-muted-foreground">
                                         Item #{itemIdx + 1}
                                       </span>
                                       <div className="flex items-center gap-1">
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-600"
+                                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                           onClick={() => {
                                             const list = [
                                               ...getSectionContent("custom")
@@ -3520,7 +3288,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-600"
+                                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                           onClick={() => {
                                             const list = [
                                               ...getSectionContent("custom")
@@ -3550,7 +3318,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6 text-red-400 hover:text-red-600"
+                                          className="h-6 w-6 text-destructive hover:text-destructive"
                                           onClick={() => {
                                             const list = [
                                               ...getSectionContent("custom")
@@ -3579,7 +3347,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                         <Input
                                           value={item.title}
                                           placeholder="e.g. Volunteer"
-                                          className="h-8 text-xs"
+                                          className={cn(
+                                            EDITOR_CONTROL_CLASS,
+                                            "h-8 text-xs"
+                                          )}
                                           onChange={e => {
                                             const list = [
                                               ...getSectionContent("custom")
@@ -3600,7 +3371,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                         <Input
                                           value={item.subtitle}
                                           placeholder="e.g. Red Cross"
-                                          className="h-8 text-xs"
+                                          className={cn(
+                                            EDITOR_CONTROL_CLASS,
+                                            "h-8 text-xs"
+                                          )}
                                           onChange={e => {
                                             const list = [
                                               ...getSectionContent("custom")
@@ -3623,7 +3397,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                       <Textarea
                                         value={item.description || ""}
                                         placeholder="e.g. Managed team of 15 volunteers..."
-                                        className="text-xs"
+                                        className={cn(
+                                          EDITOR_CONTROL_CLASS,
+                                          "text-xs"
+                                        )}
                                         rows={2}
                                         onChange={e => {
                                           const list = [
@@ -3649,7 +3426,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     )}
                     {(getSectionContent("custom").customSections || [])
                       .length === 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">
+                      <p className="text-xs text-muted-foreground italic">
                         No custom sections added. Add volunteer work,
                         certifications, patents, or publications.
                       </p>
@@ -3659,33 +3436,24 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* LAYOUT TAB */}
                 <TabsContent value="layout" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <Settings className="w-4.5 h-4.5 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Section Order & Visibility
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                        Drag to reorder sections and toggle visibility on your
-                        resume.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-xl p-4 bg-slate-50/50 dark:bg-white/5">
+                  <WizardTabIntro
+                    icon={Settings}
+                    title="Section Order & Visibility"
+                    description="Drag to reorder sections and toggle visibility on your resume."
+                  />
+                  <div className="space-y-2 border border-border rounded-xl p-4 bg-muted">
                     {[...localResume.sections]
                       .sort((a, b) => a.order - b.order)
                       .map((sec, idx, sortedList) => (
                         <div
                           key={sec.id}
-                          className="flex items-center justify-between bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-white/10 p-3 rounded-lg shadow-sm"
+                          className="flex items-center justify-between bg-card border border-border p-3 rounded-lg shadow-sm"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 w-5">
+                            <span className="text-xs font-bold text-muted-foreground w-5">
                               #{idx + 1}
                             </span>
-                            <span className="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200">
+                            <span className="text-sm font-semibold capitalize text-foreground">
                               {sec.type === "custom"
                                 ? `Custom Sections`
                                 : sec.type === "certifications"
@@ -3701,11 +3469,11 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 id={`vis-${sec.id}`}
                                 checked={sec.visible}
                                 onChange={() => toggleSectionVisibility(sec.id)}
-                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                                className="w-4 h-4 rounded text-success focus:ring-success border-border bg-muted"
                               />
                               <label
                                 htmlFor={`vis-${sec.id}`}
-                                className="text-xs font-medium text-slate-500 cursor-pointer select-none"
+                                className="text-xs font-medium text-muted-foreground cursor-pointer select-none"
                               >
                                 {sec.visible ? "Visible" : "Hidden"}
                               </label>
@@ -3714,7 +3482,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
                               onClick={() => moveSection(idx, "up")}
                               disabled={idx === 0 || sec.type === "header"} // header is usually locked at top
                             >
@@ -3723,7 +3491,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
                               onClick={() => moveSection(idx, "down")}
                               disabled={
                                 idx === sortedList.length - 1 ||
@@ -3743,13 +3511,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   {/* Achievements Editor */}
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">
+                      <h3 className="font-bold text-foreground text-sm uppercase tracking-wider">
                         Achievements Highlights
                       </h3>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 rounded-lg text-xs border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5"
+                        className="h-8 rounded-lg text-xs border-border hover:bg-muted"
                         onClick={() => {
                           const cur =
                             getSectionContent("achievements").achievements ||
@@ -3781,12 +3549,12 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 achievements: list,
                               });
                             }}
-                            className="h-10 rounded-xl border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500"
+                            className={cn(EDITOR_INPUT_CLASS, "rounded-xl")}
                           />
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-400 hover:text-red-300 h-9"
+                            className="text-destructive hover:text-destructive h-9"
                             onClick={() => {
                               const list = (
                                 getSectionContent("achievements")
@@ -3803,7 +3571,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       ))}
                       {(getSectionContent("achievements").achievements || [])
                         .length === 0 && (
-                        <p className="text-xs text-slate-550 dark:text-slate-400 italic">
+                        <p className="text-xs text-muted-foreground italic">
                           No achievements added. Add key milestones to stand
                           out.
                         </p>
@@ -3817,43 +3585,43 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   value="preview"
                   className="h-full min-h-0 flex flex-col gap-3"
                 >
-                  <div className="flex items-center justify-between gap-3 rounded-t-xl border-b border-slate-200 bg-white/85 px-3 py-2.5 dark:border-white/10 dark:bg-slate-950/40 sm:rounded-xl sm:border">
+                  <div className="flex items-center justify-between gap-3 rounded-t-xl border-b border-border bg-card/85 px-3 py-2.5 sm:rounded-xl sm:border">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
-                        <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                        <Eye className="w-4 h-4 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">
+                        <h3 className="font-bold text-foreground text-sm leading-tight truncate">
                           Live Preview
                         </h3>
-                        <p className="hidden sm:block text-xs text-slate-550 dark:text-slate-455 mt-0.5 font-semibold">
+                        <p className="hidden sm:block text-xs text-muted-foreground mt-0.5 font-semibold">
                           Inspect your resume before export.
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 items-center rounded-xl bg-slate-50 p-1 dark:bg-white/5">
+                    <div className="flex gap-1.5 items-center rounded-xl bg-muted p-1">
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
+                        className="h-11 w-11 rounded-lg border-border bg-card"
                         onClick={() => setZoom(Math.max(35, zoom - 10))}
                       >
-                        <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+                        <ZoomOut className="w-3.5 h-3.5 text-muted-foreground" />
                       </Button>
-                      <span className="text-[11px] text-slate-700 dark:text-slate-300 font-extrabold px-1 min-w-[34px] text-center">
+                      <span className="text-[11px] text-foreground font-extrabold px-1 min-w-[34px] text-center">
                         {zoom}%
                       </span>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
+                        className="h-11 w-11 rounded-lg border-border bg-card"
                         onClick={() => setZoom(Math.min(150, zoom + 10))}
                       >
-                        <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+                        <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
                       </Button>
                     </div>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-hidden flex border-y border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-[#131b2e] sm:rounded-xl sm:border">
+                  <div className="flex-1 min-h-0 overflow-hidden flex border-y border-border bg-muted sm:rounded-xl sm:border">
                     <ResumePreview
                       resume={localResume}
                       templateId="classic-ats-blue"
@@ -3866,26 +3634,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* REVIEW & EXPORT TAB */}
                 <TabsContent value="review" className="space-y-6">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Final Review & Export
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-semibold">
-                        Review your ATS optimization checklist and export your
-                        final resume.
-                      </p>
-                    </div>
-                  </div>
+                  <WizardTabIntro
+                    icon={CheckCircle2}
+                    title="Final Review & Export"
+                    description="Review your ATS optimization checklist and export your final resume."
+                  />
 
                   <div className="grid md:grid-cols-2 gap-6">
                     {/* Detailed ATS Score Widget */}
-                    <Card className="border border-slate-200 dark:border-white/10 shadow-sm p-5 space-y-4 bg-slate-50/50 dark:bg-white/5 rounded-xl">
-                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 border-b border-slate-200 dark:border-white/10 pb-2">
-                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <Card className="border border-border shadow-sm p-5 space-y-4 bg-muted rounded-xl">
+                      <h4 className="font-bold text-foreground text-xs flex items-center gap-1.5 border-b border-border pb-2">
+                        <Sparkles className="w-4 h-4 text-success" />
                         ATS Optimization Details
                       </h4>
 
@@ -3897,7 +3656,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             viewBox="0 0 100 100"
                           >
                             <circle
-                              className="text-slate-200 dark:text-white/5 stroke-current"
+                              className="text-border stroke-current"
                               cx="50"
                               cy="50"
                               fill="transparent"
@@ -3905,7 +3664,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               strokeWidth="8"
                             ></circle>
                             <circle
-                              className="text-emerald-600 dark:text-emerald-400 stroke-current transition-all duration-1000"
+                              className="text-success stroke-current transition-all duration-1000"
                               cx="50"
                               cy="50"
                               fill="transparent"
@@ -3919,34 +3678,34 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             ></circle>
                           </svg>
                           <div className="absolute inset-0 flex items-center justify-center flex-col">
-                            <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                            <span className="text-sm font-extrabold text-foreground">
                               {atsSummary.score}%
                             </span>
                           </div>
                         </div>
 
                         <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          <p className="text-xs font-bold text-foreground">
                             {atsSummary.score >= 70
                               ? "Ready for Applications!"
                               : atsSummary.score >= 40
                                 ? "Needs Improvement"
                                 : "Urgent Actions Required"}
                           </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                          <p className="text-[10px] text-muted-foreground font-semibold">
                             Keywords: {atsSummary.matchedKeywords.length}{" "}
                             matched
                           </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                          <p className="text-[10px] text-muted-foreground font-semibold">
                             Sections: {atsSummary.completenessScore}% filled
                           </p>
                         </div>
                       </div>
 
                       {/* Keyword list details */}
-                      <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/10 text-xs">
+                      <div className="space-y-3 pt-2 border-t border-border text-xs">
                         <div>
-                          <span className="font-bold text-slate-700 dark:text-slate-400 block mb-1">
+                          <span className="font-bold text-muted-foreground block mb-1">
                             Matched Keywords (
                             {atsSummary.matchedKeywords.length}):
                           </span>
@@ -3957,19 +3716,19 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 .map((kw, i) => (
                                   <span
                                     key={i}
-                                    className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded font-semibold text-[9px]"
+                                    className="px-2 py-0.5 bg-success/10 text-success border border-success/20 rounded font-semibold text-[9px]"
                                   >
                                     {kw}
                                   </span>
                                 ))}
                               {atsSummary.matchedKeywords.length > 5 && (
-                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-455 border border-slate-200 dark:border-white/10 rounded font-semibold text-[9px]">
+                                <span className="px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded font-semibold text-[9px]">
                                   +{atsSummary.matchedKeywords.length - 5} more
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <p className="text-[10px] text-slate-400 dark:text-slate-550 italic">
+                            <p className="text-[10px] text-muted-foreground italic">
                               None matched yet. Tailor skills and experience
                               sections.
                             </p>
@@ -3978,7 +3737,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                         {atsSummary.missingKeywords.length > 0 && (
                           <div>
-                            <span className="font-bold text-slate-700 dark:text-slate-400 block mb-1">
+                            <span className="font-bold text-muted-foreground block mb-1">
                               Missing Keywords (
                               {atsSummary.missingKeywords.length}):
                             </span>
@@ -3988,13 +3747,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                                 .map((kw, i) => (
                                   <span
                                     key={i}
-                                    className="px-2 py-0.5 bg-rose-500/10 text-rose-700 dark:text-rose-455 border border-rose-500/20 rounded font-semibold text-[9px]"
+                                    className="px-2 py-0.5 bg-destructive/10 text-destructive border border-destructive/20 rounded font-semibold text-[9px]"
                                   >
                                     {kw}
                                   </span>
                                 ))}
                               {atsSummary.missingKeywords.length > 5 && (
-                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-455 border border-slate-200 dark:border-white/10 rounded font-semibold text-[9px]">
+                                <span className="px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded font-semibold text-[9px]">
                                   +{atsSummary.missingKeywords.length - 5} more
                                 </span>
                               )}
@@ -4004,11 +3763,11 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       </div>
 
                       {atsSummary.suggestions.length > 0 && (
-                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 space-y-1">
-                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-300 block">
+                        <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 space-y-1">
+                          <span className="text-[10px] font-black text-warning block">
                             Suggestions:
                           </span>
-                          <ul className="text-[10px] text-amber-700 dark:text-amber-200 list-disc pl-4 space-y-1 font-semibold max-h-24 overflow-y-auto">
+                          <ul className="text-[10px] text-warning list-disc pl-4 space-y-1 font-semibold max-h-24 overflow-y-auto">
                             {atsSummary.suggestions.map((s, i) => (
                               <li key={i}>{s}</li>
                             ))}
@@ -4018,15 +3777,15 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     </Card>
 
                     {/* Completion Panel */}
-                    <Card className="border border-slate-200 dark:border-white/10 shadow-sm p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 dark:bg-white/5 rounded-xl space-y-4 min-h-[220px]">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 animate-pulse">
+                    <Card className="border border-border shadow-sm p-6 flex flex-col items-center justify-center text-center bg-muted rounded-xl space-y-4 min-h-[220px]">
+                      <div className="w-12 h-12 rounded-full bg-success/10 border border-success/20 flex items-center justify-center text-success animate-pulse">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                        <h4 className="font-bold text-foreground text-sm">
                           All Sections Completed!
                         </h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[240px] font-semibold">
+                        <p className="text-[10px] text-muted-foreground max-w-[240px] font-semibold">
                           You have filled in all the core information. Click
                           "Finish & Export" to download your ATS-ready resume.
                         </p>
@@ -4034,9 +3793,9 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                       <Button
                         onClick={() => setShowDownloadModal(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 h-10 px-6 rounded-xl shadow-md hover:shadow-lg transition-all"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 h-10 px-6 rounded-xl shadow-md hover:shadow-lg transition-all"
                       >
-                        <Sparkles className="w-4 h-4 text-blue-200" />
+                        <Sparkles className="w-4 h-4" />
                         Finish & Export
                       </Button>
                     </Card>
@@ -4046,17 +3805,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             </div>
 
             {/* Wizard Navigation Footer */}
-            <div className="hidden sm:block shrink-0 border-t border-slate-200/50 dark:border-white/5">
+            <div className="hidden sm:block shrink-0 border-t border-border">
               {/* Mini progress bar */}
-              <div className="h-0.5 bg-slate-50/50 dark:bg-white/5">
+              <div className="h-0.5 bg-muted">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 ease-out rounded-r-full"
+                  className="h-full bg-primary transition-all duration-500 ease-out rounded-r-full"
                   style={{
                     width: `${((activeFlowIndex + 1) / EDITOR_FLOW_STEPS.length) * 100}%`,
                   }}
                 />
               </div>
-              <div className="bg-slate-100/80 dark:bg-slate-950/40 backdrop-blur-sm px-5 py-3 flex justify-between items-center">
+              <div className="bg-muted/80 backdrop-blur-sm px-5 py-3 flex justify-between items-center">
                 <Button
                   variant="outline"
                   disabled={activeEditTab === "header"}
@@ -4071,7 +3830,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       );
                     }
                   }}
-                  className="border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-350 bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-white font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs"
+                  className="border-border text-muted-foreground bg-muted hover:bg-muted hover:text-foreground font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   Back
@@ -4089,10 +3848,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               (MORE_SECTION_KEYS as readonly string[]).includes(
                                 activeEditTab
                               ))
-                              ? "w-4 bg-blue-500"
+                              ? "w-4 bg-primary"
                               : isStepCompleted(step.key)
-                                ? "bg-blue-300/60"
-                                : "bg-white/10"
+                                ? "bg-primary/40"
+                                : "bg-border"
                           )}
                         />
                       ))
@@ -4103,8 +3862,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             "w-1.5 h-1.5 rounded-full transition-all duration-300",
                             key === "preview" && "lg:hidden",
                             activeEditTab === key
-                              ? "w-4 bg-blue-500"
-                              : "bg-blue-300/60"
+                              ? "w-4 bg-primary"
+                              : "bg-primary/40"
                           )}
                         />
                       ))}
@@ -4122,12 +3881,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       setShowDownloadModal(true);
                     }
                   }}
-                  className={cn(
-                    "font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs shadow-sm transition-all",
-                    isFinalFlowStep
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-755 text-white shadow-blue-500/20"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                  )}
+                  className="font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs shadow-sm transition-all bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   {isFinalFlowStep ? (
                     <>
@@ -4146,17 +3900,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           </Card>
         </div>
 
-        <aside className="hidden lg:flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-950/30 shadow-sm">
-          <div className="shrink-0 flex items-start justify-between gap-3 border-b border-slate-200 dark:border-white/10 px-4 py-3 bg-white/55 dark:bg-white/[0.03] backdrop-blur-sm">
+        <aside className="hidden lg:flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+          <div className="shrink-0 flex items-start justify-between gap-3 border-b border-border px-4 py-3 bg-card/55 backdrop-blur-sm">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
-                <Eye className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <Eye className="w-4.5 h-4.5 text-primary" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
+                <h3 className="font-bold text-foreground text-[15px] leading-tight">
                   Live Preview
                 </h3>
-                <p className="text-xs text-slate-550 dark:text-slate-455 mt-0.5 font-semibold">
+                <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
                   Updates instantly while you edit.
                 </p>
               </div>
@@ -4165,21 +3919,21 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-11 w-11 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                className="h-11 w-11 border-border bg-card hover:bg-muted"
                 onClick={() => setZoom(Math.max(50, zoom - 10))}
               >
-                <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+                <ZoomOut className="w-3.5 h-3.5 text-muted-foreground" />
               </Button>
-              <span className="text-[11px] text-slate-700 dark:text-slate-300 font-extrabold px-1 min-w-[36px] text-center">
+              <span className="text-[11px] text-foreground font-extrabold px-1 min-w-[36px] text-center">
                 {zoom}%
               </span>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-11 w-11 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                className="h-11 w-11 border-border bg-card hover:bg-muted"
                 onClick={() => setZoom(Math.min(150, zoom + 10))}
               >
-                <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
+                <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
               </Button>
             </div>
           </div>
@@ -4209,20 +3963,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       </div>
 
       {showDownloadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
-          <Card className="w-full max-w-2xl border border-slate-200 dark:border-white/10 shadow-2xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-md p-4 animate-fade-in">
+          <Card className="w-full max-w-2xl border border-border shadow-2xl bg-card rounded-2xl overflow-hidden animate-scale-up">
             {/* Header Section */}
-            <div className="p-6 md:p-8 flex flex-col items-center text-center relative border-b border-slate-200 dark:border-white/10">
+            <div className="p-6 md:p-8 flex flex-col items-center text-center relative border-b border-border">
               <button
                 onClick={() => setShowDownloadModal(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-655 dark:hover:text-white text-lg font-bold outline-none"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-lg font-bold outline-none"
               >
                 ✕
               </button>
 
               <div className="w-20 h-20 mb-4 relative flex items-center justify-center">
                 <svg
-                  className="w-16 h-16 mx-auto text-emerald-600 dark:text-emerald-400 relative z-10"
+                  className="w-16 h-16 mx-auto text-success relative z-10"
                   viewBox="0 0 100 100"
                   xmlns="http://www.w3.org/2000/svg"
                 >
@@ -4248,13 +4002,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     strokeDashoffset="0"
                   />
                 </svg>
-                <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full -z-0 scale-110 blur-xs"></div>
+                <div className="absolute inset-0 bg-success/10 rounded-full -z-0 scale-110 blur-xs"></div>
               </div>
 
-              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+              <h3 className="text-2xl font-extrabold text-foreground">
                 Resume Completed!
               </h3>
-              <p className="text-sm text-slate-550 dark:text-slate-400 mt-1 max-w-md font-semibold">
+              <p className="text-sm text-muted-foreground mt-1 max-w-md font-semibold">
                 Your ATS-optimized resume has been generated and is ready to
                 share.
               </p>
@@ -4262,7 +4016,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
             {/* Match Summary Card */}
             <CardContent className="p-6 md:p-8 space-y-6">
-              <div className="bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+              <div className="bg-muted border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
                 {/* Circular Progress Dial */}
                 <div className="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
                   <svg
@@ -4270,7 +4024,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     viewBox="0 0 100 100"
                   >
                     <circle
-                      className="text-slate-200 dark:text-white/5 stroke-current"
+                      className="text-border stroke-current"
                       cx="50"
                       cy="50"
                       fill="transparent"
@@ -4278,7 +4032,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       strokeWidth="8"
                     ></circle>
                     <circle
-                      className="text-emerald-600 dark:text-emerald-400 stroke-current transition-all duration-1000 ease-out"
+                      className="text-success stroke-current transition-all duration-1000 ease-out"
                       cx="50"
                       cy="50"
                       fill="transparent"
@@ -4290,10 +4044,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     ></circle>
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    <span className="text-xl font-bold text-foreground">
                       {atsSummary.score}%
                     </span>
-                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                       Match
                     </span>
                   </div>
@@ -4301,8 +4055,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* Metadata text */}
                 <div className="flex-1 text-center sm:text-left space-y-3">
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center sm:justify-start gap-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <h4 className="text-sm font-bold text-foreground flex items-center justify-center sm:justify-start gap-1.5">
+                    <Sparkles className="w-4 h-4 text-success" />
                     ATS Optimization Score:{" "}
                     {atsSummary.score >= 70
                       ? "High"
@@ -4310,16 +4064,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                         ? "Medium"
                         : "Low"}
                   </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
                     <li className="flex items-center justify-center sm:justify-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                       <span>
                         {atsSummary.matchedKeywords.length} matching keywords
                         found.
                       </span>
                     </li>
                     <li className="flex items-center justify-center sm:justify-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                       <span>All key sections populated accurately.</span>
                     </li>
                   </ul>
@@ -4329,13 +4083,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       {atsSummary.matchedKeywords.slice(0, 4).map((kw, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded-md font-semibold text-[10px]"
+                          className="px-2.5 py-1 bg-success/10 text-success border border-success/20 rounded-md font-semibold text-[10px]"
                         >
                           {kw}
                         </span>
                       ))}
                       {atsSummary.matchedKeywords.length > 4 && (
-                        <span className="px-2.5 py-1 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-400 border border-slate-200 dark:border-white/10 rounded-md font-semibold text-[10px]">
+                        <span className="px-2.5 py-1 bg-muted text-muted-foreground border border-border rounded-md font-semibold text-[10px]">
                           +{atsSummary.matchedKeywords.length - 4} more
                         </span>
                       )}
@@ -4348,7 +4102,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   onClick={handleExportPDF}
-                  className="w-full sm:flex-1 bg-primary hover:bg-primary/95 text-white font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
                 >
                   <Download className="w-4 h-4" />
                   Download PDF Format
@@ -4356,19 +4110,19 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button
                   onClick={handleExportDOCX}
                   variant="outline"
-                  className="w-full sm:flex-1 border border-slate-200 dark:border-white/10 hover:border-primary text-slate-800 dark:text-slate-200 bg-white/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/8 font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
+                  className="w-full sm:flex-1 border border-border hover:border-primary text-foreground bg-card hover:bg-muted font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
                 >
-                  <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <FileText className="w-4 h-4 text-muted-foreground" />
                   Download Word (DOCX)
                 </Button>
               </div>
             </CardContent>
 
             {/* Footer */}
-            <div className="bg-slate-50/50 dark:bg-slate-950/20 border-t border-slate-200 dark:border-white/10 px-6 py-4 flex justify-between items-center">
+            <div className="bg-muted border-t border-border px-6 py-4 flex justify-between items-center">
               <button
                 onClick={() => setShowDownloadModal(false)}
-                className="text-xs font-bold text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-1 bg-transparent border-none outline-none"
+                className="text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 bg-transparent border-none outline-none"
               >
                 ← Go back to editor
               </button>
@@ -4377,7 +4131,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   setShowDownloadModal(false);
                   window.location.search = "?mode=upload";
                 }}
-                className="text-xs font-bold text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-1 bg-transparent border-none outline-none"
+                className="text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 bg-transparent border-none outline-none"
               >
                 Start a new CV +
               </button>
@@ -4386,7 +4140,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
         </div>
       )}
       {/* Mobile Bottom Navigation Bar (Stitch Light theme compliant mockup mapped actions) */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 bg-white/95 text-slate-500 backdrop-blur-xl border-t border-slate-200 shadow-lg flex justify-around items-center px-3 pt-2 pb-3 dark:bg-[#0f172a]/95 dark:text-slate-400 dark:border-white/10 lg:hidden">
+      <nav className="fixed bottom-0 left-0 w-full z-50 bg-background/95 text-muted-foreground backdrop-blur-xl border-t border-border shadow-lg flex justify-around items-center px-3 pt-2 pb-3 lg:hidden">
         {/* Layout/Templates button */}
         <button
           type="button"
@@ -4396,8 +4150,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           className={cn(
             "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "layout"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Settings className="w-5 h-5" />
@@ -4421,8 +4175,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             activeEditTab !== "layout" &&
               activeEditTab !== "preview" &&
               activeEditTab !== "review"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Edit3 className="w-5 h-5" />
@@ -4436,8 +4190,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           className={cn(
             "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "preview"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Eye className="w-5 h-5" />
@@ -4451,8 +4205,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           className={cn(
             "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "review"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Download className="w-5 h-5" />
