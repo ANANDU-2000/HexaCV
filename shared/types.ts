@@ -143,8 +143,6 @@ export interface TemplateStyles {
 export interface ResumeTemplate {
   id: TemplateId;
   name: string;
-  description: string;
-  preview: string;
   styles: TemplateStyles;
 }
 

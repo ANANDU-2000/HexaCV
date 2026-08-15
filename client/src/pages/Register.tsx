@@ -2,9 +2,8 @@ import { Button } from "@/shared/ui/button";
 import { Chrome } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { canUseOAuthPortal, getLoginUrl, guestHref } from "@/const";
-import SiteHeader from "@/shared/layout/SiteHeader";
-import SiteFooter from "@/shared/layout/SiteFooter";
+import { canUseOAuthPortal, getLoginUrl, guestHref, stashReturnTo } from "@/const";
+import MinimalHeader from "@/shared/layout/MinimalHeader";
 
 export default function Register() {
   const params = new URLSearchParams(window.location.search);
@@ -17,12 +16,13 @@ export default function Register() {
       );
       return;
     }
+    stashReturnTo(redirectParam);
     window.location.href = getLoginUrl("signUp");
   };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-sans text-foreground">
-      <SiteHeader showAuth={false} />
+      <MinimalHeader />
       <main className="flex flex-1 items-center justify-center px-6 py-12">
         <div className="w-full max-w-[440px] rounded-2xl border border-border bg-card px-7 py-10 shadow-sm">
           <h1 className="mb-3 text-center font-display text-2xl font-semibold tracking-tight text-foreground">
@@ -80,7 +80,6 @@ export default function Register() {
           </p>
         </div>
       </main>
-      <SiteFooter />
     </div>
   );
 }

@@ -12,19 +12,33 @@ export function canUseOAuthPortal(): boolean {
 /**
  * Safe post-auth-page destination for "Continue as guest".
  * Auth-gated account/admin routes would bounce a guest back to /login.
+ * Default destination is /builder/target (guests can fill the form, sign-in
+ * is gated at build time only).
  */
 export function guestHref(redirect: string): string {
   if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
-    return "/builder";
+    return "/builder/target";
   }
   if (
     redirect.startsWith("/dashboard/") ||
     redirect.startsWith("/admin") ||
     redirect.startsWith("/url")
   ) {
-    return "/builder";
+    return "/builder/target";
   }
   return redirect;
+}
+
+/**
+ * Stash the post-login destination in a cookie so the server-side
+ * OAuth callback can redirect there after the provider round-trip.
+ */
+export function stashReturnTo(returnTo: string): void {
+  const safe =
+    returnTo && returnTo !== "/" && !returnTo.startsWith("/login") && !returnTo.startsWith("/register")
+      ? returnTo
+      : "/builder/target";
+  document.cookie = `hexacv_return_to=${encodeURIComponent(safe)};path=/;max-age=600;samesite=lax`;
 }
 
 /** Live Manus OAuth URL, or `/login` when portal env is missing. */

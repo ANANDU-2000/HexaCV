@@ -13,6 +13,8 @@ interface ResumePreviewProps {
   contentId?: string;
   /** When provided, rendered sections become clickable and call this with the section type. */
   onSectionSelect?: (type: string) => void;
+  /** Skip editor chrome (slate pad + nested scroll) so marketing frames can scale the A4 page itself. */
+  pageOnly?: boolean;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -142,6 +144,7 @@ export default function ResumePreview({
   contentRef,
   contentId = "resume-pdf-content",
   onSectionSelect,
+  pageOnly = false,
 }: ResumePreviewProps) {
   const [countriesList, setCountriesList] = useState<any[]>([]);
 
@@ -243,8 +246,12 @@ export default function ResumePreview({
 
   return (
     <div
-      className="w-full h-full p-2 sm:p-4 overflow-auto flex justify-center items-start"
-      style={{ backgroundColor: "#f1f5f9" }}
+      className={
+        pageOnly
+          ? "contents"
+          : "flex h-full w-full items-start justify-center overflow-auto p-2 sm:p-4"
+      }
+      style={pageOnly ? undefined : { backgroundColor: "#f1f5f9" }}
     >
       <div
         id={contentId}

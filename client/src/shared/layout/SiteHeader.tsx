@@ -9,15 +9,34 @@ const NAV_LINKS = [
   { label: "Pricing", href: "/pricing" },
 ];
 
+export function SiteBrand({ onClick }: { onClick?: () => void }) {
+  return (
+    <Link href="/" className="flex items-center gap-2.5 no-underline" onClick={onClick}>
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] bg-primary"
+        aria-hidden="true"
+      >
+        <Layers className="h-4 w-4 text-primary-foreground" strokeWidth={1.75} />
+      </div>
+      <span className="font-display text-lg font-semibold tracking-tight text-primary">
+        HexaCv
+      </span>
+    </Link>
+  );
+}
+
 type SiteHeaderProps = {
-  /** Landing overlay: transparent until the page scrolls, then blur. Inner pages pass false. */
+  /** Marketing overlay vs in-flow sticky bar. Default solid so pages without hero padding stay usable. */
+  variant?: "solid" | "scroll-blur";
+  /** Existing callers (Landing) pass this; same as variant="scroll-blur". */
   transparentOnScroll?: boolean;
   /** Log in / Dashboard / Sign out. Login and Register hide this to avoid duplicating their CTAs. */
   showAuth?: boolean;
 };
 
 export default function SiteHeader({
-  transparentOnScroll = false,
+  variant = "solid",
+  transparentOnScroll,
   showAuth = true,
 }: SiteHeaderProps) {
   const { isAuthenticated, logout } = useAuth();
@@ -25,15 +44,17 @@ export default function SiteHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  const scrollBlur = transparentOnScroll ?? variant === "scroll-blur";
+
   useEffect(() => {
-    if (!transparentOnScroll) return;
+    if (!scrollBlur) return;
     const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [transparentOnScroll]);
+  }, [scrollBlur]);
 
-  const overlayClear = transparentOnScroll && !scrolled;
+  const overlayClear = scrollBlur && !scrolled;
 
   const isActive = (href: string) => {
     if (href.startsWith("/#")) return false;
@@ -43,9 +64,10 @@ export default function SiteHeader({
   const closeMenu = () => setMenuOpen(false);
 
   return (
+    <>
     <header
       className={`${
-        transparentOnScroll ? "fixed" : "sticky"
+        scrollBlur ? "fixed" : "sticky"
       } top-0 left-0 right-0 z-50 transition-all duration-300 ${
         overlayClear
           ? "border-b border-transparent bg-transparent"
@@ -56,17 +78,7 @@ export default function SiteHeader({
         className="mx-auto flex h-16 items-center justify-between px-4 sm:px-8"
         style={{ maxWidth: 1280 }}
       >
-        <Link href="/" className="flex items-center gap-2.5 no-underline" onClick={closeMenu}>
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary"
-            aria-hidden="true"
-          >
-            <Layers className="h-4 w-4 text-primary-foreground" strokeWidth={1.75} />
-          </div>
-          <span className="font-display text-lg font-semibold tracking-tight text-primary">
-            HexaCv
-          </span>
-        </Link>
+        <SiteBrand onClick={closeMenu} />
 
         <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
           {NAV_LINKS.map((link) => (
@@ -94,7 +106,7 @@ export default function SiteHeader({
             ) : (
               <>
                 <Link href="/dashboard" className="no-underline">
-                  <Button variant="outline" className="min-h-11 rounded-lg border-border">
+                  <Button variant="outline" className="min-h-11 rounded-[var(--radius)] border-border">
                     Dashboard
                   </Button>
                 </Link>
@@ -157,5 +169,7 @@ export default function SiteHeader({
         </div>
       )}
     </header>
+    {scrollBlur ? <div className="h-16" aria-hidden="true" /> : null}
+    </>
   );
 }

@@ -18,7 +18,7 @@ export default function ResumeExampleLanding() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-sans text-foreground">
-      <SiteHeader />
+      <SiteHeader variant="scroll-blur" />
 
       <main className="mx-auto w-full flex-1 px-4 py-12 sm:px-8" style={{ maxWidth: 860 }}>
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">

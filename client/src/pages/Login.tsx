@@ -6,9 +6,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useResumeStorage } from "@/_core/hooks/useResumeStorage";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { canUseOAuthPortal, getLoginUrl, guestHref } from "@/const";
-import SiteHeader from "@/shared/layout/SiteHeader";
-import SiteFooter from "@/shared/layout/SiteFooter";
+import { canUseOAuthPortal, getLoginUrl, guestHref, stashReturnTo } from "@/const";
+import MinimalHeader from "@/shared/layout/MinimalHeader";
 
 export default function Login() {
   const { isAuthenticated } = useAuth();
@@ -43,9 +42,9 @@ export default function Login() {
       }
     }
     const dest =
-      redirectParam === "/" && convertParam
+      redirectParam === "/" || redirectParam === ""
         ? "/builder/target"
-        : redirectParam || "/builder/target";
+        : redirectParam;
     setLocation(dest);
   };
 
@@ -56,12 +55,14 @@ export default function Login() {
       );
       return;
     }
+    // Stash destination so the server OAuth callback redirects here after the round-trip.
+    stashReturnTo(redirectParam);
     window.location.href = getLoginUrl("signIn");
   };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background font-sans text-foreground">
-      <SiteHeader showAuth={false} />
+      <MinimalHeader />
       <main className="flex flex-1 items-center justify-center px-6 py-12">
         <div className="w-full max-w-[440px] rounded-2xl border border-border bg-card px-7 py-10 shadow-sm">
           <h1 className="mb-3 text-center font-display text-2xl font-semibold tracking-tight text-foreground">
@@ -119,7 +120,6 @@ export default function Login() {
           </p>
         </div>
       </main>
-      <SiteFooter />
     </div>
   );
 }
