@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Loader2, Upload, CheckCircle, AlertCircle, ChevronRight, FileText, UploadCloud } from 'lucide-react';
 import { ParsedResume } from '@shared/types';
 import { trpc } from '@/lib/trpc';
+import { arrayBufferToBase64Async } from '@/lib/base64';
 
 interface ResumeUploaderProps {
   onParsed: (data: ParsedResume) => void;
@@ -69,38 +70,24 @@ export default function ResumeUploader({ onParsed, onStartFromScratch }: ResumeU
     setUploading(true);
     setError(null);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const result = e.target?.result as string;
-        const base64 = result.split(',')[1];
-        if (!base64) {
-          throw new Error('Failed to read file as base64 string.');
-        }
+    try {
+      const buffer = await file.arrayBuffer();
+      const base64 = await arrayBufferToBase64Async(buffer);
+      const parsed = await parseMutation.mutateAsync({
+        filename: file.name,
+        base64,
+      });
 
-        const parsed = await parseMutation.mutateAsync({
-          filename: file.name,
-          base64,
-        });
-
-        setSuccess(true);
-        setTimeout(() => {
-          onParsed(parsed);
-        }, 1000);
-      } catch (err: any) {
-        console.error('File parsing error:', err);
-        setError(err?.message || 'Failed to process file. Please try again.');
-      } finally {
-        setUploading(false);
-      }
-    };
-
-    reader.onerror = () => {
-      setError('Failed to read file.');
+      setSuccess(true);
+      setTimeout(() => {
+        onParsed(parsed);
+      }, 1000);
+    } catch (err: any) {
+      console.error('File parsing error:', err);
+      setError(err?.message || 'Failed to process file. Please try again.');
+    } finally {
       setUploading(false);
-    };
-
-    reader.readAsDataURL(file);
+    }
   };
 
   return (

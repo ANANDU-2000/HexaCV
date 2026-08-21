@@ -135,8 +135,8 @@ export interface TemplateStyles {
     heading: string;
     body: string;
   };
-  layout: 'single-column' | 'two-column' | 'sidebar';
-  spacing: 'compact' | 'normal' | 'spacious';
+  layout: 'single-column';
+  spacing: 'normal';
   cornerRadius: number;
 }
 

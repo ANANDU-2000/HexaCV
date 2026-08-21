@@ -28,6 +28,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { useResumeStorage } from '@/_core/hooks/useResumeStorage';
 import ResumeAIGenerator from '@/components/ResumeAIGenerator';
 import ResumeEditor from '@/components/ResumeEditor';
+import { getDefaultTemplate } from '@/lib/templates';
 import ResumeLinkedInImporter from '@/components/ResumeLinkedInImporter';
 import ResumeScratchBuilder from '@/components/ResumeScratchBuilder';
 import ResumeUploader from '@/components/ResumeUploader';
@@ -306,7 +307,7 @@ export default function ResumeBuilder() {
       id: nanoid(),
       userId: isAuthenticated ? 'user' : 'guest',
       title: parsed.header?.name ? `${parsed.header.name}'s Resume` : 'Untitled Resume',
-      templateId: 'classic-ats-blue',
+      templateId: getDefaultTemplate().id,
       jobDescriptionId: matchedJobId || undefined,
       sections,
       createdAt: new Date(),
@@ -325,6 +326,10 @@ export default function ResumeBuilder() {
       setActiveResume(saved);
       toast.success('Resume draft is ready to edit.');
     } catch (error: any) {
+      if (String(error?.message) === 'GUEST_LIMIT_REACHED') {
+        toast.error('Guest limit reached. Sign in to save unlimited resumes.');
+        return;
+      }
       toast.error(`Failed to save resume: ${error.message}`);
     }
   };
@@ -345,6 +350,17 @@ export default function ResumeBuilder() {
       if (payload.role) setSetupTargetRole(payload.role);
       if (payload.region === 'Gulf' || payload.region === 'India') {
         setSetupMarket(payload.region);
+      }
+      if (payload.role) {
+        setTargetProfile({
+          targetRole: payload.role,
+          experience: setupExperience,
+          market:
+            payload.region === 'Gulf' || payload.region === 'India'
+              ? payload.region
+              : setupMarket,
+          jobDescription: (payload as { jd?: string }).jd || setupJobDescription,
+        });
       }
       // Strip meta before save; stash flags for Review
       const { _pipelineMeta, ...resumePayload } = payload.result as any;
@@ -370,6 +386,10 @@ export default function ResumeBuilder() {
       const saved = await storage.saveResume(updatedResume);
       setActiveResume(saved);
     } catch (error: any) {
+      if (String(error?.message) === 'GUEST_LIMIT_REACHED') {
+        toast.error('Guest limit reached. Sign in to save unlimited resumes.');
+        return;
+      }
       toast.error(`Failed to save updates: ${error.message}`);
     }
   };

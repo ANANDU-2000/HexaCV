@@ -1,4 +1,5 @@
 import type { Resume, ResumeSection } from '@shared/types';
+import { getDefaultTemplate } from '@/lib/templates';
 
 /**
  * Sample resumes used on the landing page (hero preview + output gallery).
@@ -77,7 +78,7 @@ export function buildSampleResume(spec: SampleSpec): Resume {
     id: `sample-${spec.label.replace(/\s+/g, '-').toLowerCase()}`,
     userId: 'sample',
     title: spec.label,
-    templateId: 'classic-ats-blue',
+    templateId: getDefaultTemplate().id,
     sections,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),

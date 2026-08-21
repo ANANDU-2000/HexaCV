@@ -8,19 +8,10 @@ import { ParsedResume } from '@shared/types';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
+import { arrayBufferToBase64Async, stringToBase64 } from '@/lib/base64';
 
 interface ResumeLinkedInImporterProps {
   onImported: (data: ParsedResume) => void;
-}
-
-/** UTF-8-safe base64 for paste text → resume.parse { filename, base64 } */
-function textToBase64(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
 }
 
 export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImporterProps) {
@@ -42,7 +33,7 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
     try {
       const parsed = await parseMutation.mutateAsync({
         filename: 'linkedin-profile.txt',
-        base64: textToBase64(pastedText),
+        base64: stringToBase64(pastedText),
       });
       toast.success('Successfully imported and parsed LinkedIn profile!');
       onImported(parsed);
@@ -76,38 +67,21 @@ export default function ResumeLinkedInImporter({ onImported }: ResumeLinkedInImp
 
     // PDF and TXT: same base64 → resume.parse path (server extractText handles both)
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const result = e.target?.result as string;
-          const base64 = result.split(',')[1];
-          if (!base64) {
-            throw new Error('Failed to read file as base64.');
-          }
+      const buffer = await file.arrayBuffer();
+      const base64 = await arrayBufferToBase64Async(buffer);
+      const parsed = await parseMutation.mutateAsync({
+        filename: file.name,
+        base64,
+      });
 
-          const parsed = await parseMutation.mutateAsync({
-            filename: file.name,
-            base64,
-          });
-
-          toast.success('Successfully parsed LinkedIn profile export!');
-          onImported(parsed);
-        } catch (err: any) {
-          console.error('LinkedIn file parsing error:', err);
-          setFileError(
-            err?.message || 'Failed to parse file. Please paste your profile text instead.'
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-      reader.onerror = () => {
-        setFileError('Failed to read file.');
-        setLoading(false);
-      };
-      reader.readAsDataURL(file);
+      toast.success('Successfully parsed LinkedIn profile export!');
+      onImported(parsed);
     } catch (err: any) {
-      setFileError(err?.message || 'Failed to process file.');
+      console.error('LinkedIn file parsing error:', err);
+      setFileError(
+        err?.message || 'Failed to parse file. Please paste your profile text instead.'
+      );
+    } finally {
       setLoading(false);
     }
   };

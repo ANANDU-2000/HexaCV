@@ -82,14 +82,14 @@ export default function Login() {
             <Chrome className="h-4 w-4" strokeWidth={1.75} /> Sign in with HexaCv
           </Button>
 
-          <Link href={guestHref(redirectParam)} className="mt-3 block w-full no-underline">
-            <Button
-              variant="outline"
-              className="min-h-11 w-full rounded-[18px] border-border bg-card font-semibold text-foreground"
-            >
-              Continue as guest
-            </Button>
-          </Link>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 min-h-11 w-full rounded-[18px] border-border bg-card font-semibold text-foreground"
+            onClick={() => setLocation(guestHref(redirectParam))}
+          >
+            Continue as guest
+          </Button>
 
           {!canUseOAuthPortal() && (
             <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">

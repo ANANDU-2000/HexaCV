@@ -3,7 +3,7 @@
 > The builder workspace: live split-screen (editor steps + real preview), guided
 > section wizard, AI rewrite with edit-protection, ATS score, and export.
 
-**Status:** Implemented · **NEW:** 44px tap targets on icon controls.
+**Status:** Implemented · **NEW:** tab split under `resume-editor/` + shared `PreviewToolbar`.
 
 ## Purpose
 Let the user review and refine the AI output (or build from scratch) with a
@@ -20,10 +20,13 @@ what-you-see-is-what-you-get live preview, then export.
 ## Implementation
 | Piece | File | Detail |
 |-------|------|--------|
-| Editor | `client/src/components/ResumeEditor.tsx` | split grid, stepper, per-section tabs, undo/redo history, autosave (1.5s debounce), ATS score widget, export modal, mobile bottom nav |
-| Preview | `client/src/components/ResumePreview.tsx` | renders the A4 page from `templates`; **clickable sections** when `onSectionSelect` is passed (drives the contextual editor) |
-| Templates | `client/src/lib/templates.ts`, `shared/types` | e.g. `classic-ats-blue`, `minimal-executive`, `technical-compact` |
-| Sections | `client/src/lib/resumeSections.ts` | ensures all 10 standard sections exist |
+| Editor shell | `client/src/components/ResumeEditor.tsx` | state, history, autosave, stepper, three `ResumePreview` mounts (mobile / desktop / offscreen PDF), download modal, mobile nav |
+| Tab bodies | `client/src/components/resume-editor/*Tab.tsx` | one file per `TabsContent` (`HeaderTab` … `ReviewTab`, `PreviewTab`) |
+| Shared chrome | `client/src/components/resume-editor/shared.tsx` | `WizardTabIntro`, `EditableEntryCard`, `EDITOR_*` classes |
+| Preview toolbar | `client/src/components/resume-editor/PreviewToolbar.tsx` | shared zoom UI for mobile preview tab + desktop aside (floor **35**, max **150**, step **10**) |
+| Preview | `client/src/components/ResumePreview.tsx` | A4 page from `getDefaultTemplate()`; skips `!visible`, sorts by `order`; clickable sections via `onSectionSelect` |
+| Templates | `client/src/lib/templates.ts`, `shared/types` | single template id `classic-ats-blue` via `getDefaultTemplate()` — no picker |
+| Sections | `client/src/lib/resumeSections.ts` | ensures all standard sections exist |
 | AI rewrite | `trpc.ai.improveSummary` / `improveBullets` + `lib/userEditedMerge.ts` | grounded, edit-protected |
 | ATS score | computed in `ResumeEditor` (`getResumeTextContent` + `calculateATSScore`) | keyword match + completeness + readability + regional rules |
 
@@ -34,8 +37,8 @@ what-you-see-is-what-you-get live preview, then export.
   see [contextual-editor.md](contextual-editor.md).
 - Autosave + undo/redo history; guest drafts persist to `localStorage`
   (`hexacv_local_resumes`, max 3 for guests).
-- **NEW:** icon-only controls (undo/redo, zoom, move/delete, stepper chevrons, mobile nav)
-  now meet the 44px minimum tap target.
+- Icon-only controls (undo/redo, zoom, move/delete, stepper chevrons, mobile nav)
+  meet the 44px minimum tap target.
 
 ## Edge cases
 - Empty required fields → stepper checkmarks reflect completion.

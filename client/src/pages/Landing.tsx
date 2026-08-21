@@ -12,7 +12,7 @@ import GroundingProof from "@/components/landing/GroundingProof";
 import OutputPreviewRow from "@/components/landing/OutputPreviewRow";
 import PricingTeaser from "@/components/landing/PricingTeaser";
 import LandingFaq from "@/components/landing/LandingFaq";
-import ParseLoader from "@/components/ParseLoader";
+import ParseLoader, { type ParsePhase } from "@/components/ParseLoader";
 import { FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { trpc } from "@/lib/trpc";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/lib/entryDraft";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
+import { arrayBufferToBase64Async } from "@/lib/base64";
 
 /** Targeting prefill key — the detected role is written here so /builder/target loads it. */
 const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
@@ -43,6 +44,7 @@ export default function Landing() {
   const [draft, setDraft] = useState<EntryDraft | null>(null);
   const [dragging, setDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [parsePhase, setParsePhase] = useState<ParsePhase>("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseMutation = trpc.resume.parse.useMutation();
@@ -60,20 +62,33 @@ export default function Landing() {
       return;
     }
     // Extraction process window while the file is parsed.
+    setParsePhase("reading");
     setParsing(true);
+    // Let ParseLoader paint before heavy encode work.
+    await new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => resolve());
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
     const startedAt = Date.now();
     try {
       const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
-      const parsed = await parseMutation.mutateAsync({
+      setParsePhase("encoding");
+      // TODO(upload): resume.parse still takes base64 over tRPC — prefer multipart /
+      // binary body to skip the ~33% size overhead (see client/src/lib/base64.ts).
+      const base64 = await arrayBufferToBase64Async(buffer);
+      setParsePhase("uploading");
+      const parsePromise = parseMutation.mutateAsync({
         filename: file.name,
         base64,
       });
-      // Keep the extraction window visible long enough to feel like real work.
-      const MIN_PARSE_MS = 1600;
+      setParsePhase("extracting");
+      const parsed = await parsePromise;
+      setParsePhase("done");
+      // Soft floor so the loader is readable; keep short now that encode is fast.
+      const MIN_PARSE_MS = 800;
       const elapsed = Date.now() - startedAt;
       if (elapsed < MIN_PARSE_MS) {
         await new Promise((r) => setTimeout(r, MIN_PARSE_MS - elapsed));
@@ -90,6 +105,7 @@ export default function Landing() {
       };
       persistDraft(next);
       setParsing(false);
+      setParsePhase("idle");
       // Auto-detect the target role from the parsed document so the rewrite targets it.
       try {
         const detectedRole = (
@@ -114,6 +130,7 @@ export default function Landing() {
       setLocation("/builder/target");
     } catch {
       setParsing(false);
+      setParsePhase("idle");
       setParseError(
         "We couldn't read text from this PDF — try 'Start fresh' and paste it instead."
       );
@@ -386,7 +403,7 @@ export default function Landing() {
         <SiteFooter />
       </main>
 
-      <ParseLoader open={parsing} />
+      <ParseLoader open={parsing} phase={parsePhase} />
     </div>
   );
 }

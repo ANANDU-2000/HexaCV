@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getDefaultTemplate } from "@/lib/templates";
 import { Resume } from "@shared/types";
 import { useCallback } from "react";
 
@@ -107,7 +108,7 @@ export function useResumeStorage() {
         } else {
           const res = await createResumeMutation.mutateAsync({
             title: resume.title,
-            templateId: "classic-ats-blue",
+            templateId: getDefaultTemplate().id,
             content: serializedContent,
             jobDescriptionId: resume.jobDescriptionId || undefined,
           });
@@ -312,7 +313,7 @@ export function useResumeStorage() {
         const serializedContent = JSON.stringify({ sections: r.sections });
         await createResumeMutation.mutateAsync({
           title: r.title,
-          templateId: "classic-ats-blue",
+          templateId: getDefaultTemplate().id,
           content: serializedContent,
           jobDescriptionId: r.jobDescriptionId || undefined
         });

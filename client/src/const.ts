@@ -1,5 +1,8 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
+/** Default post-auth / guest destination when a redirect is missing or gated. */
+export const SAFE_GUEST_FALLBACK = "/builder/target";
+
 /** Public Manus OAuth portal configured for this build. */
 export function canUseOAuthPortal(): boolean {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL as
@@ -10,23 +13,37 @@ export function canUseOAuthPortal(): boolean {
 }
 
 /**
+ * Whether `path` is a safe in-app destination for guests (and for OAuth return).
+ * Auth-gated account/admin routes and auth pages themselves are rejected.
+ */
+export function isSafeGuestRedirect(path: string): boolean {
+  if (!path || typeof path !== "string") return false;
+
+  const trimmed = path.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return false;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false;
+
+  const pathname = (trimmed.split(/[?#]/)[0] || "/").replace(/\/+$/, "") || "/";
+  const lower = pathname.toLowerCase();
+
+  if (lower === "/") return false;
+  if (lower === "/login" || lower.startsWith("/login/")) return false;
+  if (lower === "/register" || lower.startsWith("/register/")) return false;
+  if (lower === "/dashboard" || lower.startsWith("/dashboard/")) return false;
+  if (lower === "/admin" || lower.startsWith("/admin")) return false;
+  if (lower === "/url" || lower.startsWith("/url")) return false;
+
+  return true;
+}
+
+/**
  * Safe post-auth-page destination for "Continue as guest".
  * Auth-gated account/admin routes would bounce a guest back to /login.
  * Default destination is /builder/target (guests can fill the form, sign-in
  * is gated at build time only).
  */
 export function guestHref(redirect: string): string {
-  if (!redirect || redirect === "/" || redirect.startsWith("/login") || redirect.startsWith("/register")) {
-    return "/builder/target";
-  }
-  if (
-    redirect.startsWith("/dashboard/") ||
-    redirect.startsWith("/admin") ||
-    redirect.startsWith("/url")
-  ) {
-    return "/builder/target";
-  }
-  return redirect;
+  return isSafeGuestRedirect(redirect) ? redirect.trim() : SAFE_GUEST_FALLBACK;
 }
 
 /**
@@ -34,10 +51,7 @@ export function guestHref(redirect: string): string {
  * OAuth callback can redirect there after the provider round-trip.
  */
 export function stashReturnTo(returnTo: string): void {
-  const safe =
-    returnTo && returnTo !== "/" && !returnTo.startsWith("/login") && !returnTo.startsWith("/register")
-      ? returnTo
-      : "/builder/target";
+  const safe = guestHref(returnTo);
   document.cookie = `hexacv_return_to=${encodeURIComponent(safe)};path=/;max-age=600;samesite=lax`;
 }
 

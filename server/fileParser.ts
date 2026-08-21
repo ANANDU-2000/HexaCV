@@ -835,15 +835,22 @@ function deduplicateParsedResume(parsed: ParsedResume): ParsedResume {
 }
 
 /**
- * Structuring plain text into standard ParsedResume layout using LLM
+ * Structuring plain text into standard ParsedResume layout using LLM.
+ * One timed json_schema attempt, then heuristic — no sequential json_object
+ * retry (that doubled latency on the same slow/failing provider).
  */
 export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
   if (!text || !text.trim()) {
     throw new Error("Resume text content is empty");
   }
 
+  const EXTRACT_TIMEOUT_MS = 20_000;
+  const t0 = Date.now();
+
   try {
-    const response = await trackedInvokeLLM("extract", {
+    const response = await trackedInvokeLLM(
+      "extract",
+      {
       messages: [
         {
           role: "system",
@@ -1063,55 +1070,40 @@ export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
         },
       },
       temperature: 0.1,
-    });
+      },
+      { timeoutMs: EXTRACT_TIMEOUT_MS }
+    );
 
     const content = response.choices[0]?.message.content;
     if (content && typeof content === "string") {
       const parsed = JSON.parse(content);
       const deduped = deduplicateParsedResume(parsed);
-      return validateParsedAgainstSource(text, deduped);
+      const result = validateParsedAgainstSource(text, deduped);
+      console.info(
+        `[parseResumeWithLLM] attempt=json_schema status=ok latencyMs=${Date.now() - t0}`
+      );
+      return result;
     }
+    console.warn(
+      `[parseResumeWithLLM] attempt=json_schema status=empty_content latencyMs=${Date.now() - t0}`
+    );
   } catch (error) {
     console.warn(
-      "LLM parser with json_schema failed, attempting json_object mode:",
+      `[parseResumeWithLLM] attempt=json_schema status=error latencyMs=${Date.now() - t0}`,
       error
     );
   }
 
-  // Attempt 2: JSON Object mode with LLM
-  try {
-    const response = await trackedInvokeLLM("extract", {
-      messages: [
-        {
-          role: "system",
-          content:
-            EXTRACT_PARSE_RULES +
-            "You are an expert resume parser. Parse raw resume text into a structured JSON object with keys: header (name, email, phone, location, jobTitle, targetRole, links[{label, url}]), summary (string), skills [{category, skills[]}], experiences [{id, company, role, startDate, endDate, current, description[]}], projects [{id, name, description, technologies[], link, date}], educations [{id, institution, degree, field, graduationDate, gpa}], certifications [{id, name, issuer, date, link}], achievements [], languages [{language, proficiency}], references [{id, name, company, title, email, phone, availableOnRequest}]. Return STRICT VALID JSON ONLY. Education field must ONLY contain degree field of study (e.g. Computer Science), never project descriptions.",
-        },
-        {
-          role: "user",
-          content: text,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.1,
-    });
-
-    const content = response.choices[0]?.message.content;
-    if (content && typeof content === "string") {
-      const parsed = JSON.parse(content);
-      const deduped = deduplicateParsedResume(parsed);
-      return validateParsedAgainstSource(text, deduped);
-    }
-  } catch (error) {
-    console.error(
-      "LLM parser failed, falling back to heuristic parser:",
-      error
-    );
-  }
-
+  const heuristicStarted = Date.now();
   const heuristic = fallbackHeuristicParser(text);
-  return validateParsedAgainstSource(text, deduplicateParsedResume(heuristic));
+  const result = validateParsedAgainstSource(
+    text,
+    deduplicateParsedResume(heuristic)
+  );
+  console.info(
+    `[parseResumeWithLLM] attempt=heuristic status=ok latencyMs=${Date.now() - heuristicStarted} totalMs=${Date.now() - t0}`
+  );
+  return result;
 }
 
 /**
