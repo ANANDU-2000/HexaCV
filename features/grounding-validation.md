@@ -26,9 +26,15 @@ metrics, titles, or achievements. Grounding enforces this at the pipeline and ed
 | Proof section | `client/src/components/landing/GroundingProof.tsx` | before (vague) → after (grounded) with `XCircle` / `CheckCircle2` |
 
 ## Key details
+- **Pipeline validate** calls `validateGeneratedResume(resume, sourceText)` so invents,
+  mismatches, and AI filler are stripped against the **uploaded document**, not only
+  against a banned-phrase list.
 - **User-edit protection:** when a summary or bullet was edited manually, an AI rewrite
   asks for confirmation ("Overwrite with AI?") and skips protected lines unless forced.
 - **No invented metrics:** regional/ATS rules add tips, never fabricated percentages.
+- **API keys:** all LLM calls use env keys — see [api-keys.md](api-keys.md).
+- **Runtime failures:** unexpected errors append to `runtime-errors/` —
+  see [runtime-error-reporting.md](runtime-error-reporting.md).
 
 ## Edge cases
 - Manual edits + AI rewrite → protected lines preserved (blocked count shown).

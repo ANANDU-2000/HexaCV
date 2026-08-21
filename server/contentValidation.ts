@@ -18,6 +18,11 @@ export const AI_GENERATED_PHRASES = [
   /results-driven and highly motivated/i,
   /proven track record of designing scalable/i,
   /responsible for execution and delivery/i,
+  /self-starter with exceptional/i,
+  /excellent communication and interpersonal skills/i,
+  /hardworking and dedicated professional/i,
+  /team player with a can-do attitude/i,
+  /go-getter who thrives/i,
   /general studies/i,
   /applied science/i,
   /bachelor degree$/i,
@@ -114,50 +119,85 @@ export function filterGroundedBullets(originals: string[], rewritten: string[]):
 }
 
 /**
- * Validate an AI-generated resume (no source document available).
- * Strips placeholder text, AI-generated phrases, and empty entries.
- * Returns the cleaned object with only valid, non-fabricated data.
+ * Validate an AI-generated resume.
+ * Always strips placeholders and banned AI filler.
+ * When `sourceText` is provided (pipeline rewrite), also drop fields that are
+ * not grounded in the uploaded document — invents / mismatches / duplicates of
+ * fabricated content never reach the editor.
  */
-export function validateGeneratedResume(resume: any): any {
+export function validateGeneratedResume(resume: any, sourceText?: string): any {
   if (!resume || typeof resume !== "object") return resume;
 
   const clean = (val: string | undefined | null) => (val || "").trim();
+  const source = (sourceText || "").trim();
+  const hasSource = source.length > 0;
+  const grounded = (fragment: string, threshold = 0.45) =>
+    !hasSource || textGroundedInSource(fragment, source, threshold);
 
   // Header validation
   const header = { ...(resume.header || {}) };
-  if (header.name && isPlaceholderText(header.name)) header.name = "";
-  if (header.email && isPlaceholderText(header.email)) header.email = "";
+  if (header.name && (isPlaceholderText(header.name) || !grounded(header.name, 0.5))) {
+    header.name = "";
+  }
+  if (header.email && (isPlaceholderText(header.email) || !grounded(header.email, 0.9))) {
+    header.email = "";
+  }
   if (header.phone && isPlaceholderText(header.phone)) header.phone = "";
-  if (header.location && isPlaceholderText(header.location)) header.location = "";
+  if (
+    header.location &&
+    (isPlaceholderText(header.location) || !grounded(header.location, 0.4))
+  ) {
+    header.location = "";
+  }
+  if (header.jobTitle && !grounded(String(header.jobTitle), 0.4)) {
+    header.jobTitle = "";
+  }
+  if (header.targetRole && !grounded(String(header.targetRole), 0.35)) {
+    // Target role may be aspirational from the JD — keep only if present in source
+    // or leave empty for the targeting UI to supply.
+    header.targetRole = header.jobTitle || "";
+  }
 
   // Links — filter out empty/fake URLs
   if (Array.isArray(header.links)) {
     header.links = header.links.filter(
-      (l: any) => l?.url && !isPlaceholderText(l.url) && l.url !== "https://"
+      (l: any) =>
+        l?.url &&
+        !isPlaceholderText(l.url) &&
+        l.url !== "https://" &&
+        grounded(String(l.url), 0.5)
     );
   }
 
-  // Summary — strip if AI-generated or placeholder
+  // Summary — strip if AI-generated, placeholder, or ungrounded
   let summary = clean(resume.summary);
-  if (!summary || isAiGeneratedPhrase(summary) || isPlaceholderText(summary)) {
+  if (
+    !summary ||
+    isAiGeneratedPhrase(summary) ||
+    isPlaceholderText(summary) ||
+    !grounded(summary, 0.4)
+  ) {
     summary = "";
   }
 
-  // Skills — remove AI-generated skills and placeholders
+  // Skills — remove AI-generated / ungrounded skills and placeholders
   const skills = (Array.isArray(resume.skills) ? resume.skills : [])
     .map((group: any) => ({
       category: clean(group.category),
       skills: (Array.isArray(group.skills) ? group.skills : [])
         .filter(
           (s: string) =>
-            s && !isPlaceholderText(s) && !isAiGeneratedPhrase(s)
+            s &&
+            !isPlaceholderText(s) &&
+            !isAiGeneratedPhrase(s) &&
+            grounded(s, 0.55)
         )
         .map((s: string) => clean(s))
         .filter(Boolean),
     }))
     .filter((g: any) => g.category && g.skills.length > 0);
 
-  // Experiences — remove AI-generated bullets and placeholders
+  // Experiences — remove AI-generated / ungrounded bullets and placeholders
   const experiences = (Array.isArray(resume.experiences) ? resume.experiences : [])
     .map((exp: any) => ({
       id: exp.id || `exp-${nanoid(4)}`,
@@ -170,7 +210,10 @@ export function validateGeneratedResume(resume: any): any {
         .map((b: string) => clean(b))
         .filter(
           (b: string) =>
-            b && !isAiGeneratedPhrase(b) && !isPlaceholderText(b)
+            b &&
+            !isAiGeneratedPhrase(b) &&
+            !isPlaceholderText(b) &&
+            grounded(b, 0.4)
         ),
     }))
     .filter(
@@ -178,6 +221,8 @@ export function validateGeneratedResume(resume: any): any {
         exp.company &&
         !isPlaceholderText(exp.company) &&
         !isPlaceholderText(exp.role) &&
+        grounded(exp.company, 0.5) &&
+        (!exp.role || grounded(exp.role, 0.4)) &&
         exp.description.length > 0
     );
 
@@ -186,10 +231,17 @@ export function validateGeneratedResume(resume: any): any {
     .map((proj: any) => ({
       id: proj.id || `proj-${nanoid(4)}`,
       name: clean(proj.name),
-      description: clean(proj.description),
+      description:
+        clean(proj.description) &&
+        !isAiGeneratedPhrase(proj.description) &&
+        grounded(clean(proj.description), 0.4)
+          ? clean(proj.description)
+          : "",
       technologies: (Array.isArray(proj.technologies) ? proj.technologies : [])
         .map((t: string) => clean(t))
-        .filter((t: string) => t && !isPlaceholderText(t)),
+        .filter(
+          (t: string) => t && !isPlaceholderText(t) && grounded(t, 0.55)
+        ),
       link: clean(proj.link),
       date: clean(proj.date),
     }))
@@ -197,6 +249,7 @@ export function validateGeneratedResume(resume: any): any {
       (proj: any) =>
         proj.name &&
         !isPlaceholderText(proj.name) &&
+        grounded(proj.name, 0.5) &&
         !isAiGeneratedPhrase(proj.description)
     );
 
@@ -214,11 +267,15 @@ export function validateGeneratedResume(resume: any): any {
       (edu: any) =>
         edu.institution &&
         !isPlaceholderText(edu.institution) &&
-        !isPlaceholderText(edu.degree)
+        !isPlaceholderText(edu.degree) &&
+        (grounded(edu.institution, 0.5) || grounded(edu.degree, 0.5))
     );
 
   // Certifications
-  const certifications = (Array.isArray(resume.certifications) ? resume.certifications : [])
+  const certifications = (Array.isArray(resume.certifications)
+    ? resume.certifications
+    : []
+  )
     .map((cert: any) => ({
       id: cert.id || `cert-${nanoid(4)}`,
       name: clean(cert.name),
@@ -231,15 +288,22 @@ export function validateGeneratedResume(resume: any): any {
         cert.name &&
         !isPlaceholderText(cert.name) &&
         !isPlaceholderText(cert.issuer) &&
-        !isAiGeneratedPhrase(cert.name)
+        !isAiGeneratedPhrase(cert.name) &&
+        grounded(cert.name, 0.5)
     );
 
   // Achievements
-  const achievements = (Array.isArray(resume.achievements) ? resume.achievements : [])
+  const achievements = (Array.isArray(resume.achievements)
+    ? resume.achievements
+    : []
+  )
     .map((a: string) => clean(a))
     .filter(
       (a: string) =>
-        a && !isAiGeneratedPhrase(a) && !isPlaceholderText(a)
+        a &&
+        !isAiGeneratedPhrase(a) &&
+        !isPlaceholderText(a) &&
+        grounded(a, 0.4)
     );
 
   // Languages
@@ -250,7 +314,9 @@ export function validateGeneratedResume(resume: any): any {
     }))
     .filter(
       (l: any) =>
-        l.language && !isPlaceholderText(l.language)
+        l.language &&
+        !isPlaceholderText(l.language) &&
+        grounded(l.language, 0.4)
     );
 
   // References
@@ -266,7 +332,9 @@ export function validateGeneratedResume(resume: any): any {
     }))
     .filter(
       (ref: any) =>
-        ref.name && !isPlaceholderText(ref.name)
+        ref.name &&
+        !isPlaceholderText(ref.name) &&
+        grounded(ref.name, 0.55)
     );
 
   return {

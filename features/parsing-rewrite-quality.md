@@ -13,7 +13,9 @@
   never invent achievements, metrics, or duties" · "EMPTY OVER INVENTED".
 - Rewrite pipeline (`server/ai/pipelineOrchestrator.ts` → `stageRewrite`): "Use ONLY facts
   from the Extract JSON … never invent skills."
-- Grounding (edit-time rewrites): `filterGroundedRewrite` / `filterGroundedBullets` reject
+- **Post-rewrite:** `validateGeneratedResume(resume, sourceText)` strips placeholders,
+  banned AI filler, **and** any field not grounded in the uploaded source document.
+- Edit-time rewrites: `filterGroundedRewrite` / `filterGroundedBullets` reject
   output that doesn't overlap the original (min-overlap), and reject known AI-filler
   phrases (`isAiGeneratedPhrase`).
 
@@ -55,7 +57,8 @@ the user just confirms or edits it, and the rewrite targets that role automatica
 - All LLM calls go through `server/usageTracker.ts` → `trackedInvokeLLM` with tiered
   providers from `server/apiKeyManager.ts` (cheap → rewrite → premium failover per stage).
 - Parse/extract use cheap tier; rewrite uses rewrite tier; no hardcoded keys in client.
-- Keys come from env (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, etc.) — see `.env.example`.
+- Keys come from env (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, etc.) — see
+  [api-keys.md](api-keys.md) and `.env.example`.
 
 ## Files
 | Concern | File |
@@ -64,7 +67,8 @@ the user just confirms or edits it, and the rewrite targets that role automatica
 | Banned filler / grounding helpers | `server/contentValidation.ts` |
 | Extract→Target→Rewrite→Validate→C3 | `server/ai/pipelineOrchestrator.ts` |
 | Grounding rules for rewrites | `server/ai/grounding.ts` |
-| Auto-detect target role (client) | `client/src/pages/Landing.tsx` |
+| Auto-detect target role (client) | `client/src/pages/Landing.tsx`, `ResumeUploader.tsx` |
+| Env API keys | [api-keys.md](api-keys.md), `.env.example` |
 
 ## Edge cases
 - Scanned/image-only PDF → no text → error + "try Start fresh".

@@ -56,6 +56,27 @@ export function inferJobTitleAndTargetRole(
     "director",
     "coordinator",
     "executive",
+    "owner",
+    "founder",
+    "attorney",
+    "lawyer",
+    "accountant",
+    "nurse",
+    "teacher",
+    "professor",
+    "researcher",
+    "technician",
+    "supervisor",
+    "superintendent",
+    "surveyor",
+    "recruiter",
+    "marketer",
+    "strategist",
+    "product owner",
+    "scrum master",
+    "devops",
+    "sre",
+    "qa",
   ];
 
   let nameLineIndex = -1;
@@ -115,7 +136,7 @@ export function inferJobTitleAndTargetRole(
 
   if (!jobTitle) {
     const titleRegex =
-      /(senior|lead|principal|staff|junior)?\s*(software|full[\s-]?stack|front[\s-]?end|back[\s-]?end|data|devops|product|ui\/ux|qa|machine learning)\s*(engineer|developer|scientist|manager|designer|analyst|architect)/i;
+      /(senior|lead|principal|staff|junior|sr\.?)?\s*(software|full[\s-]?stack|front[\s-]?end|back[\s-]?end|data|devops|product|ui\/ux|qa|machine learning|civil|site|electrical|mechanical|ai|ml|cloud|security|network|systems?|hr|human resources|digital marketing|business|accounts?|quantity)\s*(engineer|developer|scientist|manager|designer|analyst|architect|executive|specialist|consultant|surveyor|owner)|product\s+owner|scrum\s+master|site\s+engineer|quantity\s+surveyor/i;
     const titleMatch = text.match(titleRegex);
     jobTitle = titleMatch ? titleMatch[0].trim() : "";
   }
@@ -250,6 +271,7 @@ function validateParsedAgainstSource(
         (exp.company || exp.role) &&
         !isPlaceholderText(exp.company) &&
         !isPlaceholderText(exp.role) &&
+        (!exp.role || textGroundedInSource(exp.role, sourceText, 0.4)) &&
         (exp.description.length > 0 ||
           textGroundedInSource(exp.company, sourceText, 0.5))
     );

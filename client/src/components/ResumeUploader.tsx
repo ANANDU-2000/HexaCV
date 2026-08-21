@@ -6,6 +6,29 @@ import { ParsedResume } from '@shared/types';
 import { trpc } from '@/lib/trpc';
 import { arrayBufferToBase64Async } from '@/lib/base64';
 
+const TARGET_DRAFT_KEY = 'hexacv_target_panel_draft';
+
+function prefillTargetRoleFromParsed(parsed: ParsedResume): void {
+  try {
+    const detectedRole = (
+      (parsed as any)?.header?.targetRole ||
+      (parsed as any)?.header?.jobTitle ||
+      ''
+    )
+      .toString()
+      .trim();
+    if (!detectedRole) return;
+    const raw = localStorage.getItem(TARGET_DRAFT_KEY);
+    const existing = raw ? JSON.parse(raw) : {};
+    localStorage.setItem(
+      TARGET_DRAFT_KEY,
+      JSON.stringify({ ...existing, role: detectedRole })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 interface ResumeUploaderProps {
   onParsed: (data: ParsedResume) => void;
   onStartFromScratch?: () => void;
@@ -78,6 +101,7 @@ export default function ResumeUploader({ onParsed, onStartFromScratch }: ResumeU
         base64,
       });
 
+      prefillTargetRoleFromParsed(parsed);
       setSuccess(true);
       setTimeout(() => {
         onParsed(parsed);
