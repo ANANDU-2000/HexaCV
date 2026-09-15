@@ -101,19 +101,12 @@ const trpcClient = trpc.createClient({
       transformer: superjson,
       headers() {
         const isLoggedOut = localStorage.getItem("hexacv_logged_out") === "true";
-        if (isLoggedOut) {
-          return { "x-local-user-logout": "true" };
-        }
-        let openId = "";
-        try {
-          const raw = localStorage.getItem("hexacv_current_user");
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            openId = parsed?.openId || "";
-          }
-        } catch (e) {}
+        // SECURITY: client identity is never sent as a header. The server
+        // authenticates via the signed session cookie only. `x-local-user-logout`
+        // is a client-side anti-flash signal that drops the requester's own
+        // session; it establishes no identity.
         const headers: Record<string, string> = {};
-        if (openId) headers["x-local-user-openid"] = openId;
+        if (isLoggedOut) headers["x-local-user-logout"] = "true";
         // Guest session tracking — the server only records these when no user is signed in.
         const deviceUid = getOrCreateDeviceUid();
         const guestSessionId = getOrCreateGuestSessionId();

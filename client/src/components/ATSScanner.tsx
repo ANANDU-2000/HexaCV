@@ -64,7 +64,22 @@ export default function ATSScanner({ resumes, activeResumeId, onSelectResume }: 
           : ["Review keyword coverage", "Keep summary under 3 lines"],
       });
       toast.success("ATS scan complete!");
-    } catch {
+    } catch (err: any) {
+      // Server AI is sign-in only (guest policy) — don't fabricate a scan for
+      // a guest; prompt them to sign in instead. Only truly unexpected failures
+      // fall back to simulated demo metrics.
+      const code = err?.data?.code;
+      const msg = err?.message || "";
+      if (code === "UNAUTHORIZED" || /sign in/i.test(msg)) {
+        setScanResult(null);
+        toast.error("Please sign in to use the ATS scanner.");
+        return;
+      }
+      if (code === "PAYMENT_REQUIRED" || /credit/i.test(msg)) {
+        setScanResult(null);
+        toast.error(msg || "Insufficient credits for the ATS scanner.");
+        return;
+      }
       setScanResult({
         score: 65, matchedKeywords: ["React", "TypeScript", "JavaScript", "HTML"],
         missingKeywords: ["CI/CD", "AWS", "Docker", "Agile"],
@@ -72,7 +87,7 @@ export default function ATSScanner({ resumes, activeResumeId, onSelectResume }: 
         topFixes: ["Add CI/CD, AWS, Docker to skills", "Use action verbs with quantified results", "Ensure job title matches target role"],
         summaryAdvice: "Add concrete achievements and quantitative results.",
       });
-      toast.warning("Demo mode — simulated ATS metrics.");
+      toast.warning("Demo mode — could not reach the scanner, showing simulated metrics.");
     } finally {
       setIsScanning(false);
     }

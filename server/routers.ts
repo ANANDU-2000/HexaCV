@@ -7,6 +7,7 @@ import * as db from "./db";
 import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
 import { nanoid } from "nanoid";
 import { extractText, parseResumeWithLLM } from "./fileParser";
+import { isResumeParseTextTooLong, validateResumeUpload } from "./uploadValidation";
 import { getAllApiKeys, saveApiKey, testApiKey as testApiKeyFunc, isAiPaused, upsertModelRoute } from "./apiKeyManager";
 import { TRPCError } from "@trpc/server";
 import { buildAdminUsageStats } from "./usageTracker";
@@ -120,14 +121,40 @@ export const appRouter = router({
     
     parse: publicProcedure
       .input(z.object({
-        filename: z.string(),
+        filename: z.string().trim().min(1).max(255),
         // TODO(upload): accept multipart/binary instead of base64 to avoid ~33% overhead
         // (see client/src/lib/base64.ts). Keep base64 until tRPC transport supports it cleanly.
         base64: z.string(),
       }))
       .mutation(async ({ input }) => {
-        const fileBuffer = Buffer.from(input.base64, "base64");
-        const rawText = await extractText(fileBuffer, input.filename);
+        // Server-authoritative gate on extension / size / encoding. Runs before
+        // any parsing or LLM work, so an oversized or malformed upload never
+        // reaches costly extraction (Step 4 — resume.parse upload size hardening).
+        const validated = validateResumeUpload(input);
+        if (!validated.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: validated.error });
+        }
+
+        // resume.parse routes text through the LLM, so it honors the AI_PAUSED
+        // kill switch just like every other AI procedure (Step 3).
+        if (isAiPaused()) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "temporarily unavailable, try again shortly",
+          });
+        }
+
+        const rawText = await extractText(validated.buffer, validated.extension);
+
+        // Guard extracted text length before it reaches the parse LLM (Step 4).
+        if (isResumeParseTextTooLong(rawText)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "This resume is too long to parse. Please trim it to a more concise one-page summary and try again.",
+          });
+        }
+
         return parseResumeWithLLM(rawText);
       }),
     
@@ -287,6 +314,12 @@ export const appRouter = router({
 
   // AI Integration Router — gated by AI_PAUSED kill switch
   ai: (() => {
+    // Generous cap so a real resume/JD always fits, while an absurd payload is
+    // rejected before reaching the LLM (Step 12 — AI input safety).
+    const AI_MAX_TEXT = 50_000;
+    const aiText = () => z.string().max(AI_MAX_TEXT);
+    const aiRequiredText = () => z.string().trim().min(1).max(AI_MAX_TEXT);
+
     const aiProcedure = publicProcedure.use(async ({ next }) => {
       if (isAiPaused()) {
         throw new TRPCError({
@@ -296,6 +329,37 @@ export const appRouter = router({
       }
       return next();
     });
+
+    // Auth-aware layer for LLM-invoking AI procedures. AI generation is a paid
+    // operation: authenticated users only. Guests keep local/scratch workflows
+    // (no server-side paid AI), per the guest-AI policy.
+    const aiProtectedProcedure = aiProcedure.use(async ({ next, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Please sign in to use this AI feature.",
+        });
+      }
+      return next();
+    });
+
+    // Adds a credit gate on top of auth for AI *generation*. Signed-in users
+    // without a credit balance cannot run the (paid) LLM micro-tools — matching
+    // the existing build-pipeline policy and the "insufficient credits" UX.
+    // Consumption itself stays per-build (consume-on-success, release-on-error)
+    // in generateFullResume; these micro-tools are gated but not metered here.
+    const aiCreditProtectedProcedure = aiProtectedProcedure.use(
+      async ({ next, ctx }) => {
+        const balance = await getCreditBalance(ctx.user!.id);
+        if (balance < 1) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+        return next();
+      }
+    );
 
     return router({
     generateFullResume: aiProcedure
@@ -375,19 +439,25 @@ export const appRouter = router({
         }
       }),
 
-    generateSuggestions: aiProcedure
+    generateSuggestions: aiCreditProtectedProcedure
       .input(z.object({
-        resumeId: z.string().optional(),
-        resumeContent: z.string().optional(), // Fallback raw JSON string
-        jobDescription: z.string(),
+        resumeId: z.string().max(64).optional(),
+        resumeContent: aiText().optional(), // Fallback raw JSON string
+        jobDescription: aiRequiredText(),
       }))
       .mutation(async ({ input, ctx }) => {
         let resumeObj: any = null;
         if (input.resumeId) {
           const res = await db.getResume(input.resumeId);
-          if (res && ctx.user && res.userId === ctx.user.id) {
-            resumeObj = JSON.parse(res.content);
+          // Never fall through to client content when an owned resume is named
+          // — an unowned id is an ownership failure, not a fallback trigger.
+          if (!res || res.userId !== ctx.user!.id) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Resume not found or access denied",
+            });
           }
+          resumeObj = JSON.parse(res.content);
         }
         if (!resumeObj && input.resumeContent) {
           resumeObj = JSON.parse(input.resumeContent);
@@ -398,16 +468,16 @@ export const appRouter = router({
         return generateResumeSuggestions(resumeObj, input.jobDescription);
       }),
 
-    improveBullets: aiProcedure
+    improveBullets: aiCreditProtectedProcedure
       .input(z.object({
-        role: z.string(),
-        company: z.string(),
-        currentBullets: z.array(z.string()),
-        jobDescription: z.string(),
-        countryCode: z.string().optional(),
-        targetCountryCode: z.string().optional(),
-        jobTitle: z.string().optional(),
-        targetRole: z.string().optional(),
+        role: aiRequiredText(),
+        company: aiRequiredText(),
+        currentBullets: z.array(aiText()).max(200),
+        jobDescription: aiRequiredText(),
+        countryCode: z.string().max(10).optional(),
+        targetCountryCode: z.string().max(10).optional(),
+        jobTitle: aiText().optional(),
+        targetRole: aiText().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const opts = await resolveTrackedAiOpts(ctx);
@@ -424,14 +494,14 @@ export const appRouter = router({
         );
       }),
 
-    improveSummary: aiProcedure
+    improveSummary: aiCreditProtectedProcedure
       .input(z.object({
-        currentSummary: z.string(),
-        jobDescription: z.string(),
-        jobTitle: z.string().optional(),
-        targetRole: z.string().optional(),
-        countryCode: z.string().optional(),
-        targetCountryCode: z.string().optional(),
+        currentSummary: aiText(),
+        jobDescription: aiRequiredText(),
+        jobTitle: aiText().optional(),
+        targetRole: aiText().optional(),
+        countryCode: z.string().max(10).optional(),
+        targetCountryCode: z.string().max(10).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const opts = await resolveTrackedAiOpts(ctx);
@@ -446,13 +516,13 @@ export const appRouter = router({
         );
       }),
 
-    improveProjectBullets: aiProcedure
+    improveProjectBullets: aiCreditProtectedProcedure
       .input(z.object({
-        projectName: z.string(),
-        stack: z.array(z.string()),
-        currentBullets: z.array(z.string()),
-        jobDescription: z.string(),
-        targetRole: z.string().optional(),
+        projectName: aiRequiredText(),
+        stack: z.array(aiText()).max(200),
+        currentBullets: z.array(aiText()).max(200),
+        jobDescription: aiRequiredText(),
+        targetRole: aiText().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const opts = await resolveTrackedAiOpts(ctx);
@@ -466,80 +536,80 @@ export const appRouter = router({
         );
       }),
 
-    generateCoverLetter: aiProcedure
+    generateCoverLetter: aiCreditProtectedProcedure
       .input(z.object({
-        name: z.string(),
-        targetRole: z.string(),
-        companyName: z.string(),
-        hiringManagerName: z.string().optional(),
-        summary: z.string(),
-        experienceBullets: z.string(),
-        skills: z.string(),
-        jobDescription: z.string(),
+        name: z.string().max(500),
+        targetRole: aiRequiredText(),
+        companyName: z.string().trim().min(1).max(500),
+        hiringManagerName: z.string().max(500).optional(),
+        summary: aiText(),
+        experienceBullets: aiText(),
+        skills: aiText(),
+        jobDescription: aiRequiredText(),
       }))
       .mutation(async ({ input }) => {
         return generateCoverLetter(input);
       }),
 
-    generateLinkedInAbout: aiProcedure
+    generateLinkedInAbout: aiCreditProtectedProcedure
       .input(z.object({
-        summary: z.string(),
-        jobTitle: z.string(),
-        skills: z.string(),
-        experienceHighlights: z.string(),
+        summary: aiText(),
+        jobTitle: aiRequiredText(),
+        skills: aiText(),
+        experienceHighlights: aiText(),
       }))
       .mutation(async ({ input }) => {
         return generateLinkedInAbout(input);
       }),
 
-    calculateScore: aiProcedure
+    calculateScore: aiCreditProtectedProcedure
       .input(z.object({
-        resumeContent: z.string(),
-        jobDescription: z.string(),
+        resumeContent: aiRequiredText(),
+        jobDescription: aiRequiredText(),
       }))
       .mutation(async ({ input }) => {
         const resumeObj = JSON.parse(input.resumeContent);
         return calculateKeywordAlignment(resumeObj, input.jobDescription);
       }),
 
-    atsAudit: aiProcedure
+    atsAudit: aiCreditProtectedProcedure
       .input(z.object({
-        resumeText: z.string(),
-        jobDescription: z.string(),
+        resumeText: aiRequiredText(),
+        jobDescription: aiRequiredText(),
       }))
       .mutation(async ({ input }) => {
         return atsAudit(input.resumeText, input.jobDescription);
       }),
 
-    generateInterviewQuestions: aiProcedure
+    generateInterviewQuestions: aiCreditProtectedProcedure
       .input(z.object({
-        resumeText: z.string(),
-        jobDescription: z.string(),
+        resumeText: aiRequiredText(),
+        jobDescription: aiRequiredText(),
       }))
       .mutation(async ({ input }) => {
         return generateInterviewQuestions(input.resumeText, input.jobDescription);
       }),
 
-    generateRecruiterOutreach: aiProcedure
+    generateRecruiterOutreach: aiCreditProtectedProcedure
       .input(z.object({
-        topSkills: z.string(),
-        mostRecentRole: z.string(),
-        jobTitle: z.string(),
-        companyName: z.string(),
-        roleSummary: z.string(),
+        topSkills: aiRequiredText(),
+        mostRecentRole: aiRequiredText(),
+        jobTitle: aiRequiredText(),
+        companyName: aiRequiredText(),
+        roleSummary: aiRequiredText(),
       }))
       .mutation(async ({ input }) => {
         return generateRecruiterOutreach(input);
       }),
 
     /** C5 — thumbs up/down on AI rewrite quality */
-    submitEvaluation: aiProcedure
+    submitEvaluation: aiProtectedProcedure
       .input(z.object({
-        resumeId: z.string().optional(),
-        stage: z.string().default("rewrite"),
+        resumeId: z.string().max(64).optional(),
+        stage: z.string().trim().min(1).max(50).default("rewrite"),
         rating: z.enum(["up", "down"]),
-        note: z.string().optional(),
-        overallScore: z.number().int().optional(),
+        note: z.string().max(2000).optional(),
+        overallScore: z.number().int().min(0).max(100).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user?.evaluationOptOut) {

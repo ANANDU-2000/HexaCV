@@ -270,15 +270,10 @@ class SDKServer {
       }
     }
 
-    // Header openId: only resolve existing DB users — never invent fake emails
-    const localUserOpenId = req.headers["x-local-user-openid"] as string | undefined;
-    if (localUserOpenId) {
-      const user = await db.getUserByOpenId(localUserOpenId);
-      if (user) {
-        return user;
-      }
-    }
-
+    // SECURITY: identity is derived ONLY from the signed session JWT.
+    // The legacy client-supplied `x-local-user-openid` header is no longer
+    // trusted — trusting it let any caller impersonate an existing user by
+    // copying their openId. There is no header fallback.
     return null;
   }
 }

@@ -863,7 +863,9 @@ function deduplicateParsedResume(parsed: ParsedResume): ParsedResume {
  */
 export async function parseResumeWithLLM(text: string): Promise<ParsedResume> {
   if (!text || !text.trim()) {
-    throw new Error("Resume text content is empty");
+    throw new Error(
+      "We couldn't extract text from this document. It may be scanned or image-based. Please upload a text-based PDF or DOCX file."
+    );
   }
 
   const EXTRACT_TIMEOUT_MS = 20_000;
