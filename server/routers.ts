@@ -8,6 +8,7 @@ import * as db from "./db";
 import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
 import { analyzeResume } from "./aiResumeAnalyzer";
 import { analyzeJobDescription } from "./jdAnalyzer";
+import { matchResumeToJob } from "./resumeJobMatcher";
 import { resumeHasRealContent } from "./contentValidation";
 import { nanoid } from "nanoid";
 import { extractText, parseResumeWithLLM } from "./fileParser";
@@ -807,6 +808,94 @@ export const appRouter = router({
             code: "INTERNAL_SERVER_ERROR",
             message:
               "We hit a snag analyzing the job description — no credit used. " +
+              (error?.message || "Please try again."),
+          });
+        }
+      }),
+
+    /**
+     * PHASE 8 — Resume ↔ Job Description Matcher.
+     * auth + credit-gated; consumes one build credit on success and releases it
+     * on AI failure (no permanent charge for a failed match). The resume is
+     * loaded by id from the DB (ownership enforced) or supplied as raw content;
+     * the JD is untrusted user content validated server-side.
+     */
+    matchResumeToJob: aiCreditProtectedProcedure
+      .input(z.object({
+        resumeId: z.string().max(64).optional(),
+        resumeContent: aiText().optional(), // raw ParsedResume JSON string
+        jobDescription: z.string().trim().min(1).max(JD_MAX_TEXT),
+        targetCountryCode: optionalCountryCode,
+        providedJobTitle: z.string().trim().max(200).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        let contentObj: any = null;
+        if (input.resumeId) {
+          const res = await db.getResume(input.resumeId);
+          // An unowned resume id is an ownership failure, never a fallback to
+          // client content (mirrors generateSuggestions / analyzeResume).
+          if (!res || res.userId !== ctx.user!.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found or access denied" });
+          }
+          try {
+            contentObj = JSON.parse(res.content);
+          } catch {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Stored resume content is not valid JSON." });
+          }
+        }
+        if (!contentObj && input.resumeContent) {
+          try {
+            contentObj = JSON.parse(input.resumeContent);
+          } catch {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Resume content is not valid JSON." });
+          }
+        }
+        if (!contentObj || typeof contentObj !== "object" || Array.isArray(contentObj)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Resume content is required to run the matcher." });
+        }
+        if (!resumeHasRealContent(contentObj)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This resume appears empty — add content before running the matcher.",
+          });
+        }
+
+        const build = await createBuild({
+          userId: ctx.user!.id,
+          role: input.providedJobTitle || undefined,
+          region: input.targetCountryCode || undefined,
+        });
+        const consumed = await consumeBuildCredit(ctx.user!.id, build.id);
+        if (!consumed.ok) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+
+        const opts = await resolveTrackedAiOpts(ctx);
+        try {
+          const match = await matchResumeToJob(
+            contentObj,
+            input.jobDescription,
+            {
+              targetCountryCode: input.targetCountryCode,
+              providedJobTitle: input.providedJobTitle,
+            },
+            opts
+          );
+          await updateBuildStage(build.id, "done");
+          return { match, buildId: build.id };
+        } catch (error: any) {
+          // AI failure → release the consumed credit (net zero for the user).
+          await releaseBuildCredit(ctx.user!.id, build.id);
+          await updateBuildStage(build.id, "failed", {
+            errorMessage: error?.message || "Resume match failed",
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "We hit a snag matching the resume — no credit used. " +
               (error?.message || "Please try again."),
           });
         }

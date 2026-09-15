@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ATSScanner from "@/components/ATSScanner";
 import AnalyzerPanel from "@/components/AnalyzerPanel";
 import JDAnalyzerPanel from "@/components/JDAnalyzerPanel";
+import ResumeJobMatcherPanel from "@/components/ResumeJobMatcherPanel";
 import AffiliateSystem from "@/components/AffiliateSystem";
 import BillingPortal from "@/components/BillingPortal";
 import AdminCRM from "@/components/AdminCRM";
@@ -76,6 +77,15 @@ export default function Dashboard() {
         {/* Job Description Analyzer */}
         <Route path="/dashboard/jd-analyzer">
           <JDAnalyzerPanel />
+        </Route>
+
+        {/* Resume ↔ Job Description Matcher */}
+        <Route path="/dashboard/matcher">
+          <ResumeJobMatcherPanel
+            resumes={resumes}
+            activeResumeId={selectedResumeId}
+            onSelectResume={(id) => setSelectedResumeId(id)}
+          />
         </Route>
 
         {/* Affiliate Program tracker */}
