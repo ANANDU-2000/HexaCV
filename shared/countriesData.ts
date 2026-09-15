@@ -710,6 +710,9 @@ export const DEFAULT_ATS_RULES: AtsRule[] = [
 
 // Fallback rule when no specific mapping exists
 export const GENERIC_ATS_RULE = {
+  sourceCountryCode: undefined as string | undefined,
+  targetCountryCode: undefined as string | undefined,
+  countryName: undefined as string | undefined,
   keywords: ['Led', 'Developed', 'Managed', 'Optimized', 'Delivered', 'Initiated', 'Project'],
   preferredFormatting: 'Clean, simple chronological format. Ensure standard fonts (Arial/Calibri), clear margins, and standard sizing (A4 or Letter).',
   regionalHiringExpectations: 'Keep the profile professional, focus on achievements, use active action verbs, and quantify achievements wherever possible.',
@@ -718,3 +721,119 @@ export const GENERIC_ATS_RULE = {
     'ZIP Code': 'Postal Code'
   }
 };
+
+// ---------------------------------------------------------------------------
+// PHASE 5 — Country & Target Market Intelligence
+//
+// Centralized, code-backed country context service. This is the SINGLE source
+// of truth for resolving a country code into metadata + ATS/AI context. It is
+// shared by the AI prompt engine, the ATS scanner, resume validation, and the
+// client country selector. It ONLY returns data present in the master data
+// above — for an unknown/inactive code it returns null (never fabricates).
+// ---------------------------------------------------------------------------
+
+export interface CountryContext {
+  country: CountryInfo;
+  /** ATS rule mapped for the given source→target pair, or the generic fallback. */
+  atsRule: AtsRule;
+  /** True when a specific master rule matched; false when the generic fallback was used. */
+  hadSpecificRule: boolean;
+  /** Human-readable "Source to Target" label for prompts/UI. */
+  sourceCountryCode?: string;
+  targetCountryCode?: string;
+}
+
+const COUNTRY_CODE_INDEX = new Map<string, CountryInfo>(
+  ALL_COUNTRIES.map((c) => [c.code.toUpperCase(), c])
+);
+
+/**
+ * Canonical resolution of a country code against the master data list.
+ * Trims + uppercases, returns undefined for empty, unknown, or inactive codes.
+ * ISO 3166-1 alpha-2 expected ("IN", "US", "AE").
+ */
+export function resolveCountryCode(code?: string | null): string | undefined {
+  if (!code) return undefined;
+  const canonical = String(code).trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(canonical)) return undefined;
+  const country = COUNTRY_CODE_INDEX.get(canonical);
+  if (!country || !country.isActive) return undefined;
+  return canonical;
+}
+
+/** True when the code resolves to an active country in the master list. */
+export function isValidCountryCode(code?: string | null): boolean {
+  return resolveCountryCode(code) !== undefined;
+}
+
+/**
+ * Centralized country context service. Returns data ONLY from the master
+ * country list and DEFAULT_ATS_RULES / GENERIC_ATS_RULE. No internet, no DB,
+ * no invented rules. `targetCountryCode` may be omitted — then just the
+ * country's own metadata is returned with the generic rule.
+ */
+export function getCountryContext(
+  countryCode?: string | null,
+  targetCountryCode?: string | null
+): CountryContext | null {
+  const source = resolveCountryCode(countryCode);
+  if (!source) return null;
+  const country = COUNTRY_CODE_INDEX.get(source)!;
+
+  const target = resolveCountryCode(targetCountryCode);
+  let atsRule: AtsRule | null = null;
+  let hadSpecificRule = false;
+
+  if (target) {
+    atsRule =
+      DEFAULT_ATS_RULES.find(
+        (r) =>
+          r.sourceCountryCode === source && r.targetCountryCode === target
+      ) || null;
+    hadSpecificRule = atsRule !== null;
+  }
+
+  return {
+    country,
+    atsRule:
+      atsRule ||
+      ({
+        ...GENERIC_ATS_RULE,
+        sourceCountryCode: source,
+        targetCountryCode: target,
+        countryName: country.name,
+      } as AtsRule),
+    hadSpecificRule,
+    sourceCountryCode: source,
+    targetCountryCode: target,
+  };
+}
+
+/**
+ * Client-facing search helper over the master country list (name or code).
+ * Case-insensitive substring match; common shorthands (UAE, USA, UK) resolve
+ * to their full official names. Used by the country selectors.
+ */
+const COUNTRY_SEARCH_ALIASES: [RegExp, string][] = [
+  [/^uae$/i, "United Arab Emirates"],
+  [/^usa$/i, "United States"],
+  [/^america$/i, "United States"],
+  [/^uk$/i, "United Kingdom"],
+  [/^s\.?korea$/i, "South Korea"],
+  [/^n\.?korea$/i, "North Korea"],
+  [/^korea$/i, "South Korea"],
+];
+
+export function searchCountries(query: string, limit = 20): CountryInfo[] {
+  let q = query.trim().toLowerCase();
+  if (!q) return ALL_COUNTRIES.slice(0, limit);
+  for (const [re, name] of COUNTRY_SEARCH_ALIASES) {
+    if (re.test(query.trim())) {
+      q = name.toLowerCase();
+      break;
+    }
+  }
+  return ALL_COUNTRIES.filter(
+    (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+  ).slice(0, limit);
+}

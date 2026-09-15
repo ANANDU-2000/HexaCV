@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import PipelineLoader from "@/components/PipelineLoader";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
+import { ALL_COUNTRIES } from "@shared/countriesData";
+import { countryCodeToMarket } from "@/lib/resumeSections";
 
 const STATIC_ROLES = [
   "Site Engineer",
@@ -38,8 +40,6 @@ const STATIC_ROLES = [
   "Digital Marketing Executive",
   "Business Analyst",
 ];
-
-type Region = "India" | "Gulf";
 
 declare global {
   interface Window {
@@ -64,7 +64,11 @@ function loadRazorpayScript(): Promise<boolean> {
 export default function Targeting() {
   const { isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
-  const [region, setRegion] = useState<Region>("India");
+  // Phase 5 — target country code (ISO alpha-2) replaces the hardcoded India/Gulf toggle.
+  // Empty string = "Skip for now" (backward-compatible; pipeline treats "" as global).
+  const [targetCountryCode, setTargetCountryCode] = useState("");
+  const [countryQuery, setCountryQuery] = useState("");
+  const [showCountryList, setShowCountryList] = useState(false);
   const [role, setRole] = useState("");
   const [jd, setJd] = useState("");
   const [jdOpen, setJdOpen] = useState(false);
@@ -91,16 +95,37 @@ export default function Targeting() {
       setJd(d.jobDescription);
       setJdOpen(true);
     }
-    if (d.market === "Gulf" || d.market === "India") setRegion(d.market);
+    // Restore a saved target country code (Phase 5); keep the legacy
+    // market→code mapping so older drafts still prefill.
+    setTargetCountryCode(d.targetCountryCode || marketToTargetCountryCode(d.market) || "");
   }, []);
+
+  // Legacy market alias → target country code (Gulf → AE as primary).
+  const marketToTargetCountryCode = (m?: string) =>
+    m === "India" ? "IN" : m === "Gulf" ? "AE" : m === "US" ? "US" : "";
+
+  // Backward-compat market string derived from the chosen target country.
+  const effectiveMarket =
+    (targetCountryCode && countryCodeToMarket(targetCountryCode)) || "Global";
 
   const flushTargetDraft = () => {
     saveTargetDraft({
       role,
-      market: region,
+      targetCountryCode: targetCountryCode || undefined,
+      market: effectiveMarket,
       jobDescription: jd,
     });
   };
+
+  const selectedCountry = ALL_COUNTRIES.find((c) => c.code === targetCountryCode);
+  const filteredCountries = useMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    return q
+      ? ALL_COUNTRIES.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+        ).slice(0, 40)
+      : ALL_COUNTRIES.slice(0, 40);
+  }, [countryQuery]);
 
   const continueAsGuest = () => {
     if (!role.trim()) {
@@ -130,7 +155,14 @@ export default function Targeting() {
       try {
         sessionStorage.setItem(
           "hexacv_pipeline_result",
-          JSON.stringify({ result, role, region, jd, buildId: null })
+          JSON.stringify({
+            result,
+            role,
+            region: effectiveMarket,
+            targetCountryCode: targetCountryCode || undefined,
+            jd,
+            buildId: null,
+          })
         );
       } catch {
         toast.error("Could not open your draft. Try again.");
@@ -157,8 +189,8 @@ export default function Targeting() {
       flushTargetDraft();
     }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush reads latest role/region/jd
-  }, [role, region, jd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush reads latest role/country/jd
+  }, [role, targetCountryCode, jd]);
 
   const suggestions = useMemo(() => {
     const q = role.trim().toLowerCase();
@@ -196,14 +228,15 @@ export default function Targeting() {
     try {
       let id = existingBuildId;
       if (!id) {
-        const build = await startBuild.mutateAsync({ role, region });
+        const build = await startBuild.mutateAsync({ role, region: effectiveMarket });
         id = build.id;
         setBuildId(id);
       }
       const result = await generate.mutateAsync({
         jobTitle: role.trim(),
         experienceDetails: experienceDetails(),
-        market: region,
+        market: effectiveMarket,
+        targetCountryCode: targetCountryCode || undefined,
         jobDescription: jd.trim() || undefined,
         buildId: id,
       });
@@ -212,7 +245,14 @@ export default function Targeting() {
       try {
         sessionStorage.setItem(
           "hexacv_pipeline_result",
-          JSON.stringify({ result, role, region, jd, buildId: id })
+          JSON.stringify({
+            result,
+            role,
+            region: effectiveMarket,
+            targetCountryCode: targetCountryCode || undefined,
+            jd,
+            buildId: id,
+          })
         );
       } catch {
         /* ignore */
@@ -323,7 +363,7 @@ export default function Targeting() {
       <PipelineLoader
         buildId={buildId}
         role={role}
-        region={region}
+        region={effectiveMarket}
         onRetry={() => runPipeline(buildId)}
         failed={generate.isError}
         errorMessage={generate.error?.message}
@@ -336,7 +376,7 @@ export default function Targeting() {
       <PipelineLoader
         buildId={null}
         role={role}
-        region={region}
+        region={effectiveMarket}
         localPhase="extract"
       />
     );
@@ -350,28 +390,111 @@ export default function Targeting() {
           Who are you applying to?
         </h1>
         <p className="mt-2 text-muted-foreground">
-          One role, optional job description, and your region. That is all we need.
+          One role, an optional job description, and a target country. That is all we need.
         </p>
 
-        {/* Region segmented control */}
+        {/* Target country (Phase 5) — full master country list, optional */}
         <div className="mt-8">
-          <p className="mb-2 text-sm font-medium text-foreground">Region</p>
-          <div className="flex rounded-xl border border-border bg-card p-1">
-            {(["India", "Gulf"] as Region[]).map((r) => (
+          <p className="mb-2 text-sm font-medium text-foreground">
+            Target country{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (optional — used for ATS formatting, not auto-filled)
+            </span>
+          </p>
+          {targetCountryCode && selectedCountry ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <span aria-hidden="true">{selectedCountry.flag}</span>
+                <span>{selectedCountry.name}</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {selectedCountry.code}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-primary hover:bg-muted"
+                  onClick={() => setShowCountryList(true)}
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+                  onClick={() => {
+                    setTargetCountryCode("");
+                    setCountryQuery("");
+                  }}
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
               <button
-                key={r}
                 type="button"
-                className={`min-h-11 flex-1 rounded-lg text-sm font-semibold transition-colors ${
-                  region === r
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setRegion(r)}
+                className="min-h-11 flex-1 rounded-xl border border-border bg-card px-3 text-left text-sm text-muted-foreground hover:border-primary/40"
+                onClick={() => setShowCountryList((v) => !v)}
               >
-                {r}
+                {showCountryList
+                  ? "Search countries…"
+                  : "Pick a target country or search…"}
               </button>
-            ))}
-          </div>
+              {!showCountryList && (
+                <button
+                  type="button"
+                  className="min-h-11 shrink-0 rounded-xl border border-border bg-card px-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => setTargetCountryCode("")}
+                >
+                  Skip for now
+                </button>
+              )}
+            </div>
+          )}
+
+          {showCountryList && (
+            <div className="mt-2 rounded-xl border border-border bg-card p-2">
+              <input
+                autoFocus
+                value={countryQuery}
+                onChange={(e) => setCountryQuery(e.target.value)}
+                placeholder="Search 250+ countries (e.g. UAE, Germany, Canada)…"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+              <ul className="mt-2 max-h-56 overflow-y-auto">
+                {filteredCountries.length === 0 && (
+                  <li className="px-3 py-2 text-sm text-muted-foreground">
+                    No country matches “{countryQuery}”.
+                  </li>
+                )}
+                {filteredCountries.map((c) => (
+                  <li key={c.code}>
+                    <button
+                      type="button"
+                      className="flex min-h-9 w-full items-center justify-between px-3 text-left text-sm hover:bg-muted"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setTargetCountryCode(c.code);
+                        setCountryQuery("");
+                        setShowCountryList(false);
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true">{c.flag}</span>
+                        <span>{c.name}</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">{c.code}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Your selection only tunes wording/formatting guidance — it never invents local
+            experience, visas, salary, or certifications.
+          </p>
         </div>
 
         {/* Role */}
@@ -524,7 +647,7 @@ export default function Targeting() {
                 Resume
               </p>
               <p className="mt-1 text-base font-semibold text-foreground">
-                {role.trim() || "Untitled role"} · {region}
+                {role.trim() || "Untitled role"} · {effectiveMarket}
               </p>
               <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
                 <span className="text-sm text-muted-foreground">Price</span>

@@ -30,3 +30,18 @@ export const EXTRACT_PARSE_RULES =
   "GENUINE CONTENT ONLY — never invent achievements, metrics, or duties. " +
   "NO HALLUCINATIONS — empty string/array beats a fabricated field. " +
   "EMPTY OVER INVENTED. Preserve names/dates/titles exactly as stated.\n";
+
+/**
+ * Country / target-market guardrail (Phase 5). The country context passed into
+ * prompts (formatting, keywords, terminology) is INFORMATIONAL ONLY. It must
+ * never cause fabrication of local experience, qualifications, work
+ * authorization / visas, salary, certifications, or employer requirements.
+ * Appended alongside AI_GROUNDING_RULES / STRICT_REWRITE_RULES.
+ */
+export const COUNTRY_GROUNDING_RULES =
+  "COUNTRY / TARGET-MARKET CONTEXT:\n" +
+  "1. The country and target-market information is informational only — for formatting and terminology guidance.\n" +
+  "2. Do NOT invent local work experience, education, qualifications, or achievements to match a country.\n" +
+  "3. Do NOT invent or modify the candidate's visa status, work authorization, or residency based on the target country.\n" +
+  "4. Do NOT invent salaries, certifications, licenses, or employer requirements that are not already in the source material.\n" +
+  "5. If the source gives no fact for a country-specific claim, leave it out entirely.\n";

@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { isValidCountryCode, getCountryContext } from "@shared/countriesData";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
@@ -50,6 +51,69 @@ async function resolveTrackedAiOpts(ctx: {
     guestKey: userId == null ? "anonymous-web" : undefined,
   };
 }
+
+// ---------------------------------------------------------------------------
+// PHASE 5 — server-side canonical country-code validation.
+//
+// Country codes enter the system from two places, both canonicalized here:
+//   1. resume.content JSON — the header stores `countryCode` /
+//      `targetCountryCode` (ISO 3166-1 alpha-2). We validate the parsed JSON
+//      server-side and REJECT unknown / malformed codes.
+//   2. AI micro-tool inputs (`countryCode` / `targetCountryCode`) — validated
+//      by zod refine in their procedure inputs (see improveBullets /
+//      improveSummary).
+// Default is to reject unknown/malformed codes; we never trust a client-supplied
+// country name. `null`/absent is the canonical "not set" (backward-compatible
+// with existing resumes that predate country selection).
+// ---------------------------------------------------------------------------
+
+/**
+ * True only when every country field present in the content JSON is valid.
+ * A code is canonical if it is present in the shared master list (the 250+
+ * ISO alpha-2 set) OR in the DB countries table (which admins can extend via
+ * the existing admin endpoints). Unknown/malformed codes are rejected.
+ */
+async function isContentCountryFieldsValid(rawContent: string): Promise<boolean> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawContent);
+  } catch {
+    return true; // malformed JSON is handled by the resume content path, not here
+  }
+  const header =
+    parsed &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed) &&
+    (parsed as Record<string, unknown>).header;
+  if (!header || typeof header !== "object") return true;
+  const h = header as Record<string, unknown>;
+  const fields: unknown[] = [];
+  if ("countryCode" in h) fields.push(h.countryCode);
+  if ("targetCountryCode" in h) fields.push(h.targetCountryCode);
+  const needsDbCheck: string[] = [];
+  for (const code of fields) {
+    if (code === null || code === undefined) continue;
+    if (typeof code !== "string") return false;
+    if (!isValidCountryCode(code)) needsDbCheck.push(code);
+  }
+  if (needsDbCheck.length === 0) return true;
+  try {
+    const dbCountries = await db.getCountries();
+    const dbCodes = new Set((dbCountries || []).map((c) => String(c.code).toUpperCase()));
+    return needsDbCheck.every((c) => dbCodes.has(c.toUpperCase()));
+  } catch {
+    return false; // on DB lookup failure, err toward rejecting the unknown code
+  }
+}
+
+/** Zod post-check used by AI procedures that accept country codes. */
+const optionalCountryCode = z
+  .string()
+  .max(10)
+  .optional()
+  .refine((v) => v === undefined || isValidCountryCode(v), {
+    message: "Invalid or unknown ISO 3166-1 alpha-2 country code.",
+  });
 
 export const appRouter = router({
   system: systemRouter,
@@ -204,6 +268,13 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const id = nanoid();
+        if (!(await isContentCountryFieldsValid(input.content))) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Invalid country selection. Pick a country from the list or skip for now.",
+          });
+        }
         return db.createResume({
           id,
           userId: ctx.user.id,
@@ -231,7 +302,16 @@ export const appRouter = router({
         const updateData: any = {};
         if (input.title !== undefined) updateData.title = input.title;
         if (input.templateId !== undefined) updateData.templateId = input.templateId;
-        if (input.content !== undefined) updateData.content = input.content;
+        if (input.content !== undefined) {
+          if (!(await isContentCountryFieldsValid(input.content))) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Invalid country selection. Pick a country from the list or skip for now.",
+            });
+          }
+          updateData.content = input.content;
+        }
         if (input.jobDescriptionId !== undefined) updateData.jobDescriptionId = input.jobDescriptionId;
         
         const updated = await db.updateResume(input.id, ctx.user.id, updateData);
@@ -370,6 +450,8 @@ export const appRouter = router({
         market: z.string().optional(),
         jobDescription: z.string().optional(),
         buildId: z.string().optional(),
+        // Phase 5 — target country code for regional ATS/AI context.
+        targetCountryCode: optionalCountryCode,
       }))
       .mutation(async ({ input, ctx }) => {
         if (!ctx.user?.id) {
@@ -416,6 +498,7 @@ export const appRouter = router({
               jobDescription: input.jobDescription,
               market: input.market,
               experienceLevel: input.experienceLevel,
+              targetCountryCode: input.targetCountryCode,
             },
             opts,
             async (stage) => {
@@ -474,8 +557,8 @@ export const appRouter = router({
         company: aiRequiredText(),
         currentBullets: z.array(aiText()).max(200),
         jobDescription: aiRequiredText(),
-        countryCode: z.string().max(10).optional(),
-        targetCountryCode: z.string().max(10).optional(),
+        countryCode: optionalCountryCode,
+        targetCountryCode: optionalCountryCode,
         jobTitle: aiText().optional(),
         targetRole: aiText().optional(),
       }))
@@ -500,8 +583,8 @@ export const appRouter = router({
         jobDescription: aiRequiredText(),
         jobTitle: aiText().optional(),
         targetRole: aiText().optional(),
-        countryCode: z.string().max(10).optional(),
-        targetCountryCode: z.string().max(10).optional(),
+        countryCode: optionalCountryCode,
+        targetCountryCode: optionalCountryCode,
       }))
       .mutation(async ({ input, ctx }) => {
         const opts = await resolveTrackedAiOpts(ctx);

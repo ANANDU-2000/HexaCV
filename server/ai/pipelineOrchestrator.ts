@@ -20,9 +20,9 @@ import type {
   PipelineTargetProfile,
   ResumePipelineInput,
 } from "@shared/types";
-import { AI_GROUNDING_RULES, STRICT_REWRITE_RULES } from "./grounding";
+import { AI_GROUNDING_RULES, STRICT_REWRITE_RULES, COUNTRY_GROUNDING_RULES } from "./grounding";
 
-const GROUNDING_RULES = AI_GROUNDING_RULES;
+const GROUNDING_RULES = AI_GROUNDING_RULES + COUNTRY_GROUNDING_RULES;
 const RESUME_JSON_SCHEMA = {
   name: "parsed_resume",
   strict: true,
@@ -583,10 +583,19 @@ async function loadRegionalAtsInstructions(
 ): Promise<string> {
   if (!targetCountryCode) return "";
   try {
-    const rules = await db.getCountryAtsRules(
-      countryCode || "IN",
-      targetCountryCode
-    );
+    // Phase 5 — centralized country context service. Resolves codes against
+    // the master data (never fabricates). Falls back to DB admin rules when
+    // the master list has no specific mapping.
+    const { getCountryContext } = await import("@shared/countriesData");
+    const ctx = getCountryContext(countryCode, targetCountryCode);
+    let rules = ctx?.atsRule || null;
+    if (ctx && !ctx.hadSpecificRule) {
+      const dbRule = await db.getCountryAtsRules(
+        countryCode || "IN",
+        targetCountryCode
+      );
+      if (dbRule) rules = dbRule as typeof rules;
+    }
     if (!rules) return "";
     return `
 REGIONAL OPTIMIZATION INSTRUCTIONS (${countryCode || "IN"} -> ${targetCountryCode}):

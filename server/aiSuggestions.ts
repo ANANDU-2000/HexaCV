@@ -64,10 +64,23 @@ export async function generateResumeSuggestions(
   const countryCode = headerSection?.content.header?.countryCode;
   const targetCountryCode = headerSection?.content.header?.targetCountryCode;
 
+  // Phase 5 — centralized country context service. It resolves country codes
+  // against the master data only (no fabrication), returning country metadata
+  // + the best ATS rule. DB-backed admin rules still win when the master list
+  // has no specific mapping (hadSpecificRule === false).
   let regionalInstructions = "";
   if (targetCountryCode) {
     try {
-      const rules = await db.getCountryAtsRules(countryCode || "IN", targetCountryCode);
+      const { getCountryContext } = await import("@shared/countriesData");
+      const ctx = getCountryContext(countryCode, targetCountryCode);
+      let rules = ctx?.atsRule || null;
+      if (ctx && !ctx.hadSpecificRule) {
+        const dbRule = await db.getCountryAtsRules(
+          countryCode || "IN",
+          targetCountryCode
+        );
+        if (dbRule) rules = dbRule as typeof rules;
+      }
       if (rules) {
         regionalInstructions = `
 REGIONAL TARGETING AND ATS CONTEXT (${countryCode || "IN"} to ${targetCountryCode}):
@@ -102,6 +115,7 @@ REGIONAL TARGETING AND ATS CONTEXT (${countryCode || "IN"} to ${targetCountryCod
             "You are an expert resume reviewer. Suggest improvements using ONLY facts already in the resume. " +
             "Do NOT invent skills, bullets, companies, or achievements. Do NOT add new bullet points. " +
             "Rephrase existing content to align with the job title, target role, and job description. " +
+            "Country / target-market context is informational only for formatting/terminology. Do NOT invent local work experience, qualifications, visas, work authorization, salary figures, certifications, or employer requirements based on a target country. " +
             "Always respond with valid JSON.",
         },
         {

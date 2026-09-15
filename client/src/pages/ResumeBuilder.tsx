@@ -44,6 +44,7 @@ import {
   type ResumeTargetProfile,
 } from '@/lib/resumeSections';
 import { clearTargetDraft, loadTargetDraft, saveTargetDraft } from '@/lib/targetDraft';
+import { ALL_COUNTRIES } from '@shared/countriesData';
 import { cn } from '@/lib/utils';
 import { ParsedResume, Resume } from '@shared/types';
 
@@ -135,6 +136,9 @@ export default function ResumeBuilder() {
   const [setupTargetRole, setSetupTargetRole] = useState(initialDraft?.role || '');
   const [setupExperience, setSetupExperience] = useState(initialDraft?.experience || '3-5 yrs');
   const [setupMarket, setSetupMarket] = useState(initialDraft?.market || 'Global');
+  const [setupTargetCountryCode, setSetupTargetCountryCode] = useState(
+    initialDraft?.targetCountryCode || '',
+  );
   const [setupJobDescription, setSetupJobDescription] = useState(initialDraft?.jobDescription || '');
 
   const currentModeConfig = useMemo(
@@ -168,7 +172,9 @@ export default function ResumeBuilder() {
       setSetupTargetRole(roleParam.trim());
     }
     if (countryParam && countryParam.trim()) {
-      setSetupMarket(countryCodeToMarket(countryParam));
+      const code = countryParam.trim().toUpperCase();
+      setSetupTargetCountryCode(code);
+      setSetupMarket(countryCodeToMarket(code));
     }
     if (roleParam || countryParam) {
       setShowTargetPanel(true);
@@ -199,9 +205,16 @@ export default function ResumeBuilder() {
       role: setupTargetRole,
       experience: setupExperience,
       market: setupMarket,
+      targetCountryCode: setupTargetCountryCode || undefined,
       jobDescription: setupJobDescription,
     });
-  }, [setupTargetRole, setupExperience, setupMarket, setupJobDescription]);
+  }, [
+    setupTargetRole,
+    setupExperience,
+    setupMarket,
+    setupTargetCountryCode,
+    setupJobDescription,
+  ]);
 
   const navigateToMode = (nextMode: BuilderMode) => {
     setActiveResume(null);
@@ -240,11 +253,16 @@ export default function ResumeBuilder() {
         result: ParsedResume & { _pipelineMeta?: unknown };
         role?: string;
         region?: string;
+        targetCountryCode?: string;
       };
       sessionStorage.removeItem('hexacv_pipeline_result');
       if (payload.role) setSetupTargetRole(payload.role);
       if (payload.region === 'Gulf' || payload.region === 'India') {
         setSetupMarket(payload.region);
+      }
+      // Phase 5 — restore the target country picked on the Targeting screen.
+      if (payload.targetCountryCode) {
+        setSetupTargetCountryCode(payload.targetCountryCode);
       }
       if (payload.role) {
         setTargetProfile({
@@ -254,6 +272,9 @@ export default function ResumeBuilder() {
             payload.region === 'Gulf' || payload.region === 'India'
               ? payload.region
               : setupMarket,
+          targetCountryCode: payload.targetCountryCode
+            ? payload.targetCountryCode
+            : undefined,
           jobDescription: (payload as { jd?: string }).jd || setupJobDescription,
         });
       }
@@ -321,6 +342,7 @@ export default function ResumeBuilder() {
       targetRole: setupTargetRole.trim(),
       experience: setupExperience,
       market: setupMarket,
+      targetCountryCode: setupTargetCountryCode || undefined,
       jobDescription: setupJobDescription,
     });
     setShowTargetPanel(false);
@@ -347,6 +369,7 @@ export default function ResumeBuilder() {
     setSetupTargetRole(targetProfile?.targetRole || setupTargetRole);
     setSetupExperience(targetProfile?.experience || setupExperience);
     setSetupMarket(targetProfile?.market || setupMarket);
+    setSetupTargetCountryCode(targetProfile?.targetCountryCode || setupTargetCountryCode);
     setSetupJobDescription(targetProfile?.jobDescription || setupJobDescription);
     setShowTargetPanel(true);
   };
@@ -435,10 +458,15 @@ export default function ResumeBuilder() {
                   setupTargetRole={setupTargetRole}
                   setupExperience={setupExperience}
                   setupMarket={setupMarket}
+                  setupTargetCountryCode={setupTargetCountryCode}
                   setupJobDescription={setupJobDescription}
                   onRoleChange={setSetupTargetRole}
                   onExperienceChange={setSetupExperience}
                   onMarketChange={setSetupMarket}
+                  onTargetCountryCodeChange={(code) => {
+                    setSetupTargetCountryCode(code);
+                    setSetupMarket(code ? countryCodeToMarket(code) : 'Global');
+                  }}
                   onJobDescriptionChange={setSetupJobDescription}
                   onCancel={cancelTargetPanel}
                   onSave={saveTargetProfile}
@@ -501,10 +529,15 @@ export default function ResumeBuilder() {
                 setupTargetRole={setupTargetRole}
                 setupExperience={setupExperience}
                 setupMarket={setupMarket}
+                setupTargetCountryCode={setupTargetCountryCode}
                 setupJobDescription={setupJobDescription}
                 onRoleChange={setSetupTargetRole}
                 onExperienceChange={setSetupExperience}
                 onMarketChange={setSetupMarket}
+                onTargetCountryCodeChange={(code) => {
+                  setSetupTargetCountryCode(code);
+                  setSetupMarket(code ? countryCodeToMarket(code) : 'Global');
+                }}
                 onJobDescriptionChange={setSetupJobDescription}
                 onCancel={() => setShowTargetPanel(false)}
                 onSave={saveTargetProfile}
@@ -529,7 +562,7 @@ export default function ResumeBuilder() {
                   <ResumeScratchBuilder
                     onComplete={handleResumeLoad}
                     prefilledRole={targetProfile?.targetRole}
-                    prefilledCountryCode={targetProfile ? marketToCountryCode(targetProfile.market) : ''}
+                    prefilledCountryCode={targetProfile ? (targetProfile.targetCountryCode || marketToCountryCode(targetProfile.market)) : ''}
                   />
                 )}
                 {mode === 'ai' && (
@@ -759,10 +792,12 @@ function TargetPanel({
   setupTargetRole,
   setupExperience,
   setupMarket,
+  setupTargetCountryCode,
   setupJobDescription,
   onRoleChange,
   onExperienceChange,
   onMarketChange,
+  onTargetCountryCodeChange,
   onJobDescriptionChange,
   onCancel,
   onSave,
@@ -771,15 +806,29 @@ function TargetPanel({
   setupTargetRole: string;
   setupExperience: string;
   setupMarket: string;
+  setupTargetCountryCode: string;
   setupJobDescription: string;
   onRoleChange: (value: string) => void;
   onExperienceChange: (value: string) => void;
   onMarketChange: (value: string) => void;
+  onTargetCountryCodeChange: (value: string) => void;
   onJobDescriptionChange: (value: string) => void;
   onCancel: () => void;
   onSave: () => void;
   isPending?: boolean;
 }) {
+  const [countryQuery, setCountryQuery] = useState('');
+  const [countryOpen, setCountryOpen] = useState(false);
+  const selectedCountry = ALL_COUNTRIES.find((c) => c.code === setupTargetCountryCode);
+  const filteredCountries = useMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    return q
+      ? ALL_COUNTRIES.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q),
+        ).slice(0, 30)
+      : ALL_COUNTRIES.slice(0, 30);
+  }, [countryQuery]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[color:var(--ink)]/50 pt-8 pb-8 backdrop-blur-sm sm:pt-16 animate-fade-slide-up"
@@ -827,19 +876,83 @@ function TargetPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Target market</Label>
-              <Select value={setupMarket} onValueChange={onMarketChange}>
-                <SelectTrigger className="h-11 rounded-xl bg-card">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {['Global', 'India', 'Gulf', 'US'].map((market) => (
-                    <SelectItem key={market} value={market}>
-                      {market}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Target country</Label>
+              {setupTargetCountryCode && selectedCountry ? (
+                <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-border bg-card px-3">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <span aria-hidden="true">{selectedCountry.flag}</span>
+                    <span>{selectedCountry.name}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline"
+                    onClick={() => setCountryOpen(true)}
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-left text-sm text-muted-foreground hover:border-primary/40"
+                    onClick={() => setCountryOpen((v) => !v)}
+                  >
+                    {countryOpen ? 'Search countries…' : 'Pick a target country (optional)…'}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {countryOpen ? `derived market: ${setupMarket}` : 'Skip for now leaves it unset.'}
+                    </span>
+                    {!countryOpen && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                        onClick={() => onMarketChange('Global')}
+                      >
+                        Use Global
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {countryOpen && (
+                <div className="rounded-xl border border-border bg-card p-2">
+                  <input
+                    autoFocus
+                    value={countryQuery}
+                    onChange={(e) => setCountryQuery(e.target.value)}
+                    placeholder="Search 250+ countries…"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                  <ul className="mt-2 max-h-48 overflow-y-auto">
+                    {filteredCountries.length === 0 && (
+                      <li className="px-3 py-2 text-sm text-muted-foreground">No match.</li>
+                    )}
+                    {filteredCountries.map((c) => (
+                      <li key={c.code}>
+                        <button
+                          type="button"
+                          className="flex min-h-9 w-full items-center justify-between px-3 text-left text-sm hover:bg-muted"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            onTargetCountryCodeChange(c.code);
+                            setCountryQuery('');
+                            setCountryOpen(false);
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span aria-hidden="true">{c.flag}</span>
+                            <span>{c.name}</span>
+                          </span>
+                          <span className="text-xs text-muted-foreground">{c.code}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 

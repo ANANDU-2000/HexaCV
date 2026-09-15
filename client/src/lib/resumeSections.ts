@@ -12,6 +12,8 @@ export type ResumeTargetProfile = {
   experience: string;
   market: string;
   jobDescription: string;
+  /** Phase 5 — ISO 3166-1 alpha-2 target country code (optional). */
+  targetCountryCode?: string;
 };
 
 export function marketToCountryCode(market: string): string {

@@ -242,6 +242,9 @@ export type ResumePipelineInput = {
   jobDescription?: string;
   market?: string;
   experienceLevel?: string;
+  // Phase 5 — ISO 3166-1 alpha-2 codes for regional AI/ATS context.
+  countryCode?: string;
+  targetCountryCode?: string;
 };
 
 // ==========================================
