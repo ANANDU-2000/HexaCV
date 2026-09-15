@@ -3,6 +3,7 @@ import { Redirect, Route, Switch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import ATSScanner from "@/components/ATSScanner";
+import AnalyzerPanel from "@/components/AnalyzerPanel";
 import AffiliateSystem from "@/components/AffiliateSystem";
 import BillingPortal from "@/components/BillingPortal";
 import AdminCRM from "@/components/AdminCRM";
@@ -56,6 +57,15 @@ export default function Dashboard() {
         {/* ATS Resume compliance scanner */}
         <Route path="/dashboard/ats">
           <ATSScanner
+            resumes={resumes}
+            activeResumeId={selectedResumeId}
+            onSelectResume={(id) => setSelectedResumeId(id)}
+          />
+        </Route>
+
+        {/* AI Resume Analyzer */}
+        <Route path="/dashboard/analyzer">
+          <AnalyzerPanel
             resumes={resumes}
             activeResumeId={selectedResumeId}
             onSelectResume={(id) => setSelectedResumeId(id)}

@@ -21,9 +21,9 @@ import {
 } from "@/shared/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/shared/hooks/useMobile";
-import { 
+import {
   FileText, Zap, Users, Gift, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
-  BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity
+  BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity, Brain
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -35,6 +35,7 @@ import { trpc } from "@/lib/trpc";
 const menuItems = [
   { icon: FileText, label: "Resume Builder", path: "/builder/target" },
   { icon: Zap, label: "ATS Scanner", path: "/dashboard/ats" },
+  { icon: Brain, label: "AI Analyzer", path: "/dashboard/analyzer" },
   { icon: Gift, label: "Refer & Earn", path: "/dashboard/affiliate" },
   { icon: CreditCard, label: "Buy credits", path: "/dashboard/billing" },
   { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true }

@@ -6,6 +6,8 @@ import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_
 import { z } from "zod";
 import * as db from "./db";
 import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
+import { analyzeResume } from "./aiResumeAnalyzer";
+import { resumeHasRealContent } from "./contentValidation";
 import { nanoid } from "nanoid";
 import { extractText, parseResumeWithLLM } from "./fileParser";
 import { isResumeParseTextTooLong, validateResumeUpload } from "./uploadValidation";
@@ -662,6 +664,95 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         return atsAudit(input.resumeText, input.jobDescription);
+      }),
+
+    // Phase 6 — AI Resume Analyzer. A paid, metered AI operation: auth +
+    // credit-gated, consumes one build credit on success and releases it when
+    // the AI call fails (no permanent charge for a failed analysis). The user
+    // can only analyze their own resume; a named resumeId never falls back to
+    // client-supplied content for an unowned id.
+    analyzeResume: aiCreditProtectedProcedure
+      .input(z.object({
+        resumeId: z.string().max(64).optional(),
+        resumeContent: aiText().optional(), // raw ParsedResume JSON string
+        targetRole: z.string().trim().max(300).optional(),
+        targetCountryCode: optionalCountryCode,
+      }))
+      .mutation(async ({ input, ctx }) => {
+        let contentObj: any = null;
+        if (input.resumeId) {
+          const res = await db.getResume(input.resumeId);
+          // An unowned resume id is an ownership failure, never a fallback
+          // trigger to client content (mirrors generateSuggestions).
+          if (!res || res.userId !== ctx.user!.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found or access denied" });
+          }
+          try {
+            contentObj = JSON.parse(res.content);
+          } catch {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Stored resume content is not valid JSON." });
+          }
+        }
+        if (!contentObj && input.resumeContent) {
+          try {
+            contentObj = JSON.parse(input.resumeContent);
+          } catch {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Resume content is not valid JSON." });
+          }
+        }
+        if (!contentObj || typeof contentObj !== "object" || Array.isArray(contentObj)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Resume content is required to analyze." });
+        }
+        if (!resumeHasRealContent(contentObj)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This resume appears empty — add at least a name or some experience before analyzing.",
+          });
+        }
+
+        const targetRole = (input.targetRole || "").trim() || undefined;
+        // Country codes come from the validated input, or from the owned
+        // resume's header. Codes are canonical ISO alpha-2 (validated above);
+        // a client-provided country NAME is never trusted.
+        const targetCountryCode =
+          input.targetCountryCode ?? contentObj?.header?.targetCountryCode ?? undefined;
+        const sourceCountryCode = contentObj?.header?.countryCode ?? undefined;
+
+        const build = await createBuild({
+          userId: ctx.user!.id,
+          role: targetRole,
+          region: targetCountryCode,
+        });
+        const consumed = await consumeBuildCredit(ctx.user!.id, build.id);
+        if (!consumed.ok) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+
+        const opts = await resolveTrackedAiOpts(ctx);
+        try {
+          const analysis = await analyzeResume(
+            contentObj,
+            { targetRole, targetCountryCode, sourceCountryCode },
+            opts
+          );
+          await updateBuildStage(build.id, "done");
+          return { analysis, buildId: build.id };
+        } catch (error: any) {
+          // AI failure → release the consumed credit (net zero for the user).
+          await releaseBuildCredit(ctx.user!.id, build.id);
+          await updateBuildStage(build.id, "failed", {
+            errorMessage: error?.message || "Analysis failed",
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "We hit a snag analyzing your resume — no credit used. " +
+              (error?.message || "Please try again."),
+          });
+        }
       }),
 
     generateInterviewQuestions: aiCreditProtectedProcedure
