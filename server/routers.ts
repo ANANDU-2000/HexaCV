@@ -7,6 +7,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
 import { analyzeResume } from "./aiResumeAnalyzer";
+import { analyzeJobDescription } from "./jdAnalyzer";
 import { resumeHasRealContent } from "./contentValidation";
 import { nanoid } from "nanoid";
 import { extractText, parseResumeWithLLM } from "./fileParser";
@@ -399,6 +400,8 @@ export const appRouter = router({
     // Generous cap so a real resume/JD always fits, while an absurd payload is
     // rejected before reaching the LLM (Step 12 — AI input safety).
     const AI_MAX_TEXT = 50_000;
+    // Phase 7 — JD Analyzer accepts up to 100k characters.
+    const JD_MAX_TEXT = 100_000;
     const aiText = () => z.string().max(AI_MAX_TEXT);
     const aiRequiredText = () => z.string().trim().min(1).max(AI_MAX_TEXT);
 
@@ -750,6 +753,60 @@ export const appRouter = router({
             code: "INTERNAL_SERVER_ERROR",
             message:
               "We hit a snag analyzing your resume — no credit used. " +
+              (error?.message || "Please try again."),
+          });
+        }
+      }),
+
+    /**
+     * PHASE 7 — Job Description Analyzer.
+     * auth + credit-gated; consumes one build credit on success and releases it
+     * on AI failure. The JD is untrusted user content; validation is server-side.
+     */
+    analyzeJobDescription: aiCreditProtectedProcedure
+      .input(z.object({
+        jobDescription: z.string().trim().min(1).max(JD_MAX_TEXT),
+        targetCountryCode: optionalCountryCode,
+        sourceCountryCode: optionalCountryCode,
+        providedJobTitle: z.string().trim().max(200).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const build = await createBuild({
+          userId: ctx.user!.id,
+          role: input.providedJobTitle || undefined,
+          region: input.targetCountryCode || undefined,
+        });
+        const consumed = await consumeBuildCredit(ctx.user!.id, build.id);
+        if (!consumed.ok) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+
+        const opts = await resolveTrackedAiOpts(ctx);
+        try {
+          const analysis = await analyzeJobDescription(
+            input.jobDescription,
+            {
+              targetCountryCode: input.targetCountryCode,
+              sourceCountryCode: input.sourceCountryCode,
+              providedJobTitle: input.providedJobTitle,
+            },
+            opts
+          );
+          await updateBuildStage(build.id, "done");
+          return { analysis, buildId: build.id };
+        } catch (error: any) {
+          // AI failure → release the consumed credit (net zero for the user).
+          await releaseBuildCredit(ctx.user!.id, build.id);
+          await updateBuildStage(build.id, "failed", {
+            errorMessage: error?.message || "JD analysis failed",
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "We hit a snag analyzing the job description — no credit used. " +
               (error?.message || "Please try again."),
           });
         }

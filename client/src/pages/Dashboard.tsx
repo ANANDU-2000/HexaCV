@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import ATSScanner from "@/components/ATSScanner";
 import AnalyzerPanel from "@/components/AnalyzerPanel";
+import JDAnalyzerPanel from "@/components/JDAnalyzerPanel";
 import AffiliateSystem from "@/components/AffiliateSystem";
 import BillingPortal from "@/components/BillingPortal";
 import AdminCRM from "@/components/AdminCRM";
@@ -70,6 +71,11 @@ export default function Dashboard() {
             activeResumeId={selectedResumeId}
             onSelectResume={(id) => setSelectedResumeId(id)}
           />
+        </Route>
+
+        {/* Job Description Analyzer */}
+        <Route path="/dashboard/jd-analyzer">
+          <JDAnalyzerPanel />
         </Route>
 
         {/* Affiliate Program tracker */}
