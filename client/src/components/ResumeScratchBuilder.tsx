@@ -28,12 +28,31 @@ import { ParsedResume, Experience, Project, Education, Certification, SkillCateg
 import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
 import CountryLocationFields from './CountryLocationFields';
+import {
+  CertificationFields,
+  EducationFields,
+  ExperienceFields,
+  LanguageFields,
+  ProjectFields,
+  ReferenceFields,
+  SkillCategoryFields,
+  type SectionFieldClassNames,
+} from './resume-sections/fields';
 
 interface ResumeScratchBuilderProps {
   onComplete: (data: any) => void;
   prefilledRole?: string;
   prefilledCountryCode?: string;
 }
+
+/** Wizard-styled overrides so shared section fields match this page's look. */
+const SCRATCH_FIELD_CLASSES: SectionFieldClassNames = {
+  input:
+    'rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1 text-slate-800 dark:text-slate-200',
+  label: 'font-semibold text-slate-700 dark:text-slate-300 text-xs',
+  checkbox:
+    'w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5',
+};
 
 export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefilledCountryCode }: ResumeScratchBuilderProps) {
   const [currentStep, setCurrentStep] = useState<'header' | 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'certifications' | 'achievements' | 'languages' | 'references' | 'custom' | 'review'>('header');
@@ -159,6 +178,15 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
 
   const handleAddReference = () => {
     setReferences([...references, { id: nanoid(), name: '', company: '', title: '', email: '', phone: '', availableOnRequest: false }]);
+  };
+
+  const patchListItem = <T,>(
+    list: T[],
+    idx: number,
+    patch: Partial<T>,
+    setter: (next: T[]) => void
+  ) => {
+    setter(list.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
   };
 
   const handleAddCustomSection = () => {
@@ -479,36 +507,20 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
               <div className="space-y-4 animate-fade-slide-up">
                 {skills.map((skillGroup, idx) => (
                   <div key={idx} className="border border-slate-200 dark:border-white/10 rounded-xl p-4 bg-slate-50/50 dark:bg-white/5 space-y-3 shadow-sm">
-                    <div className="flex justify-between items-center gap-3">
-                      <Input
-                        placeholder="Category (e.g. Frontend)"
-                        value={skillGroup.category}
-                        className="max-w-xs font-bold text-slate-900 dark:text-slate-100 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                        onChange={(e) => {
-                          const newSkills = [...skills];
-                          newSkills[idx].category = e.target.value;
-                          setSkills(newSkills);
-                        }}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSkills(skills.filter((_, i) => i !== idx))}
-                        className="text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg h-8 w-8 hover:bg-red-500/10 border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <Textarea
-                      placeholder="Skills (comma-separated: e.g. React, Vue, HTML, CSS)"
-                      value={skillGroup.skills.join(', ')}
-                      onChange={(e) => {
-                        const newSkills = [...skills];
-                        newSkills[idx].skills = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
-                        setSkills(newSkills);
-                      }}
-                      rows={2}
-                      className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-sm leading-relaxed text-slate-800 dark:text-slate-200"
+                    <SkillCategoryFields
+                      value={skillGroup}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(skills, idx, patch, setSkills)}
+                      action={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSkills(skills.filter((_, i) => i !== idx))}
+                          className="text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg h-8 w-8 hover:bg-red-500/10 border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      }
                     />
                   </div>
                 ))}
@@ -539,90 +551,11 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                         <Trash2 className="w-4 h-4 mr-1.5 inline" /> Delete Position
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Company Name *</Label>
-                        <Input
-                          placeholder="Company"
-                          value={exp.company}
-                          onChange={(e) => {
-                            const newExp = [...experiences];
-                            newExp[idx].company = e.target.value;
-                            setExperiences(newExp);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1 text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Role / Designation *</Label>
-                        <Input
-                          placeholder="e.g. Software Engineer"
-                          value={exp.role}
-                          onChange={(e) => {
-                            const newExp = [...experiences];
-                            newExp[idx].role = e.target.value;
-                            setExperiences(newExp);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1 text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Start Date *</Label>
-                        <Input
-                          placeholder="Jan 2022"
-                          value={exp.startDate}
-                          onChange={(e) => {
-                            const newExp = [...experiences];
-                            newExp[idx].startDate = e.target.value;
-                            setExperiences(newExp);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1 text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">End Date</Label>
-                        <Input
-                          placeholder="Present"
-                          value={exp.endDate}
-                          disabled={exp.current}
-                          onChange={(e) => {
-                            const newExp = [...experiences];
-                            newExp[idx].endDate = e.target.value;
-                            setExperiences(newExp);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1 text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2.5 pt-1">
-                      <input
-                        type="checkbox"
-                        id={`current-${exp.id}`}
-                        checked={exp.current}
-                        onChange={(e) => {
-                          const newExp = [...experiences];
-                          newExp[idx].current = e.target.checked;
-                          if (e.target.checked) newExp[idx].endDate = 'Present';
-                          setExperiences(newExp);
-                        }}
-                        className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                      />
-                      <label htmlFor={`current-${exp.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">Currently work here</label>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Key Responsibilities (one per line)</Label>
-                      <Textarea
-                        placeholder="Designed and developed key SaaS dashboard modules&#10;Integrated third-party APIs using Express"
-                        value={exp.description.join('\n')}
-                        onChange={(e) => {
-                          const newExp = [...experiences];
-                          newExp[idx].description = e.target.value.split('\n').filter(Boolean);
-                          setExperiences(newExp);
-                        }}
-                        rows={3.5}
-                        className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-xs leading-relaxed text-slate-250"
-                      />
-                    </div>
+                    <ExperienceFields
+                      value={exp}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(experiences, idx, patch, setExperiences)}
+                    />
                   </div>
                 ))}
                 <Button
@@ -652,74 +585,11 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                         <Trash2 className="w-4 h-4 mr-1.5 inline" /> Delete Project
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Project Name *</Label>
-                        <Input
-                          placeholder="My Project"
-                          value={proj.name}
-                          onChange={(e) => {
-                            const newProj = [...projects];
-                            newProj[idx].name = e.target.value;
-                            setProjects(newProj);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Date / Duration</Label>
-                        <Input
-                          placeholder="e.g. March 2025"
-                          value={proj.date}
-                          onChange={(e) => {
-                            const newProj = [...projects];
-                            newProj[idx].date = e.target.value;
-                            setProjects(newProj);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Technologies Used (comma-separated)</Label>
-                        <Input
-                          placeholder="React, Tailwind, Node.js"
-                          value={proj.technologies.join(', ')}
-                          onChange={(e) => {
-                            const newProj = [...projects];
-                            newProj[idx].technologies = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                            setProjects(newProj);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Project URL</Label>
-                        <Input
-                          placeholder="https://github.com/..."
-                          value={proj.link}
-                          onChange={(e) => {
-                            const newProj = [...projects];
-                            newProj[idx].link = e.target.value;
-                            setProjects(newProj);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Project Description</Label>
-                      <Textarea
-                        placeholder="Detail what you built, technical challenges, and outcomes..."
-                        value={proj.description}
-                        onChange={(e) => {
-                          const newProj = [...projects];
-                          newProj[idx].description = e.target.value;
-                          setProjects(newProj);
-                        }}
-                        rows={3.5}
-                        className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-xs leading-relaxed"
-                      />
-                    </div>
+                    <ProjectFields
+                      value={proj}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(projects, idx, patch, setProjects)}
+                    />
                   </div>
                 ))}
                 <Button
@@ -749,73 +619,11 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                         <Trash2 className="w-4 h-4 mr-1.5 inline" /> Delete Record
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Institution / College *</Label>
-                        <Input
-                          placeholder="State University"
-                          value={edu.institution}
-                          onChange={(e) => {
-                            const newEdu = [...educations];
-                            newEdu[idx].institution = e.target.value;
-                            setEducations(newEdu);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Degree *</Label>
-                        <Input
-                          placeholder="Bachelor of Science"
-                          value={edu.degree}
-                          onChange={(e) => {
-                            const newEdu = [...educations];
-                            newEdu[idx].degree = e.target.value;
-                            setEducations(newEdu);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Field of Study *</Label>
-                        <Input
-                          placeholder="Computer Science"
-                          value={edu.field}
-                          onChange={(e) => {
-                            const newEdu = [...educations];
-                            newEdu[idx].field = e.target.value;
-                            setEducations(newEdu);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Graduation Date</Label>
-                        <Input
-                          placeholder="e.g. May 2023"
-                          value={edu.graduationDate}
-                          onChange={(e) => {
-                            const newEdu = [...educations];
-                            newEdu[idx].graduationDate = e.target.value;
-                            setEducations(newEdu);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">GPA (optional)</Label>
-                        <Input
-                          placeholder="e.g. 3.8/4.0"
-                          value={edu.gpa}
-                          onChange={(e) => {
-                            const newEdu = [...educations];
-                            newEdu[idx].gpa = e.target.value;
-                            setEducations(newEdu);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                    </div>
+                    <EducationFields
+                      value={edu}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(educations, idx, patch, setEducations)}
+                    />
                   </div>
                 ))}
                 <Button
@@ -845,60 +653,11 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                         <Trash2 className="w-4 h-4 mr-1.5 inline" /> Delete Certification
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Certification Name *</Label>
-                        <Input
-                          placeholder="AWS Solutions Architect"
-                          value={cert.name}
-                          onChange={(e) => {
-                            const newCert = [...certifications];
-                            newCert[idx].name = e.target.value;
-                            setCertifications(newCert);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Issuing Organization *</Label>
-                        <Input
-                          placeholder="Amazon Web Services"
-                          value={cert.issuer}
-                          onChange={(e) => {
-                            const newCert = [...certifications];
-                            newCert[idx].issuer = e.target.value;
-                            setCertifications(newCert);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Issue Date</Label>
-                        <Input
-                          placeholder="e.g. Aug 2024"
-                          value={cert.date}
-                          onChange={(e) => {
-                            const newCert = [...certifications];
-                            newCert[idx].date = e.target.value;
-                            setCertifications(newCert);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Credential URL</Label>
-                        <Input
-                          placeholder="https://..."
-                          value={cert.link}
-                          onChange={(e) => {
-                            const newCert = [...certifications];
-                            newCert[idx].link = e.target.value;
-                            setCertifications(newCert);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                    </div>
+                    <CertificationFields
+                      value={cert}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(certifications, idx, patch, setCertifications)}
+                    />
                   </div>
                 ))}
                 <Button
@@ -970,34 +729,11 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Language *</Label>
-                        <Input
-                          placeholder="e.g. Spanish"
-                          value={lang.language}
-                          onChange={(e) => {
-                            const newLangs = [...languages];
-                            newLangs[idx].language = e.target.value;
-                            setLanguages(newLangs);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Proficiency *</Label>
-                        <Input
-                          placeholder="e.g. Native, Fluent, Conversational"
-                          value={lang.proficiency}
-                          onChange={(e) => {
-                            const newLangs = [...languages];
-                            newLangs[idx].proficiency = e.target.value;
-                            setLanguages(newLangs);
-                          }}
-                          className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                        />
-                      </div>
-                    </div>
+                    <LanguageFields
+                      value={lang}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(languages, idx, patch, setLanguages)}
+                    />
                   </div>
                 ))}
                 <Button
@@ -1027,90 +763,11 @@ export default function ResumeScratchBuilder({ onComplete, prefilledRole, prefil
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    <div className="flex items-center space-x-2.5">
-                      <input
-                        type="checkbox"
-                        id={`available-${ref.id}`}
-                        checked={ref.availableOnRequest}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[idx].availableOnRequest = e.target.checked;
-                          setReferences(newRefs);
-                        }}
-                        className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                      />
-                      <label htmlFor={`available-${ref.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">Available on request</label>
-                    </div>
-                    {!ref.availableOnRequest && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Name *</Label>
-                          <Input
-                            placeholder="e.g. Jane Doe"
-                            value={ref.name}
-                            onChange={(e) => {
-                              const newRefs = [...references];
-                              newRefs[idx].name = e.target.value;
-                              setReferences(newRefs);
-                            }}
-                            className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Company</Label>
-                          <Input
-                            placeholder="e.g. Acme Corp"
-                            value={ref.company}
-                            onChange={(e) => {
-                              const newRefs = [...references];
-                              newRefs[idx].company = e.target.value;
-                              setReferences(newRefs);
-                            }}
-                            className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Title / Position</Label>
-                          <Input
-                            placeholder="e.g. Engineering Manager"
-                            value={ref.title}
-                            onChange={(e) => {
-                              const newRefs = [...references];
-                              newRefs[idx].title = e.target.value;
-                              setReferences(newRefs);
-                            }}
-                            className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Email</Label>
-                          <Input
-                            type="email"
-                            placeholder="jane.doe@example.com"
-                            value={ref.email}
-                            onChange={(e) => {
-                              const newRefs = [...references];
-                              newRefs[idx].email = e.target.value;
-                              setReferences(newRefs);
-                            }}
-                            className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="font-semibold text-slate-700 dark:text-slate-300 text-xs">Phone</Label>
-                          <Input
-                            placeholder="e.g. +1 (555) 019-2834"
-                            value={ref.phone}
-                            onChange={(e) => {
-                              const newRefs = [...references];
-                              newRefs[idx].phone = e.target.value;
-                              setReferences(newRefs);
-                            }}
-                            className="rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 mt-1"
-                          />
-                        </div>
-                      </div>
-                    )}
+                    <ReferenceFields
+                      value={ref}
+                      classNames={SCRATCH_FIELD_CLASSES}
+                      onChange={(patch) => patchListItem(references, idx, patch, setReferences)}
+                    />
                   </div>
                 ))}
                 <Button

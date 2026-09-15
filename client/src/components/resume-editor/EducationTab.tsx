@@ -1,7 +1,5 @@
 import { TabsContent } from "@/shared/ui/tabs";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import {
   GraduationCap,
   Sparkles,
@@ -12,9 +10,9 @@ import { toast } from "sonner";
 import {
   WizardTabIntro,
   EditableEntryCard,
-  EDITOR_INPUT_CLASS,
   EDITOR_ADD_BUTTON_CLASS,
 } from "./shared";
+import { EducationFields } from "@/components/resume-sections/fields";
 
 export interface EducationTabProps {
   getSectionContent: (type: string) => any;
@@ -107,93 +105,18 @@ export default function EducationTab({
                 updateSection("education", { educations: list });
               }}
             >
-              <div className="grid resume-editor-grid-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Institution</Label>
-                  <Input
-                    value={edu.institution}
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("education")
-                          .educations,
-                      ];
-                      list[idx].institution = e.target.value;
-                      updateSection("education", {
-                        educations: list,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Degree</Label>
-                  <Input
-                    value={edu.degree}
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("education")
-                          .educations,
-                      ];
-                      list[idx].degree = e.target.value;
-                      updateSection("education", {
-                        educations: list,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Field of Study</Label>
-                  <Input
-                    value={edu.field}
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("education")
-                          .educations,
-                      ];
-                      list[idx].field = e.target.value;
-                      updateSection("education", {
-                        educations: list,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Graduation Date</Label>
-                  <Input
-                    value={edu.graduationDate}
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("education")
-                          .educations,
-                      ];
-                      list[idx].graduationDate = e.target.value;
-                      updateSection("education", {
-                        educations: list,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">GPA</Label>
-                  <Input
-                    value={edu.gpa}
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("education")
-                          .educations,
-                      ];
-                      list[idx].gpa = e.target.value;
-                      updateSection("education", {
-                        educations: list,
-                      });
-                    }}
-                  />
-                </div>
-              </div>
+              <EducationFields
+                value={edu}
+                onChange={patch => {
+                  const list = [
+                    ...getSectionContent("education").educations,
+                  ];
+                  list[idx] = { ...list[idx], ...patch };
+                  updateSection("education", {
+                    educations: list,
+                  });
+                }}
+              />
             </EditableEntryCard>
           )
         )}

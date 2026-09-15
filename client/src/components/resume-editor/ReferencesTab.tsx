@@ -1,19 +1,16 @@
 import { TabsContent } from "@/shared/ui/tabs";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import {
   Users,
   Plus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { nanoid } from "nanoid";
 import {
   WizardTabIntro,
   EditableEntryCard,
-  EDITOR_INPUT_CLASS,
   EDITOR_ADD_BUTTON_CLASS,
 } from "./shared";
+import { ReferenceFields } from "@/components/resume-sections/fields";
 
 export interface ReferencesTabProps {
   getSectionContent: (type: string) => any;
@@ -86,143 +83,20 @@ export default function ReferencesTab({
                 });
               }}
             >
-              <div className="flex items-center space-x-2 pb-1">
-                <input
-                  type="checkbox"
-                  id={`ref-available-${ref.id}`}
-                  checked={ref.availableOnRequest}
-                  onChange={e => {
-                    const list = [
-                      ...getSectionContent("references").references,
-                    ];
-                    list[idx].availableOnRequest = e.target.checked;
-                    updateSection("references", {
-                      references: list,
-                    });
-                  }}
-                  className="w-4 h-4 rounded text-primary focus:ring-ring border-border bg-muted"
-                />
-                <Label
-                  htmlFor={`ref-available-${ref.id}`}
-                  className="text-xs font-semibold text-muted-foreground cursor-pointer"
-                >
-                  Available upon request
-                </Label>
-              </div>
-
-              {!ref.availableOnRequest && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Name *</Label>
-                    <Input
-                      value={ref.name}
-                      placeholder="e.g. Jane Doe"
-                      className={EDITOR_INPUT_CLASS}
-                      onChange={e => {
-                        const list = [
-                          ...getSectionContent("references")
-                            .references,
-                        ];
-                        list[idx].name = e.target.value;
-                        updateSection("references", {
-                          references: list,
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Company</Label>
-                    <Input
-                      value={ref.company}
-                      placeholder="e.g. Google"
-                      className={EDITOR_INPUT_CLASS}
-                      onChange={e => {
-                        const list = [
-                          ...getSectionContent("references")
-                            .references,
-                        ];
-                        list[idx].company = e.target.value;
-                        updateSection("references", {
-                          references: list,
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Title</Label>
-                    <Input
-                      value={ref.title}
-                      placeholder="e.g. Director of Engineering"
-                      className={EDITOR_INPUT_CLASS}
-                      onChange={e => {
-                        const list = [
-                          ...getSectionContent("references")
-                            .references,
-                        ];
-                        list[idx].title = e.target.value;
-                        updateSection("references", {
-                          references: list,
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Email</Label>
-                    <Input
-                      type="email"
-                      value={ref.email}
-                      placeholder="jane.doe@example.com"
-                      className={cn(
-                        EDITOR_INPUT_CLASS,
-                        !isValidEmail(ref.email) &&
-                          "border-destructive focus-visible:ring-destructive"
-                      )}
-                      onChange={e => {
-                        const list = [
-                          ...getSectionContent("references")
-                            .references,
-                        ];
-                        list[idx].email = e.target.value;
-                        updateSection("references", {
-                          references: list,
-                        });
-                      }}
-                    />
-                    {!isValidEmail(ref.email) && (
-                      <span className="text-[9px] text-destructive font-semibold block">
-                        Invalid email format.
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-xs">Phone</Label>
-                    <Input
-                      value={ref.phone}
-                      placeholder="e.g. +1 (555) 019-2834"
-                      className={cn(
-                        EDITOR_INPUT_CLASS,
-                        !isValidPhone(ref.phone) &&
-                          "border-destructive focus-visible:ring-destructive"
-                      )}
-                      onChange={e => {
-                        const list = [
-                          ...getSectionContent("references")
-                            .references,
-                        ];
-                        list[idx].phone = e.target.value;
-                        updateSection("references", {
-                          references: list,
-                        });
-                      }}
-                    />
-                    {!isValidPhone(ref.phone) && (
-                      <span className="text-[9px] text-destructive font-semibold block">
-                        Invalid phone number.
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+              <ReferenceFields
+                value={ref}
+                onChange={patch => {
+                  const list = [
+                    ...getSectionContent("references").references,
+                  ];
+                  list[idx] = { ...list[idx], ...patch };
+                  updateSection("references", {
+                    references: list,
+                  });
+                }}
+                isValidEmail={isValidEmail}
+                isValidPhone={isValidPhone}
+              />
             </EditableEntryCard>
           )
         )}

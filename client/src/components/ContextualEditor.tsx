@@ -4,6 +4,7 @@ import { Input } from "@/shared/ui/input";
 import { FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { Plus, Sparkles, Trash2, X, ExternalLink, Lightbulb } from "lucide-react";
 import type { Resume } from "@shared/types";
+import { loadTargetDraft } from "@/lib/targetDraft";
 import { markBulletEdits } from "@/lib/userEditedMerge";
 import { cn } from "@/lib/utils";
 
@@ -23,20 +24,15 @@ const SECTION_LABELS: Record<string, string> = {
 
 /** Regional AI tip, sourced from the targeting draft (same source as JdKeywordMatch). */
 function regionTip(): string | null {
-  try {
-    const raw = localStorage.getItem("hexacv_target_panel_draft");
-    if (!raw) return null;
-    const d = JSON.parse(raw) as { market?: string };
-    if (d.market === "Gulf") {
-      return "In the Gulf, mention visa status only if you actually supplied it.";
-    }
-    if (d.market === "India") {
-      return "For India, keep the structure clear and ATS keywords grounded in your experience.";
-    }
-    return null;
-  } catch {
-    return null;
+  const d = loadTargetDraft();
+  if (!d) return null;
+  if (d.market === "Gulf") {
+    return "In the Gulf, mention visa status only if you actually supplied it.";
   }
+  if (d.market === "India") {
+    return "For India, keep the structure clear and ATS keywords grounded in your experience.";
+  }
+  return null;
 }
 
 type ContextualEditorProps = {

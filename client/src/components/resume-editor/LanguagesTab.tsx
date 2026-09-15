@@ -1,7 +1,5 @@
 import { TabsContent } from "@/shared/ui/tabs";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import {
   Globe,
   Plus,
@@ -9,9 +7,9 @@ import {
 import {
   WizardTabIntro,
   EditableEntryCard,
-  EDITOR_INPUT_CLASS,
   EDITOR_ADD_BUTTON_CLASS,
 } from "./shared";
+import { LanguageFields } from "@/components/resume-sections/fields";
 
 export interface LanguagesTabProps {
   getSectionContent: (type: string) => any;
@@ -72,42 +70,18 @@ export default function LanguagesTab({
                 });
               }}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Language *</Label>
-                  <Input
-                    value={lang.language}
-                    placeholder="e.g. French"
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("languages").languages,
-                      ];
-                      list[idx].language = e.target.value;
-                      updateSection("languages", {
-                        languages: list,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Proficiency</Label>
-                  <Input
-                    value={lang.proficiency}
-                    placeholder="e.g. Professional Working, Native"
-                    className={EDITOR_INPUT_CLASS}
-                    onChange={e => {
-                      const list = [
-                        ...getSectionContent("languages").languages,
-                      ];
-                      list[idx].proficiency = e.target.value;
-                      updateSection("languages", {
-                        languages: list,
-                      });
-                    }}
-                  />
-                </div>
-              </div>
+              <LanguageFields
+                value={lang}
+                onChange={patch => {
+                  const list = [
+                    ...getSectionContent("languages").languages,
+                  ];
+                  list[idx] = { ...list[idx], ...patch };
+                  updateSection("languages", {
+                    languages: list,
+                  });
+                }}
+              />
             </EditableEntryCard>
           )
         )}

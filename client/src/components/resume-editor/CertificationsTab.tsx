@@ -1,19 +1,16 @@
 import { TabsContent } from "@/shared/ui/tabs";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import {
   Award,
   Plus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { nanoid } from "nanoid";
 import {
   WizardTabIntro,
   EditableEntryCard,
-  EDITOR_INPUT_CLASS,
   EDITOR_ADD_BUTTON_CLASS,
 } from "./shared";
+import { CertificationFields } from "@/components/resume-sections/fields";
 
 export interface CertificationsTabProps {
   getSectionContent: (type: string) => any;
@@ -87,87 +84,20 @@ export default function CertificationsTab({
               });
             }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">
-                  Certification Name
-                </Label>
-                <Input
-                  value={cert.name}
-                  className={EDITOR_INPUT_CLASS}
-                  onChange={e => {
-                    const list = [
-                      ...getSectionContent("certifications")
-                        .certifications,
-                    ];
-                    list[idx].name = e.target.value;
-                    updateSection("certifications", {
-                      certifications: list,
-                    });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Issuer</Label>
-                <Input
-                  value={cert.issuer}
-                  className={EDITOR_INPUT_CLASS}
-                  onChange={e => {
-                    const list = [
-                      ...getSectionContent("certifications")
-                        .certifications,
-                    ];
-                    list[idx].issuer = e.target.value;
-                    updateSection("certifications", {
-                      certifications: list,
-                    });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Issue Date</Label>
-                <Input
-                  value={cert.date}
-                  className={EDITOR_INPUT_CLASS}
-                  onChange={e => {
-                    const list = [
-                      ...getSectionContent("certifications")
-                        .certifications,
-                    ];
-                    list[idx].date = e.target.value;
-                    updateSection("certifications", {
-                      certifications: list,
-                    });
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Credential Link</Label>
-                <Input
-                  value={cert.link}
-                  className={cn(
-                    EDITOR_INPUT_CLASS,
-                    !isValidUrl(cert.link) &&
-                      "border-destructive focus-visible:ring-destructive"
-                  )}
-                  onChange={e => {
-                    const list = [
-                      ...getSectionContent("certifications")
-                        .certifications,
-                    ];
-                    list[idx].link = e.target.value;
-                    updateSection("certifications", {
-                      certifications: list,
-                    });
-                  }}
-                />
-                {!isValidUrl(cert.link) && (
-                  <span className="text-[10px] text-destructive font-medium block">
-                    Please enter a valid URL.
-                  </span>
-                )}
-              </div>
-            </div>
+            <CertificationFields
+              value={cert}
+              onChange={patch => {
+                const list = [
+                  ...getSectionContent("certifications")
+                    .certifications,
+                ];
+                list[idx] = { ...list[idx], ...patch };
+                updateSection("certifications", {
+                  certifications: list,
+                });
+              }}
+              isValidUrl={isValidUrl}
+            />
           </EditableEntryCard>
         ))}
       </div>

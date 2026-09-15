@@ -1,15 +1,14 @@
 import { TabsContent } from "@/shared/ui/tabs";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
 import {
   Code,
   Plus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   WizardTabIntro,
-  EDITOR_INPUT_CLASS,
+  EDITOR_ADD_BUTTON_CLASS,
 } from "./shared";
+import { SkillCategoryFields } from "@/components/resume-sections/fields";
 
 export interface SkillsTabProps {
   getSectionContent: (type: string) => any;
@@ -30,7 +29,7 @@ export default function SkillsTab({
           <Button
             variant="outline"
             size="sm"
-            className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-border hover:bg-muted hover:text-foreground rounded-lg"
+            className={EDITOR_ADD_BUTTON_CLASS}
             onClick={() => {
               const cur = getSectionContent("skills").skills || [];
               updateSection("skills", {
@@ -51,47 +50,30 @@ export default function SkillsTab({
               key={idx}
               className="border border-border p-4 rounded-xl space-y-3 bg-muted hover:border-muted-foreground/40 transition-colors"
             >
-              <div className="flex justify-between items-center">
-                <Input
-                  placeholder="e.g. Languages"
-                  value={group.category}
-                  className={cn(EDITOR_INPUT_CLASS, "max-w-xs font-semibold")}
-                  onChange={e => {
-                    const list = [
-                      ...getSectionContent("skills").skills,
-                    ];
-                    list[idx].category = e.target.value;
-                    updateSection("skills", { skills: list });
-                  }}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive min-h-11"
-                  onClick={() => {
-                    const list = (
-                      getSectionContent("skills").skills || []
-                    ).filter((_: any, i: number) => i !== idx);
-                    updateSection("skills", { skills: list });
-                  }}
-                >
-                  Remove
-                </Button>
-              </div>
-              <Input
-                placeholder="Skills comma separated: React, Vue"
-                className={EDITOR_INPUT_CLASS}
-                value={group.skills.join(", ")}
-                onChange={e => {
+              <SkillCategoryFields
+                value={group}
+                onChange={patch => {
                   const list = [
                     ...getSectionContent("skills").skills,
                   ];
-                  list[idx].skills = e.target.value
-                    .split(",")
-                    .map((s: string) => s.trim())
-                    .filter(Boolean);
+                  list[idx] = { ...list[idx], ...patch };
                   updateSection("skills", { skills: list });
                 }}
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive min-h-11 shrink-0"
+                    onClick={() => {
+                      const list = (
+                        getSectionContent("skills").skills || []
+                      ).filter((_: any, i: number) => i !== idx);
+                      updateSection("skills", { skills: list });
+                    }}
+                  >
+                    Remove
+                  </Button>
+                }
               />
             </div>
           )

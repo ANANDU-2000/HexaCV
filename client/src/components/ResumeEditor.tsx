@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { Resume } from "@shared/types";
 import { PRESET_JOBS, matchPresetJobByTitle } from "@/lib/jobDescriptions";
 import { ensureStandardResumeSections } from "@/lib/resumeSections";
+import { loadTargetDraft } from "@/lib/targetDraft";
 import {
   mergeBulletsAi,
   mergeSummaryAi,
@@ -1070,11 +1071,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   if (!meta) return null;
                   const parsed = JSON.parse(meta) as { targetKeywords?: string[] };
                   // Prefer live JD from target draft
-                  const draft = localStorage.getItem("hexacv_target_panel_draft");
-                  if (draft) {
-                    const d = JSON.parse(draft) as { jobDescription?: string };
-                    if (d.jobDescription) return d.jobDescription;
-                  }
+                  const draft = loadTargetDraft();
+                  if (draft?.jobDescription) return draft.jobDescription;
                   return (parsed.targetKeywords || []).join(" ");
                 } catch {
                   return null;
@@ -1084,20 +1082,14 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             resumeText={getResumeTextContent()}
             regionTips={
               (() => {
-                try {
-                  const draft = localStorage.getItem("hexacv_target_panel_draft");
-                  if (!draft) return null;
-                  const d = JSON.parse(draft) as { market?: string };
-                  if (d.market === "Gulf") {
-                    return "Gulf tip: include visa/nationality only if you supplied it.";
-                  }
-                  if (d.market === "India") {
-                    return "India tip: keep structure clear and ATS keywords grounded in your experience.";
-                  }
-                  return null;
-                } catch {
-                  return null;
+                const draft = loadTargetDraft();
+                if (draft?.market === "Gulf") {
+                  return "Gulf tip: include visa/nationality only if you supplied it.";
                 }
+                if (draft?.market === "India") {
+                  return "India tip: keep structure clear and ATS keywords grounded in your experience.";
+                }
+                return null;
               })()
             }
           />

@@ -41,6 +41,9 @@ function yieldToMain(): Promise<void> {
   });
 }
 
+/** Yield to the event loop so heavy work (encode/parse) can paint first. */
+export { yieldToMain };
+
 /**
  * Async conversion that yields between chunks for large files so the UI
  * (e.g. ParseLoader) can paint before the network request starts.

@@ -11,13 +11,15 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { loadEntryDraft } from "@/lib/entryDraft";
+import {
+  loadTargetDraft,
+  saveTargetDraft,
+} from "@/lib/targetDraft";
 import { FloatingLabelInput, FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { toast } from "sonner";
 import PipelineLoader from "@/components/PipelineLoader";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
-
-const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
 
 const STATIC_ROLES = [
   "Site Engineer",
@@ -82,38 +84,22 @@ export default function Targeting() {
   const utils = trpc.useUtils();
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(TARGET_DRAFT_KEY);
-      if (!raw) return;
-      const d = JSON.parse(raw) as {
-        role?: string;
-        market?: string;
-        jobDescription?: string;
-      };
-      if (d.role) setRole(d.role);
-      if (d.jobDescription) {
-        setJd(d.jobDescription);
-        setJdOpen(true);
-      }
-      if (d.market === "Gulf" || d.market === "India") setRegion(d.market);
-    } catch {
-      /* ignore */
+    const d = loadTargetDraft();
+    if (!d) return;
+    if (d.role) setRole(d.role);
+    if (d.jobDescription) {
+      setJd(d.jobDescription);
+      setJdOpen(true);
     }
+    if (d.market === "Gulf" || d.market === "India") setRegion(d.market);
   }, []);
 
   const flushTargetDraft = () => {
-    try {
-      localStorage.setItem(
-        TARGET_DRAFT_KEY,
-        JSON.stringify({
-          role,
-          market: region,
-          jobDescription: jd,
-        })
-      );
-    } catch {
-      /* ignore */
-    }
+    saveTargetDraft({
+      role,
+      market: region,
+      jobDescription: jd,
+    });
   };
 
   const continueAsGuest = () => {

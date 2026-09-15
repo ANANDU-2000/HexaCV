@@ -12,21 +12,18 @@ import GroundingProof from "@/components/landing/GroundingProof";
 import OutputPreviewRow from "@/components/landing/OutputPreviewRow";
 import PricingTeaser from "@/components/landing/PricingTeaser";
 import LandingFaq from "@/components/landing/LandingFaq";
-import ParseLoader, { type ParsePhase } from "@/components/ParseLoader";
+import ParseLoader from "@/components/ParseLoader";
 import { FloatingLabelTextarea } from "@/shared/ui/floating-field";
-import { trpc } from "@/lib/trpc";
 import {
   createDraftId,
   saveEntryDraft,
   summarizeParsed,
   type EntryDraft,
 } from "@/lib/entryDraft";
+import { prefillTargetRoleFromParsed } from "@/lib/targetDraft";
+import { useResumeUpload } from "@/_core/hooks/useResumeUpload";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
-import { arrayBufferToBase64Async } from "@/lib/base64";
-
-/** Targeting prefill key — the detected role is written here so /builder/target loads it. */
-const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
 
 const HERO_TRUST = [
   { icon: CheckCircle2, text: "Grounded — nothing invented" },
@@ -40,14 +37,17 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"idle" | "upload" | "scratch">("idle");
   const [pasteText, setPasteText] = useState("");
-  const [parseError, setParseError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EntryDraft | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [parsing, setParsing] = useState(false);
-  const [parsePhase, setParsePhase] = useState<ParsePhase>("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseMutation = trpc.resume.parse.useMutation();
+  const {
+    parseFile,
+    parsing,
+    phase: parsePhase,
+    error: parseError,
+    setError: setParseError,
+  } = useResumeUpload();
 
   const persistDraft = useCallback((next: EntryDraft) => {
     saveEntryDraft(next);
@@ -55,86 +55,24 @@ export default function Landing() {
   }, []);
 
   const handleFile = async (file: File) => {
-    setParseError(null);
-    const lower = file.name.toLowerCase();
-    if (!lower.endsWith(".pdf") && !lower.endsWith(".docx") && !lower.endsWith(".doc")) {
-      setParseError("Please upload a PDF or DOCX file.");
-      return;
-    }
-    // Extraction process window while the file is parsed.
-    setParsePhase("reading");
-    setParsing(true);
-    // Let ParseLoader paint before heavy encode work.
-    await new Promise<void>((resolve) => {
-      if (typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(() => resolve());
-      } else {
-        setTimeout(resolve, 0);
-      }
-    });
-    const startedAt = Date.now();
-    try {
-      const buffer = await file.arrayBuffer();
-      setParsePhase("encoding");
-      // TODO(upload): resume.parse still takes base64 over tRPC — prefer multipart /
-      // binary body to skip the ~33% size overhead (see client/src/lib/base64.ts).
-      const base64 = await arrayBufferToBase64Async(buffer);
-      setParsePhase("uploading");
-      const parsePromise = parseMutation.mutateAsync({
-        filename: file.name,
-        base64,
-      });
-      setParsePhase("extracting");
-      const parsed = await parsePromise;
-      setParsePhase("done");
-      // Soft floor so the loader is readable; keep short now that encode is fast.
-      const MIN_PARSE_MS = 800;
-      const elapsed = Date.now() - startedAt;
-      if (elapsed < MIN_PARSE_MS) {
-        await new Promise((r) => setTimeout(r, MIN_PARSE_MS - elapsed));
-      }
-      const summary = summarizeParsed(parsed);
-      const next: EntryDraft = {
-        id: createDraftId(),
-        source: "upload",
-        filename: file.name,
-        parsed,
-        name: summary.name,
-        sectionsFound: summary.sectionsFound,
-        createdAt: new Date().toISOString(),
-      };
-      persistDraft(next);
-      setParsing(false);
-      setParsePhase("idle");
-      // Auto-detect the target role from the parsed document so the rewrite targets it.
-      try {
-        const detectedRole = (
-          (parsed as any)?.header?.targetRole ||
-          (parsed as any)?.header?.jobTitle ||
-          ""
-        )
-          .toString()
-          .trim();
-        if (detectedRole) {
-          const raw = localStorage.getItem(TARGET_DRAFT_KEY);
-          const existing = raw ? JSON.parse(raw) : {};
-          localStorage.setItem(
-            TARGET_DRAFT_KEY,
-            JSON.stringify({ ...existing, role: detectedRole })
-          );
-        }
-      } catch {
-        /* ignore */
-      }
-      // Show the target-role portion next, with the detected role prefilled.
-      setLocation("/builder/target");
-    } catch {
-      setParsing(false);
-      setParsePhase("idle");
-      setParseError(
-        "We couldn't read text from this PDF — try 'Start fresh' and paste it instead."
-      );
-    }
+    const parsed = await parseFile(file);
+    if (!parsed) return;
+
+    const summary = summarizeParsed(parsed);
+    const next: EntryDraft = {
+      id: createDraftId(),
+      source: "upload",
+      filename: file.name,
+      parsed,
+      name: summary.name,
+      sectionsFound: summary.sectionsFound,
+      createdAt: new Date().toISOString(),
+    };
+    persistDraft(next);
+    // Auto-detect the target role from the parsed document so the rewrite targets it.
+    prefillTargetRoleFromParsed(parsed);
+    // Show the target-role portion next, with the detected role prefilled.
+    setLocation("/builder/target");
   };
 
   const handlePasteContinue = () => {
