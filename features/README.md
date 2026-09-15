@@ -20,6 +20,7 @@ window, contextual editor, floating labels, 44px tap targets).
 | 4 | AI resume pipeline | [ai-pipeline.md](ai-pipeline.md) | Implemented |
 | 5 | Grounding & validation | [grounding-validation.md](grounding-validation.md) | Implemented |
 | — | **Parsing & rewrite quality** | [parsing-rewrite-quality.md](parsing-rewrite-quality.md) | Implemented + **NEW** auto role |
+| — | **API keys (env)** | [api-keys.md](api-keys.md) | Implemented |
 | — | **Runtime error reporting** | [runtime-error-reporting.md](runtime-error-reporting.md) | **NEW** |
 | 6 | Resume editor | [resume-editor.md](resume-editor.md) | Implemented + **NEW** 44px targets |
 | 7 | Contextual editor | [contextual-editor.md](contextual-editor.md) | **NEW** |

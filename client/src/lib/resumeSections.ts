@@ -1,5 +1,34 @@
-import { Resume, ResumeSection } from "@shared/types";
+import { Resume, ResumeSection, ParsedResume } from "@shared/types";
 import { nanoid } from "nanoid";
+import { matchPresetJobByTitle } from "./jobDescriptions";
+import { getDefaultTemplate } from "./templates";
+
+/** Market display names used by the target panel / Targeting page. */
+export type ResumeMarket = "Global" | "India" | "Gulf" | "US";
+
+/** Target profile captured by the builder's TargetPanel (canonical shape). */
+export type ResumeTargetProfile = {
+  targetRole: string;
+  experience: string;
+  market: string;
+  jobDescription: string;
+};
+
+export function marketToCountryCode(market: string): string {
+  if (market === "India") return "IN";
+  if (market === "Gulf") return "AE";
+  if (market === "US") return "US";
+  if (market === "Global") return "GB";
+  return "";
+}
+
+export function countryCodeToMarket(code: string): ResumeMarket {
+  const c = code.trim().toUpperCase();
+  if (c === "IN") return "India";
+  if (["AE", "SA", "QA", "KW", "OM", "BH"].includes(c)) return "Gulf";
+  if (c === "US") return "US";
+  return "Global";
+}
 
 /** Canonical 10-section resume structure (matches parser output order) */
 export const STANDARD_SECTION_ORDER: {
@@ -144,4 +173,75 @@ export function ensureStandardResumeSections(resume: Resume): Resume {
     ...resume,
     sections: [...standardSections, ...extraSections],
   };
+}
+
+/**
+ * Build a full 10-section Resume from parsed resume JSON (upload parse, AI
+ * generation, LinkedIn import, scratch builder payload). The single home for
+ * ParsedResume → Resume conversion — do not re-implement this inline.
+ */
+export function buildResumeFromParsed(
+  parsed: ParsedResume,
+  opts: {
+    targetProfile?: ResumeTargetProfile | null;
+    isAuthenticated?: boolean;
+  } = {}
+): Resume {
+  const { targetProfile = null, isAuthenticated = false } = opts;
+
+  const targetCountryCode = targetProfile
+    ? marketToCountryCode(targetProfile.market)
+    : parsed.header?.targetCountryCode || "";
+
+  const sections: ResumeSection[] = [
+    {
+      id: nanoid(),
+      type: "header",
+      order: 1,
+      visible: true,
+      content: {
+        header: {
+          name: parsed.header?.name || "",
+          email: parsed.header?.email || "",
+          phone: parsed.header?.phone || "",
+          location: parsed.header?.location || "",
+          links: parsed.header?.links || [],
+          jobTitle: targetProfile?.targetRole || parsed.header?.jobTitle || "",
+          targetRole:
+            targetProfile?.targetRole ||
+            parsed.header?.targetRole ||
+            parsed.header?.jobTitle ||
+            "",
+          countryCode: parsed.header?.countryCode || "",
+          locationFields: parsed.header?.locationFields || {},
+          targetCountryCode,
+        },
+      },
+    },
+    { id: nanoid(), type: "summary", order: 2, visible: true, content: { summary: parsed.summary || "" } },
+    { id: nanoid(), type: "skills", order: 3, visible: true, content: { skills: parsed.skills || [] } },
+    { id: nanoid(), type: "experience", order: 4, visible: true, content: { experiences: parsed.experiences || [] } },
+    { id: nanoid(), type: "projects", order: 5, visible: true, content: { projects: parsed.projects || [] } },
+    { id: nanoid(), type: "education", order: 6, visible: true, content: { educations: parsed.educations || [] } },
+    { id: nanoid(), type: "certifications", order: 7, visible: true, content: { certifications: parsed.certifications || [] } },
+    { id: nanoid(), type: "achievements", order: 8, visible: true, content: { achievements: parsed.achievements || [] } },
+    { id: nanoid(), type: "languages", order: 9, visible: true, content: { languages: parsed.languages || [] } },
+    { id: nanoid(), type: "references", order: 10, visible: true, content: { references: parsed.references || [] } },
+  ];
+
+  const matchedJobId = matchPresetJobByTitle(
+    targetProfile?.targetRole || parsed.header?.jobTitle,
+    targetProfile?.targetRole || parsed.header?.targetRole || parsed.header?.jobTitle
+  );
+
+  return ensureStandardResumeSections({
+    id: nanoid(),
+    userId: isAuthenticated ? "user" : "guest",
+    title: parsed.header?.name ? `${parsed.header.name}'s Resume` : "Untitled Resume",
+    templateId: getDefaultTemplate().id,
+    jobDescriptionId: matchedJobId || undefined,
+    sections,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 }

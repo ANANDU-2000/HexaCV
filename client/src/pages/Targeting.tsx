@@ -11,13 +11,15 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { loadEntryDraft } from "@/lib/entryDraft";
+import {
+  loadTargetDraft,
+  saveTargetDraft,
+} from "@/lib/targetDraft";
 import { FloatingLabelInput, FloatingLabelTextarea } from "@/shared/ui/floating-field";
 import { toast } from "sonner";
 import PipelineLoader from "@/components/PipelineLoader";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
-
-const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
 
 const STATIC_ROLES = [
   "Site Engineer",
@@ -82,41 +84,80 @@ export default function Targeting() {
   const utils = trpc.useUtils();
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(TARGET_DRAFT_KEY);
-      if (!raw) return;
-      const d = JSON.parse(raw) as {
-        role?: string;
-        market?: string;
-        jobDescription?: string;
-      };
-      if (d.role) setRole(d.role);
-      if (d.jobDescription) {
-        setJd(d.jobDescription);
-        setJdOpen(true);
-      }
-      if (d.market === "Gulf" || d.market === "India") setRegion(d.market);
-    } catch {
-      /* ignore */
+    const d = loadTargetDraft();
+    if (!d) return;
+    if (d.role) setRole(d.role);
+    if (d.jobDescription) {
+      setJd(d.jobDescription);
+      setJdOpen(true);
     }
+    if (d.market === "Gulf" || d.market === "India") setRegion(d.market);
   }, []);
+
+  const flushTargetDraft = () => {
+    saveTargetDraft({
+      role,
+      market: region,
+      jobDescription: jd,
+    });
+  };
+
+  const continueAsGuest = () => {
+    if (!role.trim()) {
+      toast.error("Enter a target role");
+      return;
+    }
+    flushTargetDraft();
+
+    const draft = loadEntryDraft();
+    const parsed = draft?.parsed as Record<string, unknown> | undefined;
+
+    // Next stage after targeting is the editor — hand off like the AI pipeline does,
+    // using the guest's on-device entry draft (no cloud AI / sign-in required yet).
+    if (parsed && typeof parsed === "object") {
+      const header =
+        parsed.header && typeof parsed.header === "object"
+          ? { ...(parsed.header as Record<string, unknown>) }
+          : {};
+      const result = {
+        ...parsed,
+        header: {
+          ...header,
+          jobTitle: role.trim(),
+          targetRole: role.trim(),
+        },
+      };
+      try {
+        sessionStorage.setItem(
+          "hexacv_pipeline_result",
+          JSON.stringify({ result, role, region, jd, buildId: null })
+        );
+      } catch {
+        toast.error("Could not open your draft. Try again.");
+        return;
+      }
+      setLocation(
+        `/builder/ai?fromPipeline=1&role=${encodeURIComponent(role.trim())}`
+      );
+      return;
+    }
+
+    if (draft?.rawText?.trim()) {
+      // Pasted text without structured parse — continue in scratch with target prefilled.
+      setLocation("/builder/scratch");
+      return;
+    }
+
+    toast.message("Upload or paste your experience first, then continue.");
+    setLocation("/");
+  };
 
   useEffect(() => {
     const t = setTimeout(() => {
-      try {
-        localStorage.setItem(
-          TARGET_DRAFT_KEY,
-          JSON.stringify({
-            role,
-            market: region,
-            jobDescription: jd,
-          })
-        );
-      } catch {
-        /* ignore */
-      }
+      flushTargetDraft();
     }, 300);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush reads latest role/region/jd
   }, [role, region, jd]);
 
   const suggestions = useMemo(() => {
@@ -265,6 +306,8 @@ export default function Targeting() {
     }
     // "Sign in only when you build" — guests can fill the form but must sign in to build.
     if (!isAuthenticated) {
+      // Flush before navigate so a pending 300ms debounce does not drop role/JD.
+      flushTargetDraft();
       setLocation("/login?redirect=/builder/target&convert=true");
       return;
     }
@@ -302,7 +345,7 @@ export default function Targeting() {
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
       <SiteHeader />
-      <div className="mx-auto w-full max-w-[640px] flex-1 px-4 pb-28 pt-10">
+      <div className="mx-auto w-full max-w-[640px] flex-1 px-4 pb-40 pt-10 sm:pb-28">
         <h1 className="font-display text-3xl font-semibold text-foreground">
           Who are you applying to?
         </h1>
@@ -402,7 +445,7 @@ export default function Targeting() {
         </div>
 
         {/* Desktop CTA */}
-        <div className="mt-10 hidden sm:block">
+        <div className="mt-10 hidden space-y-3 sm:block">
           <Button
             className="min-h-12 w-full rounded-[18px] bg-accent-warm text-base font-semibold text-white hover:bg-accent-warm/90"
             disabled={!role.trim() || paying || generate.isPending}
@@ -410,11 +453,22 @@ export default function Targeting() {
           >
             {paying ? "Opening payment…" : ctaLabel}
           </Button>
+          {!isAuthenticated && (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-12 w-full rounded-[18px] border-border bg-card font-semibold text-foreground"
+              disabled={!role.trim() || paying || generate.isPending}
+              onClick={continueAsGuest}
+            >
+              Continue as guest
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 p-4 backdrop-blur sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 space-y-2 border-t border-border bg-background/95 p-4 backdrop-blur sm:hidden">
         <Button
           className="min-h-12 w-full rounded-[18px] bg-accent-warm text-base font-semibold text-white hover:bg-accent-warm/90"
           disabled={!role.trim() || paying || generate.isPending}
@@ -422,6 +476,17 @@ export default function Targeting() {
         >
           {paying ? "Opening payment…" : ctaLabel}
         </Button>
+        {!isAuthenticated && (
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-12 w-full rounded-[18px] border-border bg-card font-semibold text-foreground"
+            disabled={!role.trim() || paying || generate.isPending}
+            onClick={continueAsGuest}
+          >
+            Continue as guest
+          </Button>
+        )}
       </div>
 
       {/* Confirm & Pay screen (Flow A step 7) */}

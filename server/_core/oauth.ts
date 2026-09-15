@@ -1,4 +1,5 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
@@ -45,7 +46,15 @@ export function registerOAuthRoutes(app: Express) {
       res.clearCookie("hexacv_logout", { ...cookieOptions });
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      // Redirect to the return-URL stashed in the cookie, or fall back to "/".
+      const cookies = parseCookieHeader(req.headers.cookie || "");
+      const returnTo = cookies.hexacv_return_to
+        ? decodeURIComponent(cookies.hexacv_return_to)
+        : null;
+      if (returnTo) {
+        res.clearCookie("hexacv_return_to", { path: "/" });
+      }
+      res.redirect(302, returnTo || "/");
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });

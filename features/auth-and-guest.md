@@ -22,12 +22,24 @@ account; sign-in is required only at the build/payment step and saves their work
 - Secondary: **"Continue as guest"** → `guestHref(redirect)`.
 
 ## Guest-flow rules (**NEW fix**)
-- `guestHref` never routes a guest into an auth-gated page (`/dashboard/*`, `/admin`,
-  `/url` → falls back to `/builder`) — this removed an **infinite login loop** where
-  `Continue as guest → /builder/target → /login → Continue as guest → …`.
-- `Targeting` is now guest-usable: guests fill role/region/JD, and the build CTA says
+- Single helper `isSafeGuestRedirect(path)` in `client/src/const.ts` owns the gated
+  list. Both `guestHref` (Continue as guest) and `stashReturnTo` (OAuth return cookie)
+  call it — no divergent path lists.
+- **Gated (unsafe) for guests / OAuth return:** `/`, empty, `/login*`, `/register*`,
+  `/dashboard` + `/dashboard/*`, `/admin*`, `/url*`, absolute URLs. Fallback:
+  **`/builder/target`** (`SAFE_GUEST_FALLBACK`).
+- **Safe funnel redirects seen in the app:** `/builder/target`, `/builder/review-draft`,
+  `/builder/upload`, `/builder/ai`, and other `/builder/*` builder routes.
+- `Targeting` is guest-usable: guests fill role/region/JD. Primary CTA
   **"Sign in to build your resume"** → `/login?redirect=/builder/target&convert=true`.
+  Secondary **"Continue as guest"** advances to the **editor** (same handoff as the AI
+  pipeline): stashes the on-device entry draft + target role into `hexacv_pipeline_result`
+  and opens `/builder/ai?fromPipeline=1` — not the builder home chooser.
+  Before the sign-in navigation, Targeting **synchronously flushes** `hexacv_target_panel_draft`
+  so a pending 300ms debounce cannot drop role/JD.
 - `ParseReview` lets guests continue straight to targeting (sign-in gated at the build).
+- Guest save of a 4th draft throws `GUEST_LIMIT_REACHED`; `ResumeBuilder` catches it and
+  toasts (does not abort the UI with an uncaught exception).
 
 ## Conversion on sign-in (`Login.handlePostLoginFlow`)
 - Reads `guest_session_id` (legacy hook) and calls `syncGuestDataToCloud()`, which

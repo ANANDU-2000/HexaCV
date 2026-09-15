@@ -33,6 +33,8 @@ export type TrackedInvokeOptions = {
   userId?: number | null;
   planTier?: AiPlanTier;
   guestKey?: string;
+  /** Fail the underlying invokeLLM call after this many ms (e.g. extract parse). */
+  timeoutMs?: number;
 };
 
 /** In-memory call timestamps per model (A3 RPM/RPD). */
@@ -583,9 +585,24 @@ export async function trackedInvokeLLM(
   }
 
   const invokeParams: InvokeParams = { ...params, model: selectedModel };
+  const timeoutMs = opts?.timeoutMs;
 
   try {
-    const result = await invokeLLM(invokeParams);
+    const result =
+      timeoutMs && timeoutMs > 0
+        ? await Promise.race([
+            invokeLLM(invokeParams),
+            new Promise<never>((_, reject) => {
+              setTimeout(() => {
+                reject(
+                  new Error(
+                    `LLM call timed out after ${timeoutMs}ms (stage "${stage}")`
+                  )
+                );
+              }, timeoutMs);
+            }),
+          ])
+        : await invokeLLM(invokeParams);
     const model = result.model || selectedModel;
     const tokensIn = result.usage?.prompt_tokens ?? 0;
     const tokensOut = result.usage?.completion_tokens ?? 0;

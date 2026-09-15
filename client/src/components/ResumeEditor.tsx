@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Textarea } from "@/shared/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -11,24 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Tabs } from "@/shared/ui/tabs";
 import {
   Download,
   Eye,
-  EyeOff,
   Edit3,
   Settings,
   Undo,
   Redo,
-  ZoomIn,
-  ZoomOut,
   Sparkles,
   CheckCircle2,
-  AlertTriangle,
-  Plus,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
   User,
   AlignLeft,
   Code,
@@ -37,34 +26,43 @@ import {
   GraduationCap,
   Award,
   Trophy,
-  PanelLeft,
-  PanelLeftClose,
-  Globe,
-  Users,
   LayoutList,
   ChevronLeft,
   ChevronRight,
   FileText,
-  ThumbsUp,
-  ThumbsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Resume, ParsedResume, ResumeSection } from "@shared/types";
+import { Resume } from "@shared/types";
 import { PRESET_JOBS, matchPresetJobByTitle } from "@/lib/jobDescriptions";
 import { ensureStandardResumeSections } from "@/lib/resumeSections";
+import { loadTargetDraft } from "@/lib/targetDraft";
 import {
-  markBulletEdits,
   mergeBulletsAi,
   mergeSummaryAi,
 } from "@/lib/userEditedMerge";
 import ResumePreview from "./ResumePreview";
 import ContextualEditor from "./ContextualEditor";
-import CountryLocationFields from "./CountryLocationFields";
+import PreviewToolbar from "./resume-editor/PreviewToolbar";
+import HeaderTab from "./resume-editor/HeaderTab";
+import SummaryTab from "./resume-editor/SummaryTab";
+import SkillsTab from "./resume-editor/SkillsTab";
+import ExperienceTab from "./resume-editor/ExperienceTab";
+import ProjectsTab from "./resume-editor/ProjectsTab";
+import EducationTab from "./resume-editor/EducationTab";
+import MoreTab from "./resume-editor/MoreTab";
+import CertificationsTab from "./resume-editor/CertificationsTab";
+import LanguagesTab from "./resume-editor/LanguagesTab";
+import ReferencesTab from "./resume-editor/ReferencesTab";
+import CustomTab from "./resume-editor/CustomTab";
+import LayoutTab from "./resume-editor/LayoutTab";
+import AchievementsTab from "./resume-editor/AchievementsTab";
+import PreviewTab from "./resume-editor/PreviewTab";
+import ReviewTab from "./resume-editor/ReviewTab";
 import { exportResumeToPDF, exportResumeToDOCX } from "@/lib/pdfExport";
 import { buildExportFilename } from "@/lib/exportFilename";
 import JdKeywordMatch from "@/components/JdKeywordMatch";
+import { getDefaultTemplate } from "@/lib/templates";
 import { toast } from "sonner";
-import { nanoid } from "nanoid";
 import { trpc } from "@/lib/trpc";
 
 const MORE_SECTION_KEYS = [
@@ -1061,7 +1059,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     resolvedTab === EDITOR_FLOW_STEPS[EDITOR_FLOW_STEPS.length - 1].key;
 
   return (
-    <div className="w-full h-full font-sans text-slate-800 dark:text-slate-200 pb-[72px] lg:pb-0">
+    <div className="w-full h-full font-sans text-foreground pb-[72px] lg:pb-0">
       {/* Editor workspace */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
         <div className="w-full flex flex-col gap-2 sm:gap-3 h-full min-h-0">
@@ -1073,11 +1071,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   if (!meta) return null;
                   const parsed = JSON.parse(meta) as { targetKeywords?: string[] };
                   // Prefer live JD from target draft
-                  const draft = localStorage.getItem("hexacv_target_panel_draft");
-                  if (draft) {
-                    const d = JSON.parse(draft) as { jobDescription?: string };
-                    if (d.jobDescription) return d.jobDescription;
-                  }
+                  const draft = loadTargetDraft();
+                  if (draft?.jobDescription) return draft.jobDescription;
                   return (parsed.targetKeywords || []).join(" ");
                 } catch {
                   return null;
@@ -1087,35 +1082,29 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             resumeText={getResumeTextContent()}
             regionTips={
               (() => {
-                try {
-                  const draft = localStorage.getItem("hexacv_target_panel_draft");
-                  if (!draft) return null;
-                  const d = JSON.parse(draft) as { market?: string };
-                  if (d.market === "Gulf") {
-                    return "Gulf tip: include visa/nationality only if you supplied it.";
-                  }
-                  if (d.market === "India") {
-                    return "India tip: keep structure clear and ATS keywords grounded in your experience.";
-                  }
-                  return null;
-                } catch {
-                  return null;
+                const draft = loadTargetDraft();
+                if (draft?.market === "Gulf") {
+                  return "Gulf tip: include visa/nationality only if you supplied it.";
                 }
+                if (draft?.market === "India") {
+                  return "India tip: keep structure clear and ATS keywords grounded in your experience.";
+                }
+                return null;
               })()
             }
           />
           {/* Toggle Mode header on mobile, regular title + quick settings on desktop */}
           <div
             className={cn(
-              "glass-panel border border-slate-200 dark:border-white/10 rounded-xl shadow-sm shrink-0 overflow-hidden",
+              "glass-panel border border-border rounded-xl shadow-sm shrink-0 overflow-hidden",
               activeEditTab === "preview" && "lg:block"
             )}
           >
             {/* Row 1: Title + Action Buttons */}
-            <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-slate-200 dark:border-white/10">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
-                  <Sparkles className="w-4.5 h-4.5 text-white" />
+                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-primary rounded-xl flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4.5 h-4.5 text-primary-foreground" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 group/title">
@@ -1128,18 +1117,18 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           title: e.target.value,
                         })
                       }
-                      className="bg-transparent border-none p-0 m-0 font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight focus:ring-0 focus:outline-none focus:border-b focus:border-slate-350 dark:focus:border-slate-700 w-full max-w-[180px] sm:max-w-[260px] truncate"
+                      className="bg-transparent border-none p-0 m-0 font-bold text-foreground text-sm leading-tight focus:ring-0 focus:outline-none focus:border-b focus:border-primary w-full max-w-[180px] sm:max-w-[260px] truncate"
                       placeholder="Resume Title"
                     />
-                    <Edit3 className="w-3.5 h-3.5 text-slate-400 opacity-50 group-hover/title:opacity-100 transition-opacity shrink-0" />
+                    <Edit3 className="w-3.5 h-3.5 text-muted-foreground opacity-50 group-hover/title:opacity-100 transition-opacity shrink-0" />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-success">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                       Auto-saved
                     </span>
-                    <span className="text-slate-550">·</span>
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-550 dark:text-slate-400">
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
                       {activeEditTab === "review"
                         ? "Review & Export"
                         : activeEditTab === "preview"
@@ -1153,35 +1142,35 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-11 w-11 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                  className="h-11 w-11 border-border rounded-lg bg-card hover:bg-muted"
                   onClick={handleUndo}
                   disabled={historyIndex <= 0}
                   title="Undo"
                 >
-                  <Undo className="w-3.5 h-3.5 text-slate-600 dark:text-slate-350" />
+                  <Undo className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-11 w-11 border-slate-200 dark:border-white/10 rounded-lg bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                  className="h-11 w-11 border-border rounded-lg bg-card hover:bg-muted"
                   onClick={handleRedo}
                   disabled={historyIndex >= history.length - 1}
                   title="Redo"
                 >
-                  <Redo className="w-3.5 h-3.5 text-slate-600 dark:text-slate-350" />
+                  <Redo className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               </div>
             </div>
             {/* Row 2: Layout + Target Job */}
-            <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-slate-100/50 dark:bg-slate-950/20">
-              <div className="flex items-center gap-1.5 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg py-1 px-2.5 shadow-xs">
-                <Settings className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+            <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-muted">
+              <div className="flex items-center gap-1.5 bg-card border border-border rounded-lg py-1 px-2.5 shadow-xs">
+                <Settings className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] font-bold text-foreground">
                   ATS Emerald
                 </span>
               </div>
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
                   Target:
                 </span>
                 <Select
@@ -1193,16 +1182,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 >
                   <SelectTrigger
                     id="quick-job-select"
-                    className="h-8 text-[11px] font-semibold rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 min-w-0 w-full max-w-[210px] shadow-xs"
+                    className="h-8 text-[11px] font-semibold rounded-lg border-border bg-card text-foreground min-w-0 w-full max-w-[210px] shadow-xs"
                   >
                     <SelectValue placeholder="Select target job..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200">
+                  <SelectContent className="bg-popover border-border text-popover-foreground">
                     {PRESET_JOBS.map(j => (
                       <SelectItem
                         key={j.id}
                         value={j.id}
-                        className="text-xs text-slate-800 dark:text-slate-200 focus:bg-slate-100 dark:focus:bg-white/10 focus:text-slate-900 dark:focus:text-white"
+                        className="text-xs text-foreground focus:bg-muted focus:text-foreground"
                       >
                         {j.title}
                       </SelectItem>
@@ -1214,7 +1203,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           </div>
 
           {/* Editor Card with guided steps */}
-          <Card className="glass-panel border-slate-200 dark:border-white/10 overflow-hidden flex flex-col flex-1 min-h-0 bg-slate-50/80 dark:bg-slate-900/10 shadow-sm p-0 rounded-xl">
+          <Card className="glass-panel border-border overflow-hidden flex flex-col flex-1 min-h-0 bg-muted shadow-sm p-0 rounded-xl">
             {/* Horizontal Stepper Progress Indicator (Visible only during editor steps 1-12) */}
             {FORM_STEPS.some(s => s.key === activeEditTab) ? (
               <div className="relative group/stepper shrink-0 w-full overflow-hidden">
@@ -1223,7 +1212,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   type="button"
                   onClick={scrollLeftDirection}
                   className={cn(
-                    "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                    "absolute left-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-card/90 shadow-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
                     canScrollLeft
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -1234,7 +1223,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 {/* Left Gradient Fade Overlay */}
                 <div
                   className={cn(
-                    "absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-slate-100 dark:from-[#0b1326] via-slate-100/70 dark:via-[#0b1326]/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                    "absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-muted via-muted/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
                     canScrollLeft ? "opacity-100" : "opacity-0"
                   )}
                 />
@@ -1242,7 +1231,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 {/* Scrollable Steps Wrapper */}
                 <div
                   ref={stepperRef}
-                  className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth px-8 py-3 bg-slate-100/80 dark:bg-slate-950/40 backdrop-blur-sm border-b border-slate-200/50 dark:border-white/5 select-none"
+                  className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth px-8 py-3 bg-muted backdrop-blur-sm border-b border-border select-none"
                 >
                   {FORM_STEPS.map((step, idx) => {
                     const Icon = step.icon;
@@ -1266,20 +1255,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                           className={cn(
                             "flex items-center gap-2 p-1.5 px-3 rounded-xl text-xs font-bold transition-all border outline-none cursor-pointer",
                             isActive
-                              ? "bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]"
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm scale-[1.02]"
                               : isDone
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/60 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-500/15 dark:hover:bg-emerald-900/15"
-                                : "bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:text-slate-200"
+                                ? "bg-success/10 text-success border-success/30 hover:bg-success/15"
+                                : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
                           )}
                         >
                           <span
                             className={cn(
                               "w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black border",
                               isActive
-                                ? "bg-white/20 border-slate-300 dark:border-white/30 text-white"
+                                ? "bg-primary-foreground/20 border-primary-foreground/30 text-primary-foreground"
                                 : isDone
-                                  ? "bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-500/30 dark:text-emerald-300"
-                                  : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500"
+                                  ? "bg-success/10 border-success/30 text-success"
+                                  : "bg-muted border-border text-muted-foreground"
                             )}
                           >
                             {isDone ? "✓" : step.id}
@@ -1292,8 +1281,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             className={cn(
                               "w-4 h-[2px] rounded-full shrink-0",
                               isDone
-                                ? "bg-emerald-500"
-                                : "bg-slate-300 dark:bg-white/10"
+                                ? "bg-success"
+                                : "bg-border"
                             )}
                           />
                         )}
@@ -1305,7 +1294,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 {/* Right Gradient Fade Overlay */}
                 <div
                   className={cn(
-                    "absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-slate-100 dark:from-[#0b1326] via-slate-100/70 dark:via-[#0b1326]/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                    "absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-muted via-muted/70 to-transparent pointer-events-none z-10 transition-opacity duration-300",
                     canScrollRight ? "opacity-100" : "opacity-0"
                   )}
                 />
@@ -1315,7 +1304,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   type="button"
                   onClick={scrollRightDirection}
                   className={cn(
-                    "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-md border border-slate-200 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-slate-350 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
+                    "absolute right-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-card/90 shadow-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm",
                     canScrollRight
                       ? "opacity-100 pointer-events-auto"
                       : "opacity-0 pointer-events-none"
@@ -1328,21 +1317,21 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               /* Premium Phase Tracker for review and mobile preview */
               <div
                 className={cn(
-                  "items-center justify-center gap-3 py-3 bg-slate-100/80 dark:bg-slate-950/40 border-b border-slate-200/50 dark:border-white/5 select-none text-[11px] font-bold shrink-0 overflow-x-auto px-3",
+                  "items-center justify-center gap-3 py-3 bg-muted border-b border-border select-none text-[11px] font-bold shrink-0 overflow-x-auto px-3",
                   activeEditTab === "preview" ? "hidden lg:flex" : "flex"
                 )}
               >
                 <button
                   type="button"
                   onClick={() => setActiveEditTab("header")}
-                  className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 hover:opacity-85 transition-opacity"
+                  className="flex items-center gap-2 text-success hover:opacity-85 transition-opacity"
                 >
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 flex items-center justify-center text-[10px] font-black">
+                  <span className="w-5 h-5 rounded-full bg-success/10 border border-success/30 flex items-center justify-center text-[10px] font-black">
                     ✓
                   </span>
                   <span>1. Resume Editor</span>
                 </button>
-                <div className="w-8 h-[2px] bg-emerald-500" />
+                <div className="w-8 h-[2px] bg-success" />
 
                 <button
                   type="button"
@@ -1350,16 +1339,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   className={cn(
                     "flex items-center gap-2 transition-opacity hover:opacity-85",
                     activeEditTab === "review"
-                      ? "text-blue-600 dark:text-blue-450"
-                      : "text-emerald-600 dark:text-emerald-400"
+                      ? "text-primary"
+                      : "text-success"
                   )}
                 >
                   <span
                     className={cn(
                       "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border",
                       activeEditTab === "review"
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-success/10 border-success/30 text-success"
                     )}
                   >
                     {activeEditTab === "review" ? "2" : "✓"}
@@ -1370,8 +1359,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   className={cn(
                     "w-8 h-[2px] lg:hidden",
                     activeEditTab === "preview"
-                      ? "bg-emerald-500"
-                      : "bg-slate-350 dark:bg-white/10"
+                      ? "bg-success"
+                      : "bg-border"
                   )}
                 />
 
@@ -1381,16 +1370,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   className={cn(
                     "flex items-center gap-2 transition-opacity hover:opacity-85 lg:hidden",
                     activeEditTab === "preview"
-                      ? "text-blue-600 dark:text-blue-455"
-                      : "text-slate-450 dark:text-slate-400"
+                      ? "text-primary"
+                      : "text-muted-foreground"
                   )}
                 >
                   <span
                     className={cn(
                       "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border",
                       activeEditTab === "preview"
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted border-border text-muted-foreground"
                     )}
                   >
                     3
@@ -1413,2650 +1402,120 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 onValueChange={setActiveEditTab}
                 className="w-full h-full"
               >
-                {/* HEADER TAB */}
-                <TabsContent value="header" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Contact Information
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                        Your name, title, and contact details that appear at the
-                        top of your resume.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid resume-editor-grid-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-name"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        Full Name <span className="text-red-400">*</span>
-                      </Label>
-                      <Input
-                        id="edit-name"
-                        placeholder="e.g. John Doe"
-                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
-                        value={getSectionContent("header").header?.name || ""}
-                        onChange={e =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              name: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-jobtitle"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        Job Title
-                      </Label>
-                      <Input
-                        id="edit-jobtitle"
-                        placeholder="e.g. Full-Stack Developer"
-                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
-                        value={
-                          getSectionContent("header").header?.jobTitle || ""
-                        }
-                        onChange={e =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              jobTitle: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-targetrole"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        Target Role
-                      </Label>
-                      <Input
-                        id="edit-targetrole"
-                        placeholder="e.g. Senior Software Engineer"
-                        className="h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm"
-                        value={
-                          getSectionContent("header").header?.targetRole || ""
-                        }
-                        onChange={e =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              targetRole: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="edit-email"
-                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-                      >
-                        Email Address <span className="text-red-400">*</span>
-                      </Label>
-                      <Input
-                        id="edit-email"
-                        type="email"
-                        placeholder="you@email.com"
-                        className={cn(
-                          "h-10 rounded-lg border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 text-sm",
-                          !isValidEmail(
-                            getSectionContent("header").header?.email
-                          ) && "border-red-500 focus-visible:ring-red-500"
-                        )}
-                        value={getSectionContent("header").header?.email || ""}
-                        onChange={e =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              email: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                      {!isValidEmail(
-                        getSectionContent("header").header?.email
-                      ) && (
-                        <span className="text-[10px] text-red-500 font-medium block">
-                          Please enter a valid email address.
-                        </span>
-                      )}
-                    </div>
-                    <div className="col-span-2">
-                      <CountryLocationFields
-                        compact
-                        countryCode={
-                          getSectionContent("header").header?.countryCode || ""
-                        }
-                        locationFields={
-                          getSectionContent("header").header?.locationFields ||
-                          {}
-                        }
-                        phone={getSectionContent("header").header?.phone || ""}
-                        targetCountryCode={
-                          getSectionContent("header").header
-                            ?.targetCountryCode || ""
-                        }
-                        location={
-                          getSectionContent("header").header?.location || ""
-                        }
-                        onCountryChange={code =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              countryCode: code,
-                            },
-                          })
-                        }
-                        onTargetCountryChange={code =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              targetCountryCode: code,
-                            },
-                          })
-                        }
-                        onLocationFieldChange={fields =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              locationFields: fields,
-                            },
-                          })
-                        }
-                        onPhoneChange={phone =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              phone,
-                            },
-                          })
-                        }
-                        onLocationStringChange={location =>
-                          updateSection("header", {
-                            header: {
-                              ...getSectionContent("header").header,
-                              location,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
+                <HeaderTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  isValidEmail={isValidEmail}
+                  isValidUrl={isValidUrl}
+                />
 
-                  <div className="border-t border-slate-200 dark:border-white/10 pt-5 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-indigo-400" />
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                        Social & Website Profiles
-                      </h4>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <Label htmlFor="edit-linkedin">LinkedIn URL</Label>
-                        <Input
-                          id="edit-linkedin"
-                          placeholder="linkedin.com/in/username"
-                          className={cn(
-                            !isValidUrl(
-                              getSectionContent("header").header?.links?.find(
-                                (l: any) => l.label.toLowerCase() === "linkedin"
-                              )?.url
-                            ) && "border-red-500 focus-visible:ring-red-500"
-                          )}
-                          value={
-                            getSectionContent("header").header?.links?.find(
-                              (l: any) => l.label.toLowerCase() === "linkedin"
-                            )?.url || ""
-                          }
-                          onChange={e => {
-                            const headerObj =
-                              getSectionContent("header").header || {};
-                            const linksObj = headerObj.links || [];
-                            let updatedLinks = [...linksObj];
-                            const linkIdx = updatedLinks.findIndex(
-                              (l: any) => l.label.toLowerCase() === "linkedin"
-                            );
-                            if (linkIdx > -1) {
-                              if (e.target.value) {
-                                updatedLinks[linkIdx] = {
-                                  ...updatedLinks[linkIdx],
-                                  url: e.target.value,
-                                };
-                              } else {
-                                updatedLinks.splice(linkIdx, 1);
-                              }
-                            } else if (e.target.value) {
-                              updatedLinks.push({
-                                label: "LinkedIn",
-                                url: e.target.value,
-                              });
-                            }
-                            updateSection("header", {
-                              header: { ...headerObj, links: updatedLinks },
-                            });
-                          }}
-                        />
-                        {!isValidUrl(
-                          getSectionContent("header").header?.links?.find(
-                            (l: any) => l.label.toLowerCase() === "linkedin"
-                          )?.url
-                        ) && (
-                          <span className="text-[10px] text-red-500 font-medium block">
-                            Please enter a valid URL.
-                          </span>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="edit-github">GitHub URL</Label>
-                        <Input
-                          id="edit-github"
-                          placeholder="github.com/username"
-                          className={cn(
-                            !isValidUrl(
-                              getSectionContent("header").header?.links?.find(
-                                (l: any) => l.label.toLowerCase() === "github"
-                              )?.url
-                            ) && "border-red-500 focus-visible:ring-red-500"
-                          )}
-                          value={
-                            getSectionContent("header").header?.links?.find(
-                              (l: any) => l.label.toLowerCase() === "github"
-                            )?.url || ""
-                          }
-                          onChange={e => {
-                            const headerObj =
-                              getSectionContent("header").header || {};
-                            const linksObj = headerObj.links || [];
-                            let updatedLinks = [...linksObj];
-                            const linkIdx = updatedLinks.findIndex(
-                              (l: any) => l.label.toLowerCase() === "github"
-                            );
-                            if (linkIdx > -1) {
-                              if (e.target.value) {
-                                updatedLinks[linkIdx] = {
-                                  ...updatedLinks[linkIdx],
-                                  url: e.target.value,
-                                };
-                              } else {
-                                updatedLinks.splice(linkIdx, 1);
-                              }
-                            } else if (e.target.value) {
-                              updatedLinks.push({
-                                label: "GitHub",
-                                url: e.target.value,
-                              });
-                            }
-                            updateSection("header", {
-                              header: { ...headerObj, links: updatedLinks },
-                            });
-                          }}
-                        />
-                        {!isValidUrl(
-                          getSectionContent("header").header?.links?.find(
-                            (l: any) => l.label.toLowerCase() === "github"
-                          )?.url
-                        ) && (
-                          <span className="text-[10px] text-red-500 font-medium block">
-                            Please enter a valid URL.
-                          </span>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="edit-portfolio">
-                          Portfolio Website URL
-                        </Label>
-                        <Input
-                          id="edit-portfolio"
-                          placeholder="yourportfolio.com"
-                          className={cn(
-                            !isValidUrl(
-                              getSectionContent("header").header?.links?.find(
-                                (l: any) =>
-                                  l.label.toLowerCase() === "portfolio" ||
-                                  l.label.toLowerCase() === "website"
-                              )?.url
-                            ) && "border-red-500 focus-visible:ring-red-500"
-                          )}
-                          value={
-                            getSectionContent("header").header?.links?.find(
-                              (l: any) =>
-                                l.label.toLowerCase() === "portfolio" ||
-                                l.label.toLowerCase() === "website"
-                            )?.url || ""
-                          }
-                          onChange={e => {
-                            const headerObj =
-                              getSectionContent("header").header || {};
-                            const linksObj = headerObj.links || [];
-                            let updatedLinks = [...linksObj];
-                            const linkIdx = updatedLinks.findIndex(
-                              (l: any) =>
-                                l.label.toLowerCase() === "portfolio" ||
-                                l.label.toLowerCase() === "website"
-                            );
-                            if (linkIdx > -1) {
-                              if (e.target.value) {
-                                updatedLinks[linkIdx] = {
-                                  ...updatedLinks[linkIdx],
-                                  url: e.target.value,
-                                };
-                              } else {
-                                updatedLinks.splice(linkIdx, 1);
-                              }
-                            } else if (e.target.value) {
-                              updatedLinks.push({
-                                label: "Portfolio",
-                                url: e.target.value,
-                              });
-                            }
-                            updateSection("header", {
-                              header: { ...headerObj, links: updatedLinks },
-                            });
-                          }}
-                        />
-                        {!isValidUrl(
-                          getSectionContent("header").header?.links?.find(
-                            (l: any) =>
-                              l.label.toLowerCase() === "portfolio" ||
-                              l.label.toLowerCase() === "website"
-                          )?.url
-                        ) && (
-                          <span className="text-[10px] text-red-500 font-medium block">
-                            Please enter a valid URL.
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
+                <SummaryTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  handleRewriteSummary={handleRewriteSummary}
+                  isRewritingSummary={isRewritingSummary}
+                  feedbackTarget={feedbackTarget}
+                  isFeedbackPending={submitEvaluationMutation.isPending}
+                  sendAiFeedback={sendAiFeedback}
+                />
 
-                {/* SUMMARY TAB */}
-                <TabsContent value="summary" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <AlignLeft className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Professional Summary
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                        A brief paragraph highlighting your career goals, key
-                        skills, and achievements.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <Label
-                        htmlFor="edit-summary"
-                        className="text-xs font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400"
-                      >
-                        Profile Description
-                      </Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRewriteSummary()}
-                        disabled={isRewritingSummary}
-                        className="bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200 gap-1.5 h-8 font-bold text-xs"
-                      >
-                        {isRewritingSummary ? (
-                          <>
-                            <span className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                            Rewriting...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                            Rewrite with AI
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <Textarea
-                      id="edit-summary"
-                      placeholder="Write a brief professional summary highlighting your key skills, experience, and achievements..."
-                      value={getSectionContent("summary").summary || ""}
-                      onChange={e =>
-                        updateSection("summary", {
-                          summary: e.target.value,
-                          summaryUserEdited: true,
-                        })
-                      }
-                      rows={8}
-                      className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm leading-relaxed"
-                    />
-                    {feedbackTarget === "summary" && (
-                      <div className="flex items-center gap-2 pt-2">
-                        <span className="text-xs text-slate-500">
-                          Was this AI rewrite helpful?
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1"
-                          disabled={submitEvaluationMutation.isPending}
-                          onClick={() => sendAiFeedback("up")}
-                        >
-                          <ThumbsUp className="w-3.5 h-3.5" />
-                          Yes
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1"
-                          disabled={submitEvaluationMutation.isPending}
-                          onClick={() => sendAiFeedback("down")}
-                        >
-                          <ThumbsDown className="w-3.5 h-3.5" />
-                          No
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
+                <SkillsTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                />
 
-                {/* SKILLS TAB */}
-                <TabsContent value="skills" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Code className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Skills & Technologies
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Group your skills by category for ATS scanners and
-                          hiring managers.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur = getSectionContent("skills").skills || [];
-                        updateSection("skills", {
-                          skills: [...cur, { category: "", skills: [] }],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Category
-                    </Button>
-                  </div>
+                <ExperienceTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                  feedbackTarget={feedbackTarget}
+                  sendAiFeedback={sendAiFeedback}
+                  isFeedbackPending={submitEvaluationMutation.isPending}
+                  rewritingExpId={rewritingExpId}
+                  handleRewriteExperienceBullets={handleRewriteExperienceBullets}
+                />
 
-                  <div className="space-y-3">
-                    {(getSectionContent("skills").skills || []).map(
-                      (group: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="border border-slate-200 dark:border-white/10 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <Input
-                              placeholder="e.g. Languages"
-                              value={group.category}
-                              className="max-w-xs font-semibold"
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("skills").skills,
-                                ];
-                                list[idx].category = e.target.value;
-                                updateSection("skills", { skills: list });
-                              }}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 min-h-11"
-                              onClick={() => {
-                                const list = (
-                                  getSectionContent("skills").skills || []
-                                ).filter((_: any, i: number) => i !== idx);
-                                updateSection("skills", { skills: list });
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                          <Input
-                            placeholder="Skills comma separated: React, Vue"
-                            value={group.skills.join(", ")}
-                            onChange={e => {
-                              const list = [
-                                ...getSectionContent("skills").skills,
-                              ];
-                              list[idx].skills = e.target.value
-                                .split(",")
-                                .map((s: string) => s.trim())
-                                .filter(Boolean);
-                              updateSection("skills", { skills: list });
-                            }}
-                          />
-                        </div>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
+                <ProjectsTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                  isValidUrl={isValidUrl}
+                />
 
-                {/* EXPERIENCE TAB */}
-                <TabsContent value="experience" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Briefcase className="w-4.5 h-4.5 text-sky-600 dark:text-sky-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Work Experience
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          List your roles in reverse chronological order.
-                          Include measurable achievements.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("experience").experiences || [];
-                        updateSection("experience", {
-                          experiences: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              company: "",
-                              role: "",
-                              startDate: "",
-                              endDate: "",
-                              current: false,
-                              description: [],
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Position
-                    </Button>
-                  </div>
+                <EducationTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                />
 
-                  <div className="space-y-4">
-                    {(getSectionContent("experience").experiences || []).map(
-                      (exp: any, idx: number) => (
-                        <div
-                          key={exp.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Briefcase className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Position {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("experience", idx, "up")
-                                }
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("experience", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("experience")
-                                      .experiences || []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("experience")
-                                      .experiences || []
-                                  ).filter((e: any) => e.id !== exp.id);
-                                  updateSection("experience", {
-                                    experiences: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
+                <MoreTab
+                  setActiveEditTab={setActiveEditTab}
+                />
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Company Name
-                              </Label>
-                              <Input
-                                value={exp.company}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("experience")
-                                      .experiences,
-                                  ];
-                                  list[idx].company = e.target.value;
-                                  updateSection("experience", {
-                                    experiences: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Job Title
-                              </Label>
-                              <Input
-                                value={exp.role}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("experience")
-                                      .experiences,
-                                  ];
-                                  list[idx].role = e.target.value;
-                                  updateSection("experience", {
-                                    experiences: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Start Date
-                              </Label>
-                              <Input
-                                value={exp.startDate}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("experience")
-                                      .experiences,
-                                  ];
-                                  list[idx].startDate = e.target.value;
-                                  updateSection("experience", {
-                                    experiences: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                End Date
-                              </Label>
-                              <Input
-                                value={exp.endDate}
-                                disabled={exp.current}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("experience")
-                                      .experiences,
-                                  ];
-                                  list[idx].endDate = e.target.value;
-                                  updateSection("experience", {
-                                    experiences: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                          </div>
+                <CertificationsTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                  isValidUrl={isValidUrl}
+                />
 
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={exp.current}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("experience")
-                                    .experiences,
-                                ];
-                                list[idx].current = e.target.checked;
-                                if (e.target.checked)
-                                  list[idx].endDate = "Present";
-                                updateSection("experience", {
-                                  experiences: list,
-                                });
-                              }}
-                              className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                            />
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                              Currently Work Here
-                            </span>
-                          </div>
+                <LanguagesTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                />
 
-                          <div className="space-y-1">
-                            <div className="flex justify-between items-center">
-                              <Label className="text-xs">
-                                Description Bullets (one per line)
-                              </Label>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                  rewritingExpId === (exp.id || String(idx))
-                                }
-                                onClick={() =>
-                                  handleRewriteExperienceBullets(idx)
-                                }
-                                className="h-7 text-[10px] font-bold gap-1 bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20 hover:text-blue-200"
-                              >
-                                {rewritingExpId === (exp.id || String(idx)) ? (
-                                  <>
-                                    <span className="w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                                    Rewriting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3 h-3" />
-                                    Rewrite Bullets
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            <Textarea
-                              value={exp.description.join("\n")}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("experience")
-                                    .experiences,
-                                ];
-                                const prev = list[idx];
-                                const nextDesc = e.target.value
-                                  .split("\n")
-                                  .filter(Boolean);
-                                list[idx] = {
-                                  ...prev,
-                                  description: nextDesc,
-                                  descriptionEdited: markBulletEdits(
-                                    prev.description || [],
-                                    nextDesc,
-                                    prev.descriptionEdited
-                                  ),
-                                };
-                                updateSection("experience", {
-                                  experiences: list,
-                                });
-                              }}
-                              rows={3}
-                            />
-                            {feedbackTarget === "bullets" &&
-                              rewritingExpId === null && (
-                              <div className="flex items-center gap-2 pt-2">
-                                <span className="text-xs text-slate-500">
-                                  Was this AI rewrite helpful?
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1"
-                                  disabled={submitEvaluationMutation.isPending}
-                                  onClick={() => sendAiFeedback("up")}
-                                >
-                                  <ThumbsUp className="w-3.5 h-3.5" />
-                                  Yes
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1"
-                                  disabled={submitEvaluationMutation.isPending}
-                                  onClick={() => sendAiFeedback("down")}
-                                >
-                                  <ThumbsDown className="w-3.5 h-3.5" />
-                                  No
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
+                <ReferencesTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                  isValidEmail={isValidEmail}
+                  isValidPhone={isValidPhone}
+                />
 
-                {/* PROJECTS TAB */}
-                <TabsContent value="projects" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Folder className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Projects
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Showcase personal, open-source, or freelance projects
-                          with technologies used.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("projects").projects || [];
-                        updateSection("projects", {
-                          projects: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              name: "",
-                              description: "",
-                              technologies: [],
-                              link: "",
-                              date: "",
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Project
-                    </Button>
-                  </div>
+                <CustomTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                  moveItem={moveItem}
+                />
 
-                  <div className="space-y-4">
-                    {(getSectionContent("projects").projects || []).map(
-                      (proj: any, idx: number) => (
-                        <div
-                          key={proj.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Folder className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Project {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() => moveItem("projects", idx, "up")}
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("projects", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (getSectionContent("projects").projects || [])
-                                    .length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("projects").projects || []
-                                  ).filter((p: any) => p.id !== proj.id);
-                                  updateSection("projects", { projects: list });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
+                <LayoutTab
+                  moveSection={moveSection}
+                  toggleSectionVisibility={toggleSectionVisibility}
+                  localResume={localResume}
+                />
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Project Name
-                              </Label>
-                              <Input
-                                value={proj.name}
-                                className="border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500 rounded-lg text-sm"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("projects").projects,
-                                  ];
-                                  list[idx].name = e.target.value;
-                                  updateSection("projects", { projects: list });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Date</Label>
-                              <Input
-                                value={proj.date}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("projects").projects,
-                                  ];
-                                  list[idx].date = e.target.value;
-                                  updateSection("projects", { projects: list });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">
-                                Technologies (comma-separated)
-                              </Label>
-                              <Input
-                                value={proj.technologies.join(", ")}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("projects").projects,
-                                  ];
-                                  list[idx].technologies = e.target.value
-                                    .split(",")
-                                    .map((t: string) => t.trim())
-                                    .filter(Boolean);
-                                  updateSection("projects", { projects: list });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Link URL</Label>
-                              <Input
-                                value={proj.link}
-                                className={cn(
-                                  !isValidUrl(proj.link) &&
-                                    "border-red-500 focus-visible:ring-red-500"
-                                )}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("projects").projects,
-                                  ];
-                                  list[idx].link = e.target.value;
-                                  updateSection("projects", { projects: list });
-                                }}
-                              />
-                              {!isValidUrl(proj.link) && (
-                                <span className="text-[10px] text-red-500 font-medium block">
-                                  Please enter a valid URL.
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                <AchievementsTab
+                  getSectionContent={getSectionContent}
+                  updateSection={updateSection}
+                />
 
-                          <div className="space-y-1">
-                            <Label className="text-xs">Description</Label>
-                            <Textarea
-                              value={proj.description}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("projects").projects,
-                                ];
-                                list[idx].description = e.target.value;
-                                updateSection("projects", { projects: list });
-                              }}
-                              rows={2}
-                            />
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
+                <PreviewTab
+                  localResume={localResume}
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                  handleSectionSelect={handleSectionSelect}
+                />
 
-                {/* EDUCATION TAB */}
-                <TabsContent value="education" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <GraduationCap className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Education
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Your academic background including degrees,
-                          institutions, and graduation dates.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                        onClick={() => {
-                          const cur =
-                            getSectionContent("education").educations || [];
-                          const cleaned = cur.map((e: any) => ({
-                            ...e,
-                            field:
-                              (e.field || "").includes("•") ||
-                              (e.field || "").length > 80 ||
-                              /\b(developed|built|implemented|created|managed|designed|framework|express|node|react|django|api)\b/i.test(
-                                e.field || ""
-                              )
-                                ? ""
-                                : e.field,
-                          }));
-                          updateSection("education", { educations: cleaned });
-                          toast.success("Cleaned up Education data!");
-                        }}
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                        Clean Fields
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                        onClick={() => {
-                          const cur =
-                            getSectionContent("education").educations || [];
-                          updateSection("education", {
-                            educations: [
-                              ...cur,
-                              {
-                                id: nanoid(),
-                                institution: "",
-                                degree: "",
-                                field: "",
-                                graduationDate: "",
-                                gpa: "",
-                              },
-                            ],
-                          });
-                        }}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Add Education
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {(getSectionContent("education").educations || []).map(
-                      (edu: any, idx: number) => (
-                        <div
-                          key={edu.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <GraduationCap className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Education {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() => moveItem("education", idx, "up")}
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("education", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("education").educations ||
-                                    []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("education").educations ||
-                                    []
-                                  ).filter((e: any) => e.id !== edu.id);
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="grid resume-editor-grid-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Institution</Label>
-                              <Input
-                                value={edu.institution}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("education")
-                                      .educations,
-                                  ];
-                                  list[idx].institution = e.target.value;
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Degree</Label>
-                              <Input
-                                value={edu.degree}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("education")
-                                      .educations,
-                                  ];
-                                  list[idx].degree = e.target.value;
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Field of Study</Label>
-                              <Input
-                                value={edu.field}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("education")
-                                      .educations,
-                                  ];
-                                  list[idx].field = e.target.value;
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Graduation Date</Label>
-                              <Input
-                                value={edu.graduationDate}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("education")
-                                      .educations,
-                                  ];
-                                  list[idx].graduationDate = e.target.value;
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">GPA</Label>
-                              <Input
-                                value={edu.gpa}
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("education")
-                                      .educations,
-                                  ];
-                                  list[idx].gpa = e.target.value;
-                                  updateSection("education", {
-                                    educations: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* MORE — optional sections hub */}
-                <TabsContent value="more" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <LayoutList className="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        More (optional)
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Add credentials, achievements, languages, references,
-                        custom sections, or layout — skip anything you do not
-                        need.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(
-                      [
-                        {
-                          key: "certifications",
-                          label: "Credentials",
-                          icon: Award,
-                        },
-                        {
-                          key: "achievements",
-                          label: "Achievements",
-                          icon: Trophy,
-                        },
-                        { key: "languages", label: "Languages", icon: Globe },
-                        {
-                          key: "references",
-                          label: "References",
-                          icon: Users,
-                        },
-                        { key: "custom", label: "Custom", icon: LayoutList },
-                        { key: "layout", label: "Layout", icon: Settings },
-                      ] as const
-                    ).map(item => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={() => setActiveEditTab(item.key)}
-                          className="flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 px-4 py-3 text-left hover:border-blue-400/50 transition-colors"
-                        >
-                          <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                            {item.label}
-                          </span>
-                          <ChevronRight className="ml-auto h-4 w-4 text-slate-400" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <Button
-                    onClick={() => setActiveEditTab("review")}
-                    className="w-full min-h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                  >
-                    Continue to Review & Export
-                  </Button>
-                </TabsContent>
-
-                {/* CERTIFICATIONS TAB */}
-                <TabsContent value="certifications" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Award className="w-4.5 h-4.5 text-orange-600 dark:text-orange-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Certifications & Credentials
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Professional certifications, licenses, or credentials
-                          you have earned.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("certifications").certifications ||
-                          [];
-                        updateSection("certifications", {
-                          certifications: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              name: "",
-                              issuer: "",
-                              date: "",
-                              link: "",
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Certification
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {(
-                      getSectionContent("certifications").certifications || []
-                    ).map((cert: any, idx: number) => (
-                      <div
-                        key={cert.id || idx}
-                        className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                            <Award className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                            Certification {idx + 1}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() =>
-                                moveItem("certifications", idx, "up")
-                              }
-                              disabled={idx === 0}
-                              title="Move Up"
-                            >
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() =>
-                                moveItem("certifications", idx, "down")
-                              }
-                              disabled={
-                                idx ===
-                                (
-                                  getSectionContent("certifications")
-                                    .certifications || []
-                                ).length -
-                                  1
-                              }
-                              title="Move Down"
-                            >
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 min-h-11"
-                              onClick={() => {
-                                const list = (
-                                  getSectionContent("certifications")
-                                    .certifications || []
-                                ).filter((c: any) => c.id !== cert.id);
-                                updateSection("certifications", {
-                                  certifications: list,
-                                });
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">
-                              Certification Name
-                            </Label>
-                            <Input
-                              value={cert.name}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("certifications")
-                                    .certifications,
-                                ];
-                                list[idx].name = e.target.value;
-                                updateSection("certifications", {
-                                  certifications: list,
-                                });
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Issuer</Label>
-                            <Input
-                              value={cert.issuer}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("certifications")
-                                    .certifications,
-                                ];
-                                list[idx].issuer = e.target.value;
-                                updateSection("certifications", {
-                                  certifications: list,
-                                });
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Issue Date</Label>
-                            <Input
-                              value={cert.date}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("certifications")
-                                    .certifications,
-                                ];
-                                list[idx].date = e.target.value;
-                                updateSection("certifications", {
-                                  certifications: list,
-                                });
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Credential Link</Label>
-                            <Input
-                              value={cert.link}
-                              className={cn(
-                                !isValidUrl(cert.link) &&
-                                  "border-red-500 focus-visible:ring-red-500"
-                              )}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("certifications")
-                                    .certifications,
-                                ];
-                                list[idx].link = e.target.value;
-                                updateSection("certifications", {
-                                  certifications: list,
-                                });
-                              }}
-                            />
-                            {!isValidUrl(cert.link) && (
-                              <span className="text-[10px] text-red-500 font-medium block">
-                                Please enter a valid URL.
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                {/* LANGUAGES TAB */}
-                <TabsContent value="languages" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Globe className="w-4.5 h-4.5 text-teal-650 dark:text-teal-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Languages
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Languages you speak and your proficiency level in
-                          each.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("languages").languages || [];
-                        updateSection("languages", {
-                          languages: [
-                            ...cur,
-                            { language: "", proficiency: "" },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Language
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {(getSectionContent("languages").languages || []).map(
-                      (lang: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Globe className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Language {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() => moveItem("languages", idx, "up")}
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("languages", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("languages").languages ||
-                                    []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("languages").languages ||
-                                    []
-                                  ).filter((_: any, i: number) => i !== idx);
-                                  updateSection("languages", {
-                                    languages: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Language *</Label>
-                              <Input
-                                value={lang.language}
-                                placeholder="e.g. French"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("languages").languages,
-                                  ];
-                                  list[idx].language = e.target.value;
-                                  updateSection("languages", {
-                                    languages: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Proficiency</Label>
-                              <Input
-                                value={lang.proficiency}
-                                placeholder="e.g. Professional Working, Native"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("languages").languages,
-                                  ];
-                                  list[idx].proficiency = e.target.value;
-                                  updateSection("languages", {
-                                    languages: list,
-                                  });
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    )}
-                    {(getSectionContent("languages").languages || []).length ===
-                      0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">
-                        No languages added. Add languages to showcase bilingual
-                        or multilingual skills.
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* REFERENCES TAB */}
-                <TabsContent value="references" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Users className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Professional References
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          People who can vouch for your work quality and
-                          character.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("references").references || [];
-                        updateSection("references", {
-                          references: [
-                            ...cur,
-                            {
-                              id: nanoid(),
-                              name: "",
-                              company: "",
-                              title: "",
-                              email: "",
-                              phone: "",
-                              availableOnRequest: false,
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Reference
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {(getSectionContent("references").references || []).map(
-                      (ref: any, idx: number) => (
-                        <div
-                          key={ref.id || idx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                              <Users className="w-3 h-3 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                              Reference {idx + 1}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("references", idx, "up")
-                                }
-                                disabled={idx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("references", idx, "down")
-                                }
-                                disabled={
-                                  idx ===
-                                  (
-                                    getSectionContent("references")
-                                      .references || []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 min-h-11"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("references")
-                                      .references || []
-                                  ).filter((r: any) => r.id !== ref.id);
-                                  updateSection("references", {
-                                    references: list,
-                                  });
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-2 pb-1">
-                            <input
-                              type="checkbox"
-                              id={`ref-available-${ref.id}`}
-                              checked={ref.availableOnRequest}
-                              onChange={e => {
-                                const list = [
-                                  ...getSectionContent("references").references,
-                                ];
-                                list[idx].availableOnRequest = e.target.checked;
-                                updateSection("references", {
-                                  references: list,
-                                });
-                              }}
-                              className="w-4 h-4 rounded text-blue-650 focus:ring-blue-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                            />
-                            <Label
-                              htmlFor={`ref-available-${ref.id}`}
-                              className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
-                            >
-                              Available upon request
-                            </Label>
-                          </div>
-
-                          {!ref.availableOnRequest && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Name *</Label>
-                                <Input
-                                  value={ref.name}
-                                  placeholder="e.g. Jane Doe"
-                                  onChange={e => {
-                                    const list = [
-                                      ...getSectionContent("references")
-                                        .references,
-                                    ];
-                                    list[idx].name = e.target.value;
-                                    updateSection("references", {
-                                      references: list,
-                                    });
-                                  }}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Company</Label>
-                                <Input
-                                  value={ref.company}
-                                  placeholder="e.g. Google"
-                                  onChange={e => {
-                                    const list = [
-                                      ...getSectionContent("references")
-                                        .references,
-                                    ];
-                                    list[idx].company = e.target.value;
-                                    updateSection("references", {
-                                      references: list,
-                                    });
-                                  }}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Title</Label>
-                                <Input
-                                  value={ref.title}
-                                  placeholder="e.g. Director of Engineering"
-                                  onChange={e => {
-                                    const list = [
-                                      ...getSectionContent("references")
-                                        .references,
-                                    ];
-                                    list[idx].title = e.target.value;
-                                    updateSection("references", {
-                                      references: list,
-                                    });
-                                  }}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Email</Label>
-                                <Input
-                                  type="email"
-                                  value={ref.email}
-                                  placeholder="jane.doe@example.com"
-                                  className={cn(
-                                    !isValidEmail(ref.email) &&
-                                      "border-red-500 focus-visible:ring-red-500"
-                                  )}
-                                  onChange={e => {
-                                    const list = [
-                                      ...getSectionContent("references")
-                                        .references,
-                                    ];
-                                    list[idx].email = e.target.value;
-                                    updateSection("references", {
-                                      references: list,
-                                    });
-                                  }}
-                                />
-                                {!isValidEmail(ref.email) && (
-                                  <span className="text-[9px] text-red-500 font-semibold block">
-                                    Invalid email format.
-                                  </span>
-                                )}
-                              </div>
-                              <div className="space-y-1 col-span-2">
-                                <Label className="text-xs">Phone</Label>
-                                <Input
-                                  value={ref.phone}
-                                  placeholder="e.g. +1 (555) 019-2834"
-                                  className={cn(
-                                    !isValidPhone(ref.phone) &&
-                                      "border-red-500 focus-visible:ring-red-500"
-                                  )}
-                                  onChange={e => {
-                                    const list = [
-                                      ...getSectionContent("references")
-                                        .references,
-                                    ];
-                                    list[idx].phone = e.target.value;
-                                    updateSection("references", {
-                                      references: list,
-                                    });
-                                  }}
-                                />
-                                {!isValidPhone(ref.phone) && (
-                                  <span className="text-[9px] text-red-500 font-semibold block">
-                                    Invalid phone number.
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    )}
-                    {(getSectionContent("references").references || [])
-                      .length === 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">
-                        No references added. Add references or select "Available
-                        upon request".
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* CUSTOM SECTIONS TAB */}
-                <TabsContent value="custom" className="space-y-5">
-                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <LayoutList className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                          Custom Sections
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                          Add volunteer work, patents, publications, or any
-                          other section.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5 h-8 text-xs font-semibold border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5 hover:text-white rounded-lg"
-                      onClick={() => {
-                        const cur =
-                          getSectionContent("custom").customSections || [];
-                        updateSection("custom", {
-                          customSections: [
-                            ...cur,
-                            { id: nanoid(), title: "", items: [] },
-                          ],
-                        });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Custom Section
-                    </Button>
-                  </div>
-
-                  <div className="space-y-6">
-                    {(getSectionContent("custom").customSections || []).map(
-                      (sect: any, sectIdx: number) => (
-                        <div
-                          key={sect.id || sectIdx}
-                          className="border border-slate-200 dark:border-white/10 p-5 rounded-xl space-y-4 bg-slate-50/50 dark:bg-white/5 hover:border-slate-300 dark:border-white/20 transition-colors"
-                        >
-                          <div className="flex justify-between items-center gap-3">
-                            <div className="flex-1 max-w-sm">
-                              <Label className="text-xs font-bold text-slate-500">
-                                Section Title *
-                              </Label>
-                              <Input
-                                value={sect.title}
-                                placeholder="e.g. Volunteer Work, Patents"
-                                className="font-bold h-9 mt-1"
-                                onChange={e => {
-                                  const list = [
-                                    ...getSectionContent("custom")
-                                      .customSections,
-                                  ];
-                                  list[sectIdx].title = e.target.value;
-                                  updateSection("custom", {
-                                    customSections: list,
-                                  });
-                                }}
-                              />
-                            </div>
-
-                            <div className="flex items-center gap-2 mt-5">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("custom", sectIdx, "up")
-                                }
-                                disabled={sectIdx === 0}
-                                title="Move Up"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-slate-500 hover:text-slate-700"
-                                onClick={() =>
-                                  moveItem("custom", sectIdx, "down")
-                                }
-                                disabled={
-                                  sectIdx ===
-                                  (
-                                    getSectionContent("custom")
-                                      .customSections || []
-                                  ).length -
-                                    1
-                                }
-                                title="Move Down"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 h-8 font-bold"
-                                onClick={() => {
-                                  const list = (
-                                    getSectionContent("custom")
-                                      .customSections || []
-                                  ).filter((s: any) => s.id !== sect.id);
-                                  updateSection("custom", {
-                                    customSections: list,
-                                  });
-                                }}
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Items in custom section */}
-                          <div className="space-y-3 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3 rounded-lg">
-                            <div className="flex justify-between items-center">
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                Section Items
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5"
-                                onClick={() => {
-                                  const list = [
-                                    ...getSectionContent("custom")
-                                      .customSections,
-                                  ];
-                                  list[sectIdx].items = [
-                                    ...(list[sectIdx].items || []),
-                                    {
-                                      id: nanoid(),
-                                      title: "",
-                                      subtitle: "",
-                                      description: "",
-                                    },
-                                  ];
-                                  updateSection("custom", {
-                                    customSections: list,
-                                  });
-                                }}
-                              >
-                                Add Item
-                              </Button>
-                            </div>
-
-                            <div className="space-y-3">
-                              {(sect.items || []).map(
-                                (item: any, itemIdx: number) => (
-                                  <div
-                                    key={item.id || itemIdx}
-                                    className="border border-slate-200/50 dark:border-white/5 p-3 rounded-md bg-slate-50/50 dark:bg-white/5 space-y-2"
-                                  >
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400">
-                                        Item #{itemIdx + 1}
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-600"
-                                          onClick={() => {
-                                            const list = [
-                                              ...getSectionContent("custom")
-                                                .customSections,
-                                            ];
-                                            const items = [
-                                              ...list[sectIdx].items,
-                                            ];
-                                            if (itemIdx > 0) {
-                                              const tmp = items[itemIdx];
-                                              items[itemIdx] =
-                                                items[itemIdx - 1];
-                                              items[itemIdx - 1] = tmp;
-                                              list[sectIdx].items = items;
-                                              updateSection("custom", {
-                                                customSections: list,
-                                              });
-                                            }
-                                          }}
-                                          disabled={itemIdx === 0}
-                                        >
-                                          <ArrowUp className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-600"
-                                          onClick={() => {
-                                            const list = [
-                                              ...getSectionContent("custom")
-                                                .customSections,
-                                            ];
-                                            const items = [
-                                              ...list[sectIdx].items,
-                                            ];
-                                            if (itemIdx < items.length - 1) {
-                                              const tmp = items[itemIdx];
-                                              items[itemIdx] =
-                                                items[itemIdx + 1];
-                                              items[itemIdx + 1] = tmp;
-                                              list[sectIdx].items = items;
-                                              updateSection("custom", {
-                                                customSections: list,
-                                              });
-                                            }
-                                          }}
-                                          disabled={
-                                            itemIdx ===
-                                            (sect.items || []).length - 1
-                                          }
-                                        >
-                                          <ArrowDown className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-red-400 hover:text-red-600"
-                                          onClick={() => {
-                                            const list = [
-                                              ...getSectionContent("custom")
-                                                .customSections,
-                                            ];
-                                            list[sectIdx].items = list[
-                                              sectIdx
-                                            ].items.filter(
-                                              (i: any) => i.id !== item.id
-                                            );
-                                            updateSection("custom", {
-                                              customSections: list,
-                                            });
-                                          }}
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      <div className="space-y-1">
-                                        <Label className="text-[10px]">
-                                          Item Title *
-                                        </Label>
-                                        <Input
-                                          value={item.title}
-                                          placeholder="e.g. Volunteer"
-                                          className="h-8 text-xs"
-                                          onChange={e => {
-                                            const list = [
-                                              ...getSectionContent("custom")
-                                                .customSections,
-                                            ];
-                                            list[sectIdx].items[itemIdx].title =
-                                              e.target.value;
-                                            updateSection("custom", {
-                                              customSections: list,
-                                            });
-                                          }}
-                                        />
-                                      </div>
-                                      <div className="space-y-1">
-                                        <Label className="text-[10px]">
-                                          Subtitle / Organization
-                                        </Label>
-                                        <Input
-                                          value={item.subtitle}
-                                          placeholder="e.g. Red Cross"
-                                          className="h-8 text-xs"
-                                          onChange={e => {
-                                            const list = [
-                                              ...getSectionContent("custom")
-                                                .customSections,
-                                            ];
-                                            list[sectIdx].items[
-                                              itemIdx
-                                            ].subtitle = e.target.value;
-                                            updateSection("custom", {
-                                              customSections: list,
-                                            });
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-[10px]">
-                                        Description
-                                      </Label>
-                                      <Textarea
-                                        value={item.description || ""}
-                                        placeholder="e.g. Managed team of 15 volunteers..."
-                                        className="text-xs"
-                                        rows={2}
-                                        onChange={e => {
-                                          const list = [
-                                            ...getSectionContent("custom")
-                                              .customSections,
-                                          ];
-                                          list[sectIdx].items[
-                                            itemIdx
-                                          ].description = e.target.value;
-                                          updateSection("custom", {
-                                            customSections: list,
-                                          });
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    )}
-                    {(getSectionContent("custom").customSections || [])
-                      .length === 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">
-                        No custom sections added. Add volunteer work,
-                        certifications, patents, or publications.
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* LAYOUT TAB */}
-                <TabsContent value="layout" className="space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <Settings className="w-4.5 h-4.5 text-slate-500 dark:text-slate-500 dark:text-slate-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Section Order & Visibility
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">
-                        Drag to reorder sections and toggle visibility on your
-                        resume.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-xl p-4 bg-slate-50/50 dark:bg-white/5">
-                    {[...localResume.sections]
-                      .sort((a, b) => a.order - b.order)
-                      .map((sec, idx, sortedList) => (
-                        <div
-                          key={sec.id}
-                          className="flex items-center justify-between bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-white/10 p-3 rounded-lg shadow-sm"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-slate-500 dark:text-slate-500 dark:text-slate-400 w-5">
-                              #{idx + 1}
-                            </span>
-                            <span className="text-sm font-semibold capitalize text-slate-800 dark:text-slate-200">
-                              {sec.type === "custom"
-                                ? `Custom Sections`
-                                : sec.type === "certifications"
-                                  ? "Certifications (Credentials)"
-                                  : sec.type}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {/* Toggle visibility */}
-                            <div className="flex items-center gap-1.5 mr-2">
-                              <input
-                                type="checkbox"
-                                id={`vis-${sec.id}`}
-                                checked={sec.visible}
-                                onChange={() => toggleSectionVisibility(sec.id)}
-                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5"
-                              />
-                              <label
-                                htmlFor={`vis-${sec.id}`}
-                                className="text-xs font-medium text-slate-500 cursor-pointer select-none"
-                              >
-                                {sec.visible ? "Visible" : "Hidden"}
-                              </label>
-                            </div>
-                            {/* Move up / down */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() => moveSection(idx, "up")}
-                              disabled={idx === 0 || sec.type === "header"} // header is usually locked at top
-                            >
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() => moveSection(idx, "down")}
-                              disabled={
-                                idx === sortedList.length - 1 ||
-                                sec.type === "header"
-                              }
-                            >
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </TabsContent>
-
-                {/* ACHIEVEMENTS TAB */}
-                <TabsContent value="achievements" className="space-y-6">
-                  {/* Achievements Editor */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">
-                        Achievements Highlights
-                      </h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-lg text-xs border-slate-200 dark:border-white/10 hover:bg-slate-50/50 dark:bg-white/5"
-                        onClick={() => {
-                          const cur =
-                            getSectionContent("achievements").achievements ||
-                            [];
-                          updateSection("achievements", {
-                            achievements: [...cur, ""],
-                          });
-                        }}
-                      >
-                        Add Achievement
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {(
-                        getSectionContent("achievements").achievements || []
-                      ).map((ach: string, idx: number) => (
-                        <div key={idx} className="flex gap-2 items-center">
-                          <Input
-                            placeholder="e.g. Winner of national hackathon out of 500+ teams"
-                            value={ach}
-                            onChange={e => {
-                              const list = [
-                                ...getSectionContent("achievements")
-                                  .achievements,
-                              ];
-                              list[idx] = e.target.value;
-                              updateSection("achievements", {
-                                achievements: list,
-                              });
-                            }}
-                            className="h-10 rounded-xl border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-slate-200 focus-visible:ring-blue-500"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-400 hover:text-red-300 h-9"
-                            onClick={() => {
-                              const list = (
-                                getSectionContent("achievements")
-                                  .achievements || []
-                              ).filter((_: any, i: number) => i !== idx);
-                              updateSection("achievements", {
-                                achievements: list,
-                              });
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))}
-                      {(getSectionContent("achievements").achievements || [])
-                        .length === 0 && (
-                        <p className="text-xs text-slate-550 dark:text-slate-400 italic">
-                          No achievements added. Add key milestones to stand
-                          out.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* LIVE PREVIEW TAB */}
-                <TabsContent
-                  value="preview"
-                  className="h-full min-h-0 flex flex-col gap-3"
-                >
-                  <div className="flex items-center justify-between gap-3 rounded-t-xl border-b border-slate-200 bg-white/85 px-3 py-2.5 dark:border-white/10 dark:bg-slate-950/40 sm:rounded-xl sm:border">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
-                        <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">
-                          Live Preview
-                        </h3>
-                        <p className="hidden sm:block text-xs text-slate-550 dark:text-slate-455 mt-0.5 font-semibold">
-                          Inspect your resume before export.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1.5 items-center rounded-xl bg-slate-50 p-1 dark:bg-white/5">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-11 w-11 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
-                        onClick={() => setZoom(Math.max(35, zoom - 10))}
-                      >
-                        <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
-                      </Button>
-                      <span className="text-[11px] text-slate-700 dark:text-slate-300 font-extrabold px-1 min-w-[34px] text-center">
-                        {zoom}%
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-11 w-11 rounded-lg border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
-                        onClick={() => setZoom(Math.min(150, zoom + 10))}
-                      >
-                        <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-h-0 overflow-hidden flex border-y border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-[#131b2e] sm:rounded-xl sm:border">
-                    <ResumePreview
-                      resume={localResume}
-                      templateId="classic-ats-blue"
-                      zoom={zoom}
-                      contentId="resume-preview-mobile"
-                      onSectionSelect={handleSectionSelect}
-                    />
-                  </div>
-                </TabsContent>
-
-                {/* REVIEW & EXPORT TAB */}
-                <TabsContent value="review" className="space-y-6">
-                  <div className="flex items-start gap-3 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                        Final Review & Export
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-semibold">
-                        Review your ATS optimization checklist and export your
-                        final resume.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Detailed ATS Score Widget */}
-                    <Card className="border border-slate-200 dark:border-white/10 shadow-sm p-5 space-y-4 bg-slate-50/50 dark:bg-white/5 rounded-xl">
-                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 border-b border-slate-200 dark:border-white/10 pb-2">
-                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        ATS Optimization Details
-                      </h4>
-
-                      <div className="flex items-center gap-4">
-                        {/* Radial Gauge */}
-                        <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                          <svg
-                            className="w-full h-full transform -rotate-90"
-                            viewBox="0 0 100 100"
-                          >
-                            <circle
-                              className="text-slate-200 dark:text-white/5 stroke-current"
-                              cx="50"
-                              cy="50"
-                              fill="transparent"
-                              r="40"
-                              strokeWidth="8"
-                            ></circle>
-                            <circle
-                              className="text-emerald-600 dark:text-emerald-400 stroke-current transition-all duration-1000"
-                              cx="50"
-                              cy="50"
-                              fill="transparent"
-                              r="40"
-                              strokeDasharray="251.2"
-                              strokeDashoffset={
-                                251.2 * (1 - atsSummary.score / 100)
-                              }
-                              strokeLinecap="round"
-                              strokeWidth="8"
-                            ></circle>
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center flex-col">
-                            <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                              {atsSummary.score}%
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {atsSummary.score >= 70
-                              ? "Ready for Applications!"
-                              : atsSummary.score >= 40
-                                ? "Needs Improvement"
-                                : "Urgent Actions Required"}
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                            Keywords: {atsSummary.matchedKeywords.length}{" "}
-                            matched
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                            Sections: {atsSummary.completenessScore}% filled
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Keyword list details */}
-                      <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/10 text-xs">
-                        <div>
-                          <span className="font-bold text-slate-700 dark:text-slate-400 block mb-1">
-                            Matched Keywords (
-                            {atsSummary.matchedKeywords.length}):
-                          </span>
-                          {atsSummary.matchedKeywords.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {atsSummary.matchedKeywords
-                                .slice(0, 5)
-                                .map((kw, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded font-semibold text-[9px]"
-                                  >
-                                    {kw}
-                                  </span>
-                                ))}
-                              {atsSummary.matchedKeywords.length > 5 && (
-                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-455 border border-slate-200 dark:border-white/10 rounded font-semibold text-[9px]">
-                                  +{atsSummary.matchedKeywords.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-[10px] text-slate-400 dark:text-slate-550 italic">
-                              None matched yet. Tailor skills and experience
-                              sections.
-                            </p>
-                          )}
-                        </div>
-
-                        {atsSummary.missingKeywords.length > 0 && (
-                          <div>
-                            <span className="font-bold text-slate-700 dark:text-slate-400 block mb-1">
-                              Missing Keywords (
-                              {atsSummary.missingKeywords.length}):
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {atsSummary.missingKeywords
-                                .slice(0, 5)
-                                .map((kw, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-0.5 bg-rose-500/10 text-rose-700 dark:text-rose-455 border border-rose-500/20 rounded font-semibold text-[9px]"
-                                  >
-                                    {kw}
-                                  </span>
-                                ))}
-                              {atsSummary.missingKeywords.length > 5 && (
-                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-455 border border-slate-200 dark:border-white/10 rounded font-semibold text-[9px]">
-                                  +{atsSummary.missingKeywords.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {atsSummary.suggestions.length > 0 && (
-                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 space-y-1">
-                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-300 block">
-                            Suggestions:
-                          </span>
-                          <ul className="text-[10px] text-amber-700 dark:text-amber-200 list-disc pl-4 space-y-1 font-semibold max-h-24 overflow-y-auto">
-                            {atsSummary.suggestions.map((s, i) => (
-                              <li key={i}>{s}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </Card>
-
-                    {/* Completion Panel */}
-                    <Card className="border border-slate-200 dark:border-white/10 shadow-sm p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 dark:bg-white/5 rounded-xl space-y-4 min-h-[220px]">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 animate-pulse">
-                        <CheckCircle2 className="w-6 h-6" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                          All Sections Completed!
-                        </h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[240px] font-semibold">
-                          You have filled in all the core information. Click
-                          "Finish & Export" to download your ATS-ready resume.
-                        </p>
-                      </div>
-
-                      <Button
-                        onClick={() => setShowDownloadModal(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 h-10 px-6 rounded-xl shadow-md hover:shadow-lg transition-all"
-                      >
-                        <Sparkles className="w-4 h-4 text-blue-200" />
-                        Finish & Export
-                      </Button>
-                    </Card>
-                  </div>
-                </TabsContent>
+                <ReviewTab
+                  atsSummary={atsSummary}
+                  setShowDownloadModal={setShowDownloadModal}
+                />
               </Tabs>
             </div>
 
             {/* Wizard Navigation Footer */}
-            <div className="hidden sm:block shrink-0 border-t border-slate-200/50 dark:border-white/5">
+            <div className="hidden sm:block shrink-0 border-t border-border">
               {/* Mini progress bar */}
-              <div className="h-0.5 bg-slate-50/50 dark:bg-white/5">
+              <div className="h-0.5 bg-muted">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 ease-out rounded-r-full"
+                  className="h-full bg-primary transition-all duration-500 ease-out rounded-r-full"
                   style={{
                     width: `${((activeFlowIndex + 1) / EDITOR_FLOW_STEPS.length) * 100}%`,
                   }}
                 />
               </div>
-              <div className="bg-slate-100/80 dark:bg-slate-950/40 backdrop-blur-sm px-5 py-3 flex justify-between items-center">
+              <div className="bg-muted/80 backdrop-blur-sm px-5 py-3 flex justify-between items-center">
                 <Button
                   variant="outline"
                   disabled={activeEditTab === "header"}
@@ -4071,7 +1530,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       );
                     }
                   }}
-                  className="border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-350 bg-slate-50/50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-white font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs"
+                  className="border-border text-muted-foreground bg-muted hover:bg-muted hover:text-foreground font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   Back
@@ -4089,10 +1548,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                               (MORE_SECTION_KEYS as readonly string[]).includes(
                                 activeEditTab
                               ))
-                              ? "w-4 bg-blue-500"
+                              ? "w-4 bg-primary"
                               : isStepCompleted(step.key)
-                                ? "bg-blue-300/60"
-                                : "bg-white/10"
+                                ? "bg-primary/40"
+                                : "bg-border"
                           )}
                         />
                       ))
@@ -4103,8 +1562,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                             "w-1.5 h-1.5 rounded-full transition-all duration-300",
                             key === "preview" && "lg:hidden",
                             activeEditTab === key
-                              ? "w-4 bg-blue-500"
-                              : "bg-blue-300/60"
+                              ? "w-4 bg-primary"
+                              : "bg-primary/40"
                           )}
                         />
                       ))}
@@ -4122,12 +1581,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       setShowDownloadModal(true);
                     }
                   }}
-                  className={cn(
-                    "font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs shadow-sm transition-all",
-                    isFinalFlowStep
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-755 text-white shadow-blue-500/20"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                  )}
+                  className="font-semibold gap-1.5 px-4 h-9 rounded-lg text-xs shadow-sm transition-all bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   {isFinalFlowStep ? (
                     <>
@@ -4146,47 +1600,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           </Card>
         </div>
 
-        <aside className="hidden lg:flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-950/30 shadow-sm">
-          <div className="shrink-0 flex items-start justify-between gap-3 border-b border-slate-200 dark:border-white/10 px-4 py-3 bg-white/55 dark:bg-white/[0.03] backdrop-blur-sm">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center shrink-0">
-                <Eye className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-[15px] leading-tight">
-                  Live Preview
-                </h3>
-                <p className="text-xs text-slate-550 dark:text-slate-455 mt-0.5 font-semibold">
-                  Updates instantly while you edit.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-1.5 items-center shrink-0">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-11 w-11 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
-                onClick={() => setZoom(Math.max(50, zoom - 10))}
-              >
-                <ZoomOut className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
-              </Button>
-              <span className="text-[11px] text-slate-700 dark:text-slate-300 font-extrabold px-1 min-w-[36px] text-center">
-                {zoom}%
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-11 w-11 border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
-                onClick={() => setZoom(Math.min(150, zoom + 10))}
-              >
-                <ZoomIn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-355" />
-              </Button>
-            </div>
-          </div>
+        <aside className="hidden lg:flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+          <PreviewToolbar
+            variant="desktop"
+            zoom={zoom}
+            onZoomChange={setZoom}
+            subtitle="Updates instantly while you edit."
+          />
           <div className="flex-1 min-h-0 overflow-hidden">
             <ResumePreview
               resume={localResume}
-              templateId="classic-ats-blue"
+              templateId={getDefaultTemplate().id}
               zoom={zoom}
               contentId="resume-preview-desktop"
               onSectionSelect={handleSectionSelect}
@@ -4201,7 +1625,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       >
         <ResumePreview
           resume={localResume}
-          templateId="classic-ats-blue"
+          templateId={getDefaultTemplate().id}
           zoom={100}
           contentRef={exportPreviewRef}
           contentId="resume-pdf-content"
@@ -4209,20 +1633,20 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
       </div>
 
       {showDownloadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
-          <Card className="w-full max-w-2xl border border-slate-200 dark:border-white/10 shadow-2xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-md p-4 animate-fade-in">
+          <Card className="w-full max-w-2xl border border-border shadow-2xl bg-card rounded-2xl overflow-hidden animate-scale-up">
             {/* Header Section */}
-            <div className="p-6 md:p-8 flex flex-col items-center text-center relative border-b border-slate-200 dark:border-white/10">
+            <div className="p-6 md:p-8 flex flex-col items-center text-center relative border-b border-border">
               <button
                 onClick={() => setShowDownloadModal(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-655 dark:hover:text-white text-lg font-bold outline-none"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-lg font-bold outline-none"
               >
                 ✕
               </button>
 
               <div className="w-20 h-20 mb-4 relative flex items-center justify-center">
                 <svg
-                  className="w-16 h-16 mx-auto text-emerald-600 dark:text-emerald-400 relative z-10"
+                  className="w-16 h-16 mx-auto text-success relative z-10"
                   viewBox="0 0 100 100"
                   xmlns="http://www.w3.org/2000/svg"
                 >
@@ -4248,13 +1672,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     strokeDashoffset="0"
                   />
                 </svg>
-                <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full -z-0 scale-110 blur-xs"></div>
+                <div className="absolute inset-0 bg-success/10 rounded-full -z-0 scale-110 blur-xs"></div>
               </div>
 
-              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+              <h3 className="text-2xl font-extrabold text-foreground">
                 Resume Completed!
               </h3>
-              <p className="text-sm text-slate-550 dark:text-slate-400 mt-1 max-w-md font-semibold">
+              <p className="text-sm text-muted-foreground mt-1 max-w-md font-semibold">
                 Your ATS-optimized resume has been generated and is ready to
                 share.
               </p>
@@ -4262,7 +1686,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
             {/* Match Summary Card */}
             <CardContent className="p-6 md:p-8 space-y-6">
-              <div className="bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+              <div className="bg-muted border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
                 {/* Circular Progress Dial */}
                 <div className="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
                   <svg
@@ -4270,7 +1694,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     viewBox="0 0 100 100"
                   >
                     <circle
-                      className="text-slate-200 dark:text-white/5 stroke-current"
+                      className="text-border stroke-current"
                       cx="50"
                       cy="50"
                       fill="transparent"
@@ -4278,7 +1702,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       strokeWidth="8"
                     ></circle>
                     <circle
-                      className="text-emerald-600 dark:text-emerald-400 stroke-current transition-all duration-1000 ease-out"
+                      className="text-success stroke-current transition-all duration-1000 ease-out"
                       cx="50"
                       cy="50"
                       fill="transparent"
@@ -4290,10 +1714,10 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     ></circle>
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    <span className="text-xl font-bold text-foreground">
                       {atsSummary.score}%
                     </span>
-                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                       Match
                     </span>
                   </div>
@@ -4301,8 +1725,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
 
                 {/* Metadata text */}
                 <div className="flex-1 text-center sm:text-left space-y-3">
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center sm:justify-start gap-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <h4 className="text-sm font-bold text-foreground flex items-center justify-center sm:justify-start gap-1.5">
+                    <Sparkles className="w-4 h-4 text-success" />
                     ATS Optimization Score:{" "}
                     {atsSummary.score >= 70
                       ? "High"
@@ -4310,16 +1734,16 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                         ? "Medium"
                         : "Low"}
                   </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
                     <li className="flex items-center justify-center sm:justify-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                       <span>
                         {atsSummary.matchedKeywords.length} matching keywords
                         found.
                       </span>
                     </li>
                     <li className="flex items-center justify-center sm:justify-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                       <span>All key sections populated accurately.</span>
                     </li>
                   </ul>
@@ -4329,13 +1753,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                       {atsSummary.matchedKeywords.slice(0, 4).map((kw, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 rounded-md font-semibold text-[10px]"
+                          className="px-2.5 py-1 bg-success/10 text-success border border-success/20 rounded-md font-semibold text-[10px]"
                         >
                           {kw}
                         </span>
                       ))}
                       {atsSummary.matchedKeywords.length > 4 && (
-                        <span className="px-2.5 py-1 bg-slate-100 dark:bg-white/5 text-slate-550 dark:text-slate-400 border border-slate-200 dark:border-white/10 rounded-md font-semibold text-[10px]">
+                        <span className="px-2.5 py-1 bg-muted text-muted-foreground border border-border rounded-md font-semibold text-[10px]">
                           +{atsSummary.matchedKeywords.length - 4} more
                         </span>
                       )}
@@ -4348,7 +1772,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   onClick={handleExportPDF}
-                  className="w-full sm:flex-1 bg-primary hover:bg-primary/95 text-white font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 h-12 rounded-lg shadow-md transition-all flex items-center justify-center border-none"
                 >
                   <Download className="w-4 h-4" />
                   Download PDF Format
@@ -4356,19 +1780,19 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                 <Button
                   onClick={handleExportDOCX}
                   variant="outline"
-                  className="w-full sm:flex-1 border border-slate-200 dark:border-white/10 hover:border-primary text-slate-800 dark:text-slate-200 bg-white/50 hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/8 font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
+                  className="w-full sm:flex-1 border border-border hover:border-primary text-foreground bg-card hover:bg-muted font-bold gap-2 h-12 rounded-lg transition-all flex items-center justify-center"
                 >
-                  <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <FileText className="w-4 h-4 text-muted-foreground" />
                   Download Word (DOCX)
                 </Button>
               </div>
             </CardContent>
 
             {/* Footer */}
-            <div className="bg-slate-50/50 dark:bg-slate-950/20 border-t border-slate-200 dark:border-white/10 px-6 py-4 flex justify-between items-center">
+            <div className="bg-muted border-t border-border px-6 py-4 flex justify-between items-center">
               <button
                 onClick={() => setShowDownloadModal(false)}
-                className="text-xs font-bold text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-1 bg-transparent border-none outline-none"
+                className="text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 bg-transparent border-none outline-none"
               >
                 ← Go back to editor
               </button>
@@ -4377,7 +1801,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                   setShowDownloadModal(false);
                   window.location.search = "?mode=upload";
                 }}
-                className="text-xs font-bold text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-blue-400 flex items-center gap-1 bg-transparent border-none outline-none"
+                className="text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 bg-transparent border-none outline-none"
               >
                 Start a new CV +
               </button>
@@ -4386,7 +1810,7 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
         </div>
       )}
       {/* Mobile Bottom Navigation Bar (Stitch Light theme compliant mockup mapped actions) */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 bg-white/95 text-slate-500 backdrop-blur-xl border-t border-slate-200 shadow-lg flex justify-around items-center px-3 pt-2 pb-3 dark:bg-[#0f172a]/95 dark:text-slate-400 dark:border-white/10 lg:hidden">
+      <nav className="fixed bottom-0 left-0 w-full z-50 bg-background/95 text-muted-foreground backdrop-blur-xl border-t border-border shadow-lg flex justify-around items-center px-3 pt-2 pb-3 lg:hidden">
         {/* Layout/Templates button */}
         <button
           type="button"
@@ -4396,8 +1820,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           className={cn(
             "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "layout"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Settings className="w-5 h-5" />
@@ -4421,8 +1845,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
             activeEditTab !== "layout" &&
               activeEditTab !== "preview" &&
               activeEditTab !== "review"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Edit3 className="w-5 h-5" />
@@ -4436,8 +1860,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           className={cn(
             "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "preview"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Eye className="w-5 h-5" />
@@ -4451,8 +1875,8 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
           className={cn(
             "flex min-h-[44px] flex-col items-center justify-center p-2 rounded-xl gap-1 min-w-[64px] transition-all duration-200 active:scale-95 cursor-pointer border-none bg-transparent",
             activeEditTab === "review"
-              ? "text-blue-600 bg-blue-50 font-bold dark:text-blue-400 dark:bg-blue-950/30"
-              : "hover:text-slate-800 dark:hover:text-slate-200"
+              ? "text-primary bg-primary/10 font-bold"
+              : "hover:text-foreground"
           )}
         >
           <Download className="w-5 h-5" />

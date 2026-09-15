@@ -13,6 +13,8 @@ interface ResumePreviewProps {
   contentId?: string;
   /** When provided, rendered sections become clickable and call this with the section type. */
   onSectionSelect?: (type: string) => void;
+  /** Skip editor chrome (slate pad + nested scroll) so marketing frames can scale the A4 page itself. */
+  pageOnly?: boolean;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -142,13 +144,14 @@ export default function ResumePreview({
   contentRef,
   contentId = "resume-pdf-content",
   onSectionSelect,
+  pageOnly = false,
 }: ResumePreviewProps) {
   const [countriesList, setCountriesList] = useState<any[]>([]);
 
   const template = getDefaultTemplate();
   const { colors: tc, cornerRadius } = template.styles;
-  const bgColor = "#ffffff";
-  const textColor = "#1e293b";
+  const bgColor = tc.background;
+  const textColor = tc.text;
   const mutedColor = "#64748b";
   const lightText = "#475569";
 
@@ -167,25 +170,7 @@ export default function ResumePreview({
     fetchCountries();
   }, []);
 
-  // Locate sections
   const headerSection = resume.sections.find(s => s.type === "header");
-  const summarySection = resume.sections.find(s => s.type === "summary");
-  const skillsSection = resume.sections.find(s => s.type === "skills");
-  const experienceSection = resume.sections.find(s => s.type === "experience");
-  const projectsSection = resume.sections.find(s => s.type === "projects");
-  const educationSection = resume.sections.find(s => s.type === "education");
-  const certificationsSection = resume.sections.find(
-    s => s.type === "certifications"
-  );
-  const achievementsSection = resume.sections.find(
-    s => s.type === "achievements"
-  );
-
-  // Helper to check if section is visible
-  const isVisible = (type: string) => {
-    const sec = resume.sections.find(s => s.type === type);
-    return sec ? sec.visible : false;
-  };
 
   const header = headerSection?.content.header || {
     name: "Your Full Name",
@@ -243,8 +228,12 @@ export default function ResumePreview({
 
   return (
     <div
-      className="w-full h-full p-2 sm:p-4 overflow-auto flex justify-center items-start"
-      style={{ backgroundColor: "#f1f5f9" }}
+      className={
+        pageOnly
+          ? "contents"
+          : "flex h-full w-full items-start justify-center overflow-auto p-2 sm:p-4"
+      }
+      style={pageOnly ? undefined : { backgroundColor: "#f1f5f9" }}
     >
       <div
         id={contentId}
@@ -441,60 +430,52 @@ export default function ResumePreview({
                     <SectionHeading color={tc.accent} borderColor={tc.border}>
                       Projects
                     </SectionHeading>
-                    <div className="mb-3 last:mb-0">
-                      <p
-                        className="text-[12px] italic font-semibold mb-1"
-                        style={{ color: mutedColor }}
+                    {sec.content.projects.map((proj: any, idx: number) => (
+                      <div
+                        key={proj.id || idx}
+                        className="mb-2 last:mb-0 pdf-avoid-break"
                       >
-                        Technical Projects
-                      </p>
-                      {sec.content.projects.map((proj: any, idx: number) => (
-                        <div
-                          key={proj.id || idx}
-                          className="mb-2 last:mb-0 pdf-avoid-break"
-                        >
-                          <p className="text-[13px]">
+                        <p className="text-[13px]">
+                          <span
+                            className="font-bold"
+                            style={{ color: textColor }}
+                          >
+                            {proj.name}
+                          </span>
+                          {proj.link && (
                             <span
-                              className="font-bold"
-                              style={{ color: textColor }}
+                              style={{ color: tc.primary }}
+                              className="font-medium"
                             >
-                              {proj.name}
+                              {" "}
+                              ↗ Live
                             </span>
-                            {proj.link && (
-                              <span
-                                style={{ color: tc.primary }}
-                                className="font-medium"
-                              >
-                                {" "}
-                                ↗ Live
-                              </span>
-                            )}
-                            {proj.technologies && (
-                              <span
-                                className="italic"
-                                style={{ color: mutedColor }}
-                              >
-                                {" "}
-                                —{" "}
-                                {Array.isArray(proj.technologies)
-                                  ? proj.technologies.join(", ")
-                                  : proj.technologies}
-                              </span>
-                            )}
-                          </p>
-                          {proj.description && (
-                            <BulletList
-                              items={
-                                Array.isArray(proj.description)
-                                  ? proj.description
-                                  : proj.description.split("\n").filter(Boolean)
-                              }
-                              color={textColor}
-                            />
                           )}
-                        </div>
-                      ))}
-                    </div>
+                          {proj.technologies && (
+                            <span
+                              className="italic"
+                              style={{ color: mutedColor }}
+                            >
+                              {" "}
+                              —{" "}
+                              {Array.isArray(proj.technologies)
+                                ? proj.technologies.join(", ")
+                                : proj.technologies}
+                            </span>
+                          )}
+                        </p>
+                        {proj.description && (
+                          <BulletList
+                            items={
+                              Array.isArray(proj.description)
+                                ? proj.description
+                                : proj.description.split("\n").filter(Boolean)
+                            }
+                            color={textColor}
+                          />
+                        )}
+                      </div>
+                    ))}
                   </section>
                 );
               case "education":

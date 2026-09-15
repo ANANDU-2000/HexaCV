@@ -17,26 +17,69 @@ const STEPS = [
   { key: "structure", label: "Structuring your resume…", Icon: LayoutTemplate },
 ] as const;
 
+/** Real work phases from Landing.handleFile — drives the loader floor. */
+export type ParsePhase =
+  | "idle"
+  | "reading"
+  | "encoding"
+  | "uploading"
+  | "extracting"
+  | "done";
+
+const PHASE_MIN_STEP: Record<ParsePhase, number> = {
+  idle: 0,
+  reading: 0,
+  encoding: 0,
+  uploading: 1,
+  extracting: 2,
+  done: STEPS.length - 1,
+};
+
 /**
  * Extraction process window shown while a PDF/DOCX is being parsed.
- * Steps advance on a timer; the parent keeps `open` true until the parse
- * resolves, then navigates to the target-role step.
+ * Step floor follows real `phase` from the parent; a slow timer only fills
+ * remaining steps so the UI never claims "done" before the network returns.
  */
-export default function ParseLoader({ open }: { open: boolean }) {
+export default function ParseLoader({
+  open,
+  phase = "reading",
+}: {
+  open: boolean;
+  phase?: ParsePhase;
+}) {
   const [stepIdx, setStepIdx] = useState(0);
+  const phaseFloor = PHASE_MIN_STEP[phase] ?? 0;
 
   useEffect(() => {
     if (!open) {
       setStepIdx(0);
       return;
     }
+    setStepIdx((i) => Math.max(i, phaseFloor));
+  }, [open, phaseFloor]);
+
+  useEffect(() => {
+    if (!open || phase === "done") return;
+    // Slow fill only toward the last step — never past "structuring" until done.
     const id = setInterval(() => {
-      setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
-    }, 650);
+      setStepIdx((i) => {
+        const floor = PHASE_MIN_STEP[phase] ?? 0;
+        const cap = STEPS.length - 2; // hold on last active step until phase=done
+        return Math.min(Math.max(i, floor) + 1, cap);
+      });
+    }, 900);
     return () => clearInterval(id);
-  }, [open]);
+  }, [open, phase]);
+
+  useEffect(() => {
+    if (phase === "done") {
+      setStepIdx(STEPS.length - 1);
+    }
+  }, [phase]);
 
   if (!open) return null;
+
+  const displayIdx = Math.max(stepIdx, phaseFloor);
 
   return (
     <div
@@ -56,8 +99,8 @@ export default function ParseLoader({ open }: { open: boolean }) {
 
         <ol className="mt-10 space-y-4">
           {STEPS.map((step, idx) => {
-            const done = idx < stepIdx;
-            const active = idx === stepIdx;
+            const done = idx < displayIdx || phase === "done";
+            const active = idx === displayIdx && phase !== "done";
             const Icon = step.Icon;
             return (
               <li

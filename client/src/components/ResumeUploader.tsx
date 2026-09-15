@@ -3,7 +3,11 @@ import { Button } from '@/shared/ui/button';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Loader2, Upload, CheckCircle, AlertCircle, ChevronRight, FileText, UploadCloud } from 'lucide-react';
 import { ParsedResume } from '@shared/types';
-import { trpc } from '@/lib/trpc';
+import {
+  validateResumeFile,
+  useResumeUpload,
+} from '@/_core/hooks/useResumeUpload';
+import { prefillTargetRoleFromParsed } from '@/lib/targetDraft';
 
 interface ResumeUploaderProps {
   onParsed: (data: ParsedResume) => void;
@@ -12,28 +16,19 @@ interface ResumeUploaderProps {
 
 export default function ResumeUploader({ onParsed, onStartFromScratch }: ResumeUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseMutation = trpc.resume.parse.useMutation();
+  const { parseFile, parsing: uploading, error, setError } = useResumeUpload();
 
   const handleFileSelect = (selectedFile: File) => {
     setError(null);
     setSuccess(false);
 
-    // Validate file type
-    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-    if (!validTypes.includes(selectedFile.type) && !selectedFile.name.endsWith('.txt') && !selectedFile.name.endsWith('.docx') && !selectedFile.name.endsWith('.pdf')) {
-      setError('Please upload a PDF, Word document, or text file.');
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB.');
+    const validationError = validateResumeFile(selectedFile);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -66,41 +61,14 @@ export default function ResumeUploader({ onParsed, onStartFromScratch }: ResumeU
   const handleUpload = async () => {
     if (!file) return;
 
-    setUploading(true);
-    setError(null);
+    const parsed = await parseFile(file);
+    if (!parsed) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const result = e.target?.result as string;
-        const base64 = result.split(',')[1];
-        if (!base64) {
-          throw new Error('Failed to read file as base64 string.');
-        }
-
-        const parsed = await parseMutation.mutateAsync({
-          filename: file.name,
-          base64,
-        });
-
-        setSuccess(true);
-        setTimeout(() => {
-          onParsed(parsed);
-        }, 1000);
-      } catch (err: any) {
-        console.error('File parsing error:', err);
-        setError(err?.message || 'Failed to process file. Please try again.');
-      } finally {
-        setUploading(false);
-      }
-    };
-
-    reader.onerror = () => {
-      setError('Failed to read file.');
-      setUploading(false);
-    };
-
-    reader.readAsDataURL(file);
+    prefillTargetRoleFromParsed(parsed);
+    setSuccess(true);
+    setTimeout(() => {
+      onParsed(parsed);
+    }, 1000);
   };
 
   return (

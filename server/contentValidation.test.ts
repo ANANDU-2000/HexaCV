@@ -4,6 +4,7 @@ import {
   filterGroundedRewrite,
   isAiGeneratedPhrase,
   textGroundedInSource,
+  validateGeneratedResume,
 } from "./contentValidation";
 import { inferJobTitleAndTargetRole } from "./fileParser";
 
@@ -42,6 +43,43 @@ describe("contentValidation", () => {
     expect(textGroundedInSource("Senior Software Engineer", source)).toBe(true);
     expect(textGroundedInSource("Quantum blockchain visionary", source)).toBe(false);
   });
+
+  it("validateGeneratedResume strips ungrounded invents when source is provided", () => {
+    const source =
+      "Priya Nair\nSite Engineer\nAcme Infra\nSupervised site concreting and formwork";
+    const dirty = {
+      header: { name: "Priya Nair", email: "", phone: "", location: "", jobTitle: "Site Engineer", targetRole: "Site Engineer", links: [] },
+      summary: "Visionary thought leader who leveraged synergies across blockchain",
+      skills: [{ category: "Tools", skills: ["formwork", "Quantum NLP"] }],
+      experiences: [
+        {
+          id: "1",
+          company: "Acme Infra",
+          role: "Site Engineer",
+          startDate: "2020",
+          endDate: "Present",
+          current: true,
+          description: [
+            "Supervised site concreting and formwork",
+            "Delivered 50+ major products on schedule across 12 regions",
+          ],
+        },
+      ],
+      projects: [],
+      educations: [],
+      certifications: [],
+      achievements: [],
+      languages: [],
+      references: [],
+    };
+    const cleaned = validateGeneratedResume(dirty, source);
+    expect(cleaned.summary).toBe("");
+    expect(cleaned.skills[0].skills).toEqual(["formwork"]);
+    expect(cleaned.experiences).toHaveLength(1);
+    expect(cleaned.experiences[0].description).toEqual([
+      "Supervised site concreting and formwork",
+    ]);
+  });
 });
 
 describe("inferJobTitleAndTargetRole", () => {
@@ -53,6 +91,15 @@ Objective: Seeking a senior backend engineer role`;
     const result = inferJobTitleAndTargetRole(text);
     expect(result.jobTitle).toBe("Full Stack Developer");
     expect(result.targetRole.toLowerCase()).toContain("backend");
+  });
+
+  it("extracts civil / product-owner style titles", () => {
+    const text = `Rashid Al Mansouri
+Site Engineer
+rashid@example.com
+Experience at Gulf Infrastructure`;
+    const result = inferJobTitleAndTargetRole(text);
+    expect(result.jobTitle.toLowerCase()).toContain("site engineer");
   });
 
   it("falls back to most recent experience role", () => {

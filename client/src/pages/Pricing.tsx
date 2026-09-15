@@ -36,7 +36,7 @@ const FIRST_FREE_FEATURES = [
 export default function Pricing() {
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-      <SiteHeader />
+      <SiteHeader variant="scroll-blur" />
 
       <main className="mx-auto w-full flex-1 px-4 pb-16 pt-12 sm:px-8" style={{ maxWidth: 960 }}>
         <div className="text-center">

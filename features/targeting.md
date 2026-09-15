@@ -16,7 +16,9 @@ Capture the three inputs that make a grounded, ATS-tailored resume possible:
    user's parsed experience ("based on your experience").
 4. Optionally expand "+ Paste job description (recommended)" — floating-label textarea.
 5. Click the CTA:
-   - **Guest** → "Sign in to build your resume" → login (redirects back here).
+   - **Guest (primary)** → "Sign in to build your resume" → login (redirects back here) → AI pipeline.
+   - **Guest (secondary)** → "Continue as guest" → opens the **live editor** from the
+     on-device entry draft + target role (`/builder/ai?fromPipeline=1`), without AI cloud build.
    - **Signed in with credit** → "Build my resume — free" → AI pipeline.
    - **Signed in, no credit** → "Build my resume — ₹99" → **Confirm & Pay** screen → Razorpay → pipeline.
 

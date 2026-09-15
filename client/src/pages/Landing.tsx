@@ -6,32 +6,24 @@ import {
   ArrowRight, Linkedin, Upload, Pencil, FileText,
   MapPin, CheckCircle2, Lock,
 } from "lucide-react";
-import ResumePreview from "@/components/ResumePreview";
-import { PREVIEW_PAGE_WIDTH, SAMPLES } from "@/lib/sampleResumes";
 import HowItWorksStrip from "@/components/landing/HowItWorksStrip";
+import HeroResumePreview from "@/components/landing/HeroResumePreview";
 import GroundingProof from "@/components/landing/GroundingProof";
 import OutputPreviewRow from "@/components/landing/OutputPreviewRow";
 import PricingTeaser from "@/components/landing/PricingTeaser";
 import LandingFaq from "@/components/landing/LandingFaq";
 import ParseLoader from "@/components/ParseLoader";
 import { FloatingLabelTextarea } from "@/shared/ui/floating-field";
-import { trpc } from "@/lib/trpc";
 import {
   createDraftId,
   saveEntryDraft,
   summarizeParsed,
   type EntryDraft,
 } from "@/lib/entryDraft";
+import { prefillTargetRoleFromParsed } from "@/lib/targetDraft";
+import { useResumeUpload } from "@/_core/hooks/useResumeUpload";
 import SiteHeader from "@/shared/layout/SiteHeader";
 import SiteFooter from "@/shared/layout/SiteFooter";
-
-/** Hero preview — the real A4 preview scaled into the right column. */
-const HERO_FRAME_WIDTH = 340;
-const HERO_FRAME_HEIGHT = 470;
-const HERO_SCALE = HERO_FRAME_WIDTH / PREVIEW_PAGE_WIDTH;
-
-/** Targeting prefill key — the detected role is written here so /builder/target loads it. */
-const TARGET_DRAFT_KEY = "hexacv_target_panel_draft";
 
 const HERO_TRUST = [
   { icon: CheckCircle2, text: "Grounded — nothing invented" },
@@ -45,13 +37,17 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"idle" | "upload" | "scratch">("idle");
   const [pasteText, setPasteText] = useState("");
-  const [parseError, setParseError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EntryDraft | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [parsing, setParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseMutation = trpc.resume.parse.useMutation();
+  const {
+    parseFile,
+    parsing,
+    phase: parsePhase,
+    error: parseError,
+    setError: setParseError,
+  } = useResumeUpload();
 
   const persistDraft = useCallback((next: EntryDraft) => {
     saveEntryDraft(next);
@@ -59,71 +55,24 @@ export default function Landing() {
   }, []);
 
   const handleFile = async (file: File) => {
-    setParseError(null);
-    const lower = file.name.toLowerCase();
-    if (!lower.endsWith(".pdf") && !lower.endsWith(".docx") && !lower.endsWith(".doc")) {
-      setParseError("Please upload a PDF or DOCX file.");
-      return;
-    }
-    // Extraction process window while the file is parsed.
-    setParsing(true);
-    const startedAt = Date.now();
-    try {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
-      const parsed = await parseMutation.mutateAsync({
-        filename: file.name,
-        base64,
-      });
-      // Keep the extraction window visible long enough to feel like real work.
-      const MIN_PARSE_MS = 1600;
-      const elapsed = Date.now() - startedAt;
-      if (elapsed < MIN_PARSE_MS) {
-        await new Promise((r) => setTimeout(r, MIN_PARSE_MS - elapsed));
-      }
-      const summary = summarizeParsed(parsed);
-      const next: EntryDraft = {
-        id: createDraftId(),
-        source: "upload",
-        filename: file.name,
-        parsed,
-        name: summary.name,
-        sectionsFound: summary.sectionsFound,
-        createdAt: new Date().toISOString(),
-      };
-      persistDraft(next);
-      setParsing(false);
-      // Auto-detect the target role from the parsed document so the rewrite targets it.
-      try {
-        const detectedRole = (
-          (parsed as any)?.header?.targetRole ||
-          (parsed as any)?.header?.jobTitle ||
-          ""
-        )
-          .toString()
-          .trim();
-        if (detectedRole) {
-          const raw = localStorage.getItem(TARGET_DRAFT_KEY);
-          const existing = raw ? JSON.parse(raw) : {};
-          localStorage.setItem(
-            TARGET_DRAFT_KEY,
-            JSON.stringify({ ...existing, role: detectedRole })
-          );
-        }
-      } catch {
-        /* ignore */
-      }
-      // Show the target-role portion next, with the detected role prefilled.
-      setLocation("/builder/target");
-    } catch {
-      setParsing(false);
-      setParseError(
-        "We couldn't read text from this PDF — try 'Start fresh' and paste it instead."
-      );
-    }
+    const parsed = await parseFile(file);
+    if (!parsed) return;
+
+    const summary = summarizeParsed(parsed);
+    const next: EntryDraft = {
+      id: createDraftId(),
+      source: "upload",
+      filename: file.name,
+      parsed,
+      name: summary.name,
+      sectionsFound: summary.sectionsFound,
+      createdAt: new Date().toISOString(),
+    };
+    persistDraft(next);
+    // Auto-detect the target role from the parsed document so the rewrite targets it.
+    prefillTargetRoleFromParsed(parsed);
+    // Show the target-role portion next, with the detected role prefilled.
+    setLocation("/builder/target");
   };
 
   const handlePasteContinue = () => {
@@ -151,15 +100,15 @@ export default function Landing() {
 
   return (
     <div className="bg-background font-sans text-foreground">
-      <SiteHeader transparentOnScroll />
+      <SiteHeader variant="scroll-blur" />
 
-      <main style={{ paddingTop: 64 }}>
+      <main>
         <section aria-label="Hero" className="relative overflow-hidden">
           <div
             className="relative mx-auto px-4 sm:px-8"
             style={{ maxWidth: 1280, paddingTop: 48, paddingBottom: 64 }}
           >
-            <div className="grid items-start gap-10 lg:grid-cols-[55%_45%]">
+            <div className="grid items-start gap-10 lg:grid-cols-2">
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground">
                   <MapPin className="h-4 w-4 text-accent-warm" strokeWidth={1.75} />
@@ -357,47 +306,7 @@ export default function Landing() {
                 </ul>
               </div>
 
-              {/* Desktop hero preview — real render, Civil Engineer (Abu Dhabi) sample */}
-              <div className="hidden lg:block">
-                <div
-                  className="relative w-full overflow-hidden rounded-2xl border border-border bg-card shadow-[0_24px_60px_rgba(15,23,42,0.08)]"
-                  style={{ height: HERO_FRAME_HEIGHT }}
-                >
-                  <div
-                    className="pointer-events-none absolute left-1/2 top-0 origin-top"
-                    style={{
-                      width: PREVIEW_PAGE_WIDTH,
-                      transform: `translateX(-50%) scale(${HERO_SCALE})`,
-                    }}
-                    aria-hidden="true"
-                  >
-                    <ResumePreview
-                      resume={SAMPLES[0].resume}
-                      templateId={SAMPLES[0].resume.templateId}
-                      zoom={100}
-                    />
-                  </div>
-                  <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
-                    style={{ background: "linear-gradient(transparent, var(--card))" }}
-                  />
-                </div>
-                <div className="mt-4 rounded-2xl border border-border bg-card p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Sample — rewritten for Civil Engineer, Abu Dhabi
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {["Site coordination", "Structural", "Primavera", "QA/QC"].map((kw) => (
-                      <span
-                        key={kw}
-                        className="rounded-md border border-[color:var(--success)]/30 bg-[color:var(--success)]/5 px-2 py-0.5 text-xs font-medium text-[color:var(--success)]"
-                      >
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <HeroResumePreview />
             </div>
           </div>
         </section>
@@ -432,7 +341,7 @@ export default function Landing() {
         <SiteFooter />
       </main>
 
-      <ParseLoader open={parsing} />
+      <ParseLoader open={parsing} phase={parsePhase} />
     </div>
   );
 }

@@ -121,6 +121,8 @@ export const appRouter = router({
     parse: publicProcedure
       .input(z.object({
         filename: z.string(),
+        // TODO(upload): accept multipart/binary instead of base64 to avoid ~33% overhead
+        // (see client/src/lib/base64.ts). Keep base64 until tRPC transport supports it cleanly.
         base64: z.string(),
       }))
       .mutation(async ({ input }) => {

@@ -21,7 +21,6 @@ import {
   Layers,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { nanoid } from 'nanoid';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -38,19 +37,19 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Textarea } from '@/shared/ui/textarea';
-import { matchPresetJobByTitle } from '@/lib/jobDescriptions';
-import { ensureStandardResumeSections } from '@/lib/resumeSections';
+import {
+  buildResumeFromParsed,
+  countryCodeToMarket,
+  marketToCountryCode,
+  type ResumeTargetProfile,
+} from '@/lib/resumeSections';
+import { clearTargetDraft, loadTargetDraft, saveTargetDraft } from '@/lib/targetDraft';
 import { cn } from '@/lib/utils';
-import { ParsedResume, Resume, ResumeSection } from '@shared/types';
+import { ParsedResume, Resume } from '@shared/types';
 
 type BuilderMode = 'home' | 'upload' | 'scratch' | 'ai' | 'linkedin';
 
-type TargetProfile = {
-  targetRole: string;
-  experience: string;
-  market: string;
-  jobDescription: string;
-};
+type TargetProfile = ResumeTargetProfile;
 
 const BUILDER_MODES: Array<{
   mode: Exclude<BuilderMode, 'home'>;
@@ -110,57 +109,6 @@ const getModeFromLocation = (location: string): BuilderMode => {
 
   return 'home';
 };
-
-const marketToCountryCode = (market: string) => {
-  if (market === 'India') return 'IN';
-  if (market === 'Gulf') return 'AE';
-  if (market === 'US') return 'US';
-  if (market === 'Global') return 'GB';
-  return '';
-};
-
-const countryCodeToMarket = (code: string) => {
-  const c = code.trim().toUpperCase();
-  if (c === 'IN') return 'India';
-  if (['AE', 'SA', 'QA', 'KW', 'OM', 'BH'].includes(c)) return 'Gulf';
-  if (c === 'US') return 'US';
-  return 'Global';
-};
-
-const TARGET_DRAFT_KEY = 'hexacv_target_panel_draft';
-
-type TargetDraft = {
-  role: string;
-  experience: string;
-  market: string;
-  jobDescription: string;
-};
-
-function loadTargetDraft(): TargetDraft | null {
-  try {
-    const raw = localStorage.getItem(TARGET_DRAFT_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as TargetDraft;
-  } catch {
-    return null;
-  }
-}
-
-function saveTargetDraft(draft: TargetDraft) {
-  try {
-    localStorage.setItem(TARGET_DRAFT_KEY, JSON.stringify(draft));
-  } catch {
-    /* ignore quota */
-  }
-}
-
-function clearTargetDraft() {
-  try {
-    localStorage.removeItem(TARGET_DRAFT_KEY);
-  } catch {
-    /* ignore */
-  }
-}
 
 /** Soft heuristic: pasted text that looks like a resume (email + date ranges), not a JD. */
 function looksLikeResumeNotJd(text: string): boolean {
@@ -260,60 +208,6 @@ export default function ResumeBuilder() {
     setLocation(nextMode === 'home' ? '/builder' : `/builder/${nextMode}`);
   };
 
-  const createResumeFromParsed = (parsed: ParsedResume): Resume => {
-    const targetCountryCode = targetProfile
-      ? marketToCountryCode(targetProfile.market)
-      : parsed.header?.targetCountryCode || '';
-
-    const sections: ResumeSection[] = [
-      {
-        id: nanoid(),
-        type: 'header',
-        order: 1,
-        visible: true,
-        content: {
-          header: {
-            name: parsed.header?.name || '',
-            email: parsed.header?.email || '',
-            phone: parsed.header?.phone || '',
-            location: parsed.header?.location || '',
-            links: parsed.header?.links || [],
-            jobTitle: targetProfile?.targetRole || parsed.header?.jobTitle || '',
-            targetRole: targetProfile?.targetRole || parsed.header?.targetRole || parsed.header?.jobTitle || '',
-            countryCode: parsed.header?.countryCode || '',
-            locationFields: parsed.header?.locationFields || {},
-            targetCountryCode,
-          },
-        },
-      },
-      { id: nanoid(), type: 'summary', order: 2, visible: true, content: { summary: parsed.summary || '' } },
-      { id: nanoid(), type: 'skills', order: 3, visible: true, content: { skills: parsed.skills || [] } },
-      { id: nanoid(), type: 'experience', order: 4, visible: true, content: { experiences: parsed.experiences || [] } },
-      { id: nanoid(), type: 'projects', order: 5, visible: true, content: { projects: parsed.projects || [] } },
-      { id: nanoid(), type: 'education', order: 6, visible: true, content: { educations: parsed.educations || [] } },
-      { id: nanoid(), type: 'certifications', order: 7, visible: true, content: { certifications: parsed.certifications || [] } },
-      { id: nanoid(), type: 'achievements', order: 8, visible: true, content: { achievements: parsed.achievements || [] } },
-      { id: nanoid(), type: 'languages', order: 9, visible: true, content: { languages: parsed.languages || [] } },
-      { id: nanoid(), type: 'references', order: 10, visible: true, content: { references: parsed.references || [] } },
-    ];
-
-    const matchedJobId = matchPresetJobByTitle(
-      targetProfile?.targetRole || parsed.header?.jobTitle,
-      targetProfile?.targetRole || parsed.header?.targetRole || parsed.header?.jobTitle,
-    );
-
-    return ensureStandardResumeSections({
-      id: nanoid(),
-      userId: isAuthenticated ? 'user' : 'guest',
-      title: parsed.header?.name ? `${parsed.header.name}'s Resume` : 'Untitled Resume',
-      templateId: 'classic-ats-blue',
-      jobDescriptionId: matchedJobId || undefined,
-      sections,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-  };
-
   const handleResumeLoad = async (parsed: ParsedResume) => {
     if (!isAuthenticated && resumesList.length >= 3) {
       toast.error('Guest limit reached. Sign in to save unlimited resumes.');
@@ -321,10 +215,16 @@ export default function ResumeBuilder() {
     }
 
     try {
-      const saved = await storage.saveResume(createResumeFromParsed(parsed));
+      const saved = await storage.saveResume(
+        buildResumeFromParsed(parsed, { targetProfile, isAuthenticated })
+      );
       setActiveResume(saved);
       toast.success('Resume draft is ready to edit.');
     } catch (error: any) {
+      if (String(error?.message) === 'GUEST_LIMIT_REACHED') {
+        toast.error('Guest limit reached. Sign in to save unlimited resumes.');
+        return;
+      }
       toast.error(`Failed to save resume: ${error.message}`);
     }
   };
@@ -345,6 +245,17 @@ export default function ResumeBuilder() {
       if (payload.role) setSetupTargetRole(payload.role);
       if (payload.region === 'Gulf' || payload.region === 'India') {
         setSetupMarket(payload.region);
+      }
+      if (payload.role) {
+        setTargetProfile({
+          targetRole: payload.role,
+          experience: setupExperience,
+          market:
+            payload.region === 'Gulf' || payload.region === 'India'
+              ? payload.region
+              : setupMarket,
+          jobDescription: (payload as { jd?: string }).jd || setupJobDescription,
+        });
       }
       // Strip meta before save; stash flags for Review
       const { _pipelineMeta, ...resumePayload } = payload.result as any;
@@ -370,6 +281,10 @@ export default function ResumeBuilder() {
       const saved = await storage.saveResume(updatedResume);
       setActiveResume(saved);
     } catch (error: any) {
+      if (String(error?.message) === 'GUEST_LIMIT_REACHED') {
+        toast.error('Guest limit reached. Sign in to save unlimited resumes.');
+        return;
+      }
       toast.error(`Failed to save updates: ${error.message}`);
     }
   };

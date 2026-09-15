@@ -47,9 +47,9 @@ The professional resume template used as reference follows a clean, ATS-optimize
 - 3-5 bullets per role
 
 **4. Projects**
-- Project title with technologies used
-- Brief description (1-2 lines)
-- Key achievements and impact
+- Flat list (no category/subgroup headings in the data model)
+- Project title with optional live link and technologies
+- Bullet description lines
 - Links to live projects or repositories
 
 **5. Education**
@@ -94,7 +94,7 @@ The professional resume template used as reference follows a clean, ATS-optimize
 
 ### Font Specifications
 
-**Primary Font:** Inter or similar sans-serif (modern, clean)
+**Primary Font:** Inter (product font for preview and PDF; DOCX reference may use Calibri)
 - Name: 24-28px, bold
 - Section headers: 12px, bold, all caps
 - Body text: 10-11px, regular
@@ -116,6 +116,19 @@ The professional resume template used as reference follows a clean, ATS-optimize
 ---
 
 ## Implementation Notes for HexaCv
+
+### Runtime template (single)
+
+- **Template id:** `classic-ats-blue` via `getDefaultTemplate()` in `client/src/lib/templates.ts`.
+  There is **no template picker**; writers use `getDefaultTemplate().id`, not a second constant.
+- **Product font:** **Inter** for heading and body (preview + template styles). The Word
+  reference (`Resume_Template.docx`) may use Calibri; HexaCv keeps Inter for web/PDF consistency.
+- **Layout:** single-column only (`TemplateStyles.layout: 'single-column'`). Preview ignores
+  unused multi-column / spacing variants.
+- **Projects:** flat `projects[]` — title, optional live link, technologies, bullets. No
+  hardcoded subgroup labels (e.g. “Technical Projects”).
+- **Section order:** driven by each section’s `order` field at render time; canonical keys
+  live in `RESUME_SECTION_KEYS` — do not invent a second order list in the preview.
 
 ### What to Include
 

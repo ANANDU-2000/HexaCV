@@ -486,7 +486,7 @@ export async function runResumePipeline(
   await report("rewrite");
   let rewritten = await stageRewrite(input, extract, target, opts);
   await report("validate");
-  let validated = validateGeneratedResume(rewritten);
+  let validated = validateGeneratedResume(rewritten, input.sourceText);
   // Evaluate raw + post-validate: banned on raw; content on cleaned
   let evaluation = evaluateRewriteDeterministic(rewritten, input.sourceText);
   if (!resumeHasRealContent(validated)) {
@@ -522,7 +522,7 @@ export async function runResumePipeline(
       evaluation.reasons
     );
     await report("validate");
-    validated = validateGeneratedResume(rewritten);
+    validated = validateGeneratedResume(rewritten, input.sourceText);
     evaluation = evaluateRewriteDeterministic(rewritten, input.sourceText);
     if (!resumeHasRealContent(validated)) {
       evaluation = {

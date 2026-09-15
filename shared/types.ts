@@ -135,16 +135,14 @@ export interface TemplateStyles {
     heading: string;
     body: string;
   };
-  layout: 'single-column' | 'two-column' | 'sidebar';
-  spacing: 'compact' | 'normal' | 'spacious';
+  layout: 'single-column';
+  spacing: 'normal';
   cornerRadius: number;
 }
 
 export interface ResumeTemplate {
   id: TemplateId;
   name: string;
-  description: string;
-  preview: string;
   styles: TemplateStyles;
 }
 
