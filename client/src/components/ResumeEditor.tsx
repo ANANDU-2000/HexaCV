@@ -282,6 +282,17 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Latest-value refs so the unmount cleanup can flush a pending save with the
+  // most recent state instead of a stale closure snapshot.
+  const onUpdateRef = useRef(onUpdate);
+  const localResumeRef = useRef(localResume);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+  useEffect(() => {
+    localResumeRef.current = localResume;
+  }, [localResume]);
+
   // Keep localResume in sync with outside resume (e.g. from parent initial state or undo/redo)
   useEffect(() => {
     setLocalResume(resume);
@@ -311,12 +322,28 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
     }
   }, []);
 
-  // Cleanup timeout on unmount
+  // Cleanup on unmount: clear timers and flush any pending save so edits made
+  // within the 1.5s debounce window aren't silently dropped when navigating away.
   useEffect(() => {
     return () => {
       if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        onUpdateRef.current(localResumeRef.current);
+      }
     };
+  }, []);
+
+  // Warn before closing/refreshing the tab while a save is still pending.
+  useEffect(() => {
+    const warnLeaving = (event: BeforeUnloadEvent) => {
+      if (saveTimeoutRef.current) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", warnLeaving);
+    return () => window.removeEventListener("beforeunload", warnLeaving);
   }, []);
 
   // Debounced helper to push to history
@@ -373,10 +400,15 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   const handleUndo = () => {
     if (historyIndex > 0) {
       const nextIndex = historyIndex - 1;
+      // Cancel any pending debounced save/history push so a stale snapshot
+      // doesn't fire after the undo and re-persist the content we just reverted.
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
       setHistoryIndex(nextIndex);
       const prev = history[nextIndex];
       setLocalResume(prev);
       onUpdate(prev);
+      setAutoSaveStatus("saved");
       toast.success("Undo successful");
     }
   };
@@ -384,10 +416,13 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
   const handleRedo = () => {
     if (historyIndex < history.length - 1) {
       const nextIndex = historyIndex + 1;
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
       setHistoryIndex(nextIndex);
       const next = history[nextIndex];
       setLocalResume(next);
       onUpdate(next);
+      setAutoSaveStatus("saved");
       toast.success("Redo successful");
     }
   };
@@ -1123,9 +1158,23 @@ export default function ResumeEditor({ resume, onUpdate }: ResumeEditorProps) {
                     <Edit3 className="w-3.5 h-3.5 text-muted-foreground opacity-50 group-hover/title:opacity-100 transition-opacity shrink-0" />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-success">
-                      <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                      Auto-saved
+                    <span
+                      className={`flex items-center gap-1 text-[10px] font-semibold ${
+                        autoSaveStatus === "saving"
+                          ? "text-amber-600"
+                          : "text-success"
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          autoSaveStatus === "saving"
+                            ? "bg-amber-500 animate-pulse"
+                            : "bg-success animate-pulse"
+                        }`}
+                      />
+                      {autoSaveStatus === "saving"
+                        ? "Saving…"
+                        : "Auto-saved"}
                     </span>
                     <span className="text-muted-foreground">·</span>
                     <span className="text-[10px] font-medium text-muted-foreground">

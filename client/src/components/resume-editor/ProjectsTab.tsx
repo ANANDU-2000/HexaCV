@@ -61,6 +61,12 @@ export default function ProjectsTab({
       />
 
       <div className="space-y-4">
+        {(getSectionContent("projects").projects || []).length === 0 && (
+          <p className="text-xs text-muted-foreground italic">
+            No projects yet. Add a project to highlight your hands-on
+            work.
+          </p>
+        )}
         {(getSectionContent("projects").projects || []).map(
           (proj: any, idx: number, projects: any[]) => (
             <EditableEntryCard

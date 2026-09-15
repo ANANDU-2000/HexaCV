@@ -88,6 +88,12 @@ export default function EducationTab({
       />
 
       <div className="space-y-4">
+        {(getSectionContent("education").educations || []).length === 0 && (
+          <p className="text-xs text-muted-foreground italic">
+            No education entries yet. Add degrees, diplomas, or
+            certifications.
+          </p>
+        )}
         {(getSectionContent("education").educations || []).map(
           (edu: any, idx: number, educations: any[]) => (
             <EditableEntryCard

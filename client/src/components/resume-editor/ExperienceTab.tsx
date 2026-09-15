@@ -73,6 +73,13 @@ export default function ExperienceTab({
       />
 
       <div className="space-y-4">
+        {(getSectionContent("experience").experiences || []).length ===
+          0 && (
+          <p className="text-xs text-muted-foreground italic">
+            No positions yet. Add your first role to start your work
+            history.
+          </p>
+        )}
         {(getSectionContent("experience").experiences || []).map(
           (exp: any, idx: number, experiences: any[]) => (
             <EditableEntryCard

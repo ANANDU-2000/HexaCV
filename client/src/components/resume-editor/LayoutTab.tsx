@@ -26,7 +26,7 @@ export default function LayoutTab({
       <WizardTabIntro
         icon={Settings}
         title="Section Order & Visibility"
-        description="Drag to reorder sections and toggle visibility on your resume."
+        description="Use the arrows to reorder sections and toggle visibility on your resume."
       />
       <div className="space-y-2 border border-border rounded-xl p-4 bg-muted">
         {[...localResume.sections]

@@ -63,6 +63,14 @@ export default function CertificationsTab({
       <div className="space-y-4">
         {(
           getSectionContent("certifications").certifications || []
+        ).length === 0 && (
+          <p className="text-xs text-muted-foreground italic">
+            No certifications added. Add licenses or credentials you
+            have earned.
+          </p>
+        )}
+        {(
+          getSectionContent("certifications").certifications || []
         ).map((cert: any, idx: number, certifications: any[]) => (
           <EditableEntryCard
             key={cert.id || idx}

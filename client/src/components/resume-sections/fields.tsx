@@ -12,6 +12,10 @@ import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { cn } from "@/lib/utils";
 import { markBulletEdits } from "@/lib/userEditedMerge";
+import {
+  hasInvertedDateRange,
+  resolveCurrentToggle,
+} from "@/lib/resumeDates";
 import type {
   Certification,
   Education,
@@ -126,16 +130,19 @@ export function ExperienceFields({
         </Field>
       </div>
 
+      {hasInvertedDateRange(exp.startDate, exp.endDate) && (
+        <p className="text-xs font-medium text-amber-600">
+          End date is before the start date — check the dates above.
+        </p>
+      )}
+
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
           id={currentId}
           checked={exp.current}
           onChange={e =>
-            onChange({
-              current: e.target.checked,
-              ...(e.target.checked ? { endDate: "Present" } : {}),
-            })
+            onChange(resolveCurrentToggle(e.target.checked, exp.endDate))
           }
           className={cls.checkbox}
         />

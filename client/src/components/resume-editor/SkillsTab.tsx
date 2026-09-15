@@ -44,6 +44,12 @@ export default function SkillsTab({
       />
 
       <div className="space-y-3">
+        {(getSectionContent("skills").skills || []).length === 0 && (
+          <p className="text-xs text-muted-foreground italic">
+            No skill categories yet. Group skills by category for ATS
+            scanners and hiring managers.
+          </p>
+        )}
         {(getSectionContent("skills").skills || []).map(
           (group: any, idx: number) => (
             <div
