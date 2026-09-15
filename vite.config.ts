@@ -161,10 +161,17 @@ function vitePluginManusDebugCollector(): Plugin {
  * Dev-only: skipped entirely (no meta in dev, Vite HMR needs its own rules).
  */
 function vitePluginMetaCsp(): Plugin {
+  let buildingProduction = false;
   return {
     name: "security-meta-csp",
+    configResolved(config) {
+      // `vite build` runs with mode "production" by default. Do not rely on
+      // process.env.NODE_ENV — Vite does not always export it before plugin
+      // hooks run (e.g. a bare `npx vite build` without cross-env).
+      buildingProduction = config.command === "build" && config.mode === "production";
+    },
     transformIndexHtml(html, ctx) {
-      if (process.env.NODE_ENV === "production" && ctx.server === undefined) {
+      if (buildingProduction) {
         return {
           html,
           tags: [
