@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { contentSecurityPolicy } from "./server/middleware/security";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -149,7 +150,47 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+/**
+ * Injects the PRODUCTION Content-Security-Policy as a <meta> tag into the built
+ * HTML. The main user-facing origin is served from Vercel's CDN as static
+ * output (dist/public) — an Express response header never reaches that HTML.
+ * The meta policy is identical to what `securityHeaders` sends on the API
+ * origin (see server/middleware/security.ts), so browsers see one consistent
+ * policy whichever origin they loaded the document from.
+ *
+ * Dev-only: skipped entirely (no meta in dev, Vite HMR needs its own rules).
+ */
+function vitePluginMetaCsp(): Plugin {
+  return {
+    name: "security-meta-csp",
+    transformIndexHtml(html, ctx) {
+      if (process.env.NODE_ENV === "production" && ctx.server === undefined) {
+        return {
+          html,
+          tags: [
+            {
+              tag: "meta",
+              attrs: {
+                "http-equiv": "Content-Security-Policy",
+                content: contentSecurityPolicy(true),
+              },
+              injectTo: "head-prepend",
+            },
+          ],
+        };
+      }
+      return html;
+    },
+  };
+}
+
+const plugins = [
+  react(),
+  tailwindcss(),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+  vitePluginMetaCsp(),
+];
 
 const rootDir = import.meta.dirname.replaceAll("\\", "/");
 

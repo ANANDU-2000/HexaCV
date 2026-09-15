@@ -23,6 +23,14 @@ export function createApp(options: CreateAppOptions = {}): Express {
   const { serveClient = false } = options;
   const app = express();
 
+  // Trust proxy — required for req.ip to reflect the real client IP behind a
+  // reverse proxy.  On Render the Node process sits behind exactly one proxy
+  // hop.  In local dev there is no proxy, so trust proxy stays off (default).
+  // "1" means: trust the first X-Forwarded-For / X-Real-IP header value.
+  if (process.env.RENDER || process.env.TRUST_PROXY) {
+    app.set("trust proxy", 1);
+  }
+
   app.use((req, res, next) => {
     try {
       decodeURIComponent(req.path);
