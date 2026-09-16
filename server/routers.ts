@@ -5,7 +5,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
-import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateCoverLetter, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
+import { generateResumeSuggestions, improveBulletPoints, calculateKeywordAlignment, improveSummary, improveProjectBullets, generateLinkedInAbout, atsAudit, generateInterviewQuestions, generateRecruiterOutreach } from "./aiSuggestions";
+import { generateCoverLetter, COVER_LETTER_TONES, COVER_LETTER_LENGTHS } from "./coverLetterGenerator";
 import { analyzeResume } from "./aiResumeAnalyzer";
 import { analyzeJobDescription } from "./jdAnalyzer";
 import { matchResumeToJob } from "./resumeJobMatcher";
@@ -626,19 +627,115 @@ export const appRouter = router({
         );
       }),
 
+    /**
+     * PHASE 10 — AI Cover Letter Generator.
+     *
+     * Personalized, factual cover letter grounded in an EXISTING resume and a
+     * target Job Description. Deterministic match/keyword context reuses the
+     * Phase 8 matcher (zero extra AI calls); a single structured AI call writes
+     * the letter. Every paragraph is validated against the resume, the JD and
+     * the user's additional context before it is accepted — paragraphs that
+     * introduce unsupported factual claims are dropped, never invented.
+     *
+     * Credit lifecycle mirrors optimizeResume / matchResumeToJob: a build is
+     * created and one credit consumed, then released (net-zero) if the AI leg
+     * throws or the letter cannot be validated.
+     */
     generateCoverLetter: aiCreditProtectedProcedure
       .input(z.object({
-        name: z.string().max(500),
-        targetRole: aiRequiredText(),
-        companyName: z.string().trim().min(1).max(500),
-        hiringManagerName: z.string().max(500).optional(),
-        summary: aiText(),
-        experienceBullets: aiText(),
-        skills: aiText(),
-        jobDescription: aiRequiredText(),
+        resumeId: z.string().max(64).optional(),
+        resumeContent: aiText().optional(), // raw ParsedResume JSON string
+        jobDescription: z.string().trim().min(1).max(JD_MAX_TEXT),
+        targetCountryCode: optionalCountryCode,
+        companyName: z.string().trim().max(300).optional(),
+        hiringManagerName: z.string().trim().max(300).optional(),
+        tone: z.enum(COVER_LETTER_TONES).optional(),
+        length: z.enum(COVER_LETTER_LENGTHS).optional(),
+        // Untrusted user context; treated as data, never as instructions.
+        additionalContext: z.string().max(5000).optional(),
       }))
-      .mutation(async ({ input }) => {
-        return generateCoverLetter(input);
+      .mutation(async ({ input, ctx }) => {
+        let contentObj: any = null;
+        if (input.resumeId) {
+          const res = await db.getResume(input.resumeId);
+          // An unowned resume id is an ownership failure, never a fallback to
+          // client content (mirrors optimizeResume / analyzeResume / matcher).
+          if (!res || res.userId !== ctx.user!.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found or access denied" });
+          }
+          try {
+            contentObj = JSON.parse(res.content);
+          } catch {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Stored resume content is not valid JSON." });
+          }
+        }
+        if (!contentObj && input.resumeContent) {
+          try {
+            contentObj = JSON.parse(input.resumeContent);
+          } catch {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Resume content is not valid JSON." });
+          }
+        }
+        if (!contentObj || typeof contentObj !== "object" || Array.isArray(contentObj)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Resume content is required to generate a cover letter." });
+        }
+        if (!resumeHasRealContent(contentObj)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This resume appears empty — add content before generating a cover letter.",
+          });
+        }
+
+        const targetRole = (contentObj?.header?.jobTitle || "").trim() || undefined;
+        const targetCountryCode =
+          input.targetCountryCode ?? contentObj?.header?.targetCountryCode ?? undefined;
+
+        const build = await createBuild({
+          userId: ctx.user!.id,
+          role: targetRole,
+          region: targetCountryCode,
+        });
+        const consumed = await consumeBuildCredit(ctx.user!.id, build.id);
+        if (!consumed.ok) {
+          throw new TRPCError({
+            code: "PAYMENT_REQUIRED",
+            message: "No build credits left. Pay ₹99 for one resume build.",
+          });
+        }
+
+        const opts = await resolveTrackedAiOpts(ctx);
+        try {
+          const result = await generateCoverLetter(
+            contentObj,
+            {
+              targetCountryCode: input.targetCountryCode,
+              companyName: input.companyName,
+              hiringManagerName: input.hiringManagerName,
+              tone: input.tone,
+              length: input.length,
+              additionalContext: input.additionalContext,
+              jobDescription: input.jobDescription,
+            },
+            // onCreditConsume/onCreditRelease already handled by the router's
+            // build+credit lifecycle above, so the generator's own callback
+            // hooks are intentionally left unset to avoid double-billing.
+            opts
+          );
+          await updateBuildStage(build.id, "done");
+          return { result, buildId: build.id };
+        } catch (error: any) {
+          // AI failure → release the consumed credit (net zero for the user).
+          await releaseBuildCredit(ctx.user!.id, build.id);
+          await updateBuildStage(build.id, "failed", {
+            errorMessage: error?.message || "Cover letter generation failed",
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "We hit a snag generating the cover letter — no credit used. " +
+              (error?.message || "Please try again."),
+          });
+        }
       }),
 
     generateLinkedInAbout: aiCreditProtectedProcedure

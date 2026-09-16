@@ -23,7 +23,7 @@ import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/shared/hooks/useMobile";
 import {
   FileText, Zap, Users, Gift, CreditCard, ShieldCheck, LogOut, PanelLeft, Settings,
-  BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity, Brain, ClipboardList, GitCompare
+  BarChart3, Globe, KeyRound, Receipt, LifeBuoy, Activity, Brain, ClipboardList, GitCompare, Mail
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -38,6 +38,7 @@ const menuItems = [
   { icon: Brain, label: "AI Analyzer", path: "/dashboard/analyzer" },
   { icon: ClipboardList, label: "JD Analyzer", path: "/dashboard/jd-analyzer" },
   { icon: GitCompare, label: "Resume Matcher", path: "/dashboard/matcher" },
+  { icon: Mail, label: "Cover Letter AI", path: "/dashboard/cover-letter" },
   { icon: Gift, label: "Refer & Earn", path: "/dashboard/affiliate" },
   { icon: CreditCard, label: "Buy credits", path: "/dashboard/billing" },
   { icon: ShieldCheck, label: "Admin Page", path: "/admin", adminOnly: true }

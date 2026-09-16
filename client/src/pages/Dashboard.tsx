@@ -7,6 +7,7 @@ import AnalyzerPanel from "@/components/AnalyzerPanel";
 import JDAnalyzerPanel from "@/components/JDAnalyzerPanel";
 import ResumeJobMatcherPanel from "@/components/ResumeJobMatcherPanel";
 import ResumeOptimizerPanel from "@/components/ResumeOptimizerPanel";
+import CoverLetterPanel from "@/components/CoverLetterPanel";
 import AffiliateSystem from "@/components/AffiliateSystem";
 import BillingPortal from "@/components/BillingPortal";
 import AdminCRM from "@/components/AdminCRM";
@@ -92,6 +93,15 @@ export default function Dashboard() {
         {/* AI Resume Optimizer */}
         <Route path="/dashboard/optimizer">
           <ResumeOptimizerPanel
+            resumes={resumes}
+            activeResumeId={selectedResumeId}
+            onSelectResume={(id) => setSelectedResumeId(id)}
+          />
+        </Route>
+
+        {/* AI Cover Letter Generator */}
+        <Route path="/dashboard/cover-letter">
+          <CoverLetterPanel
             resumes={resumes}
             activeResumeId={selectedResumeId}
             onSelectResume={(id) => setSelectedResumeId(id)}
