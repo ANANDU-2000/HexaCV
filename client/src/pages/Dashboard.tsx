@@ -6,6 +6,7 @@ import ATSScanner from "@/components/ATSScanner";
 import AnalyzerPanel from "@/components/AnalyzerPanel";
 import JDAnalyzerPanel from "@/components/JDAnalyzerPanel";
 import ResumeJobMatcherPanel from "@/components/ResumeJobMatcherPanel";
+import ResumeOptimizerPanel from "@/components/ResumeOptimizerPanel";
 import AffiliateSystem from "@/components/AffiliateSystem";
 import BillingPortal from "@/components/BillingPortal";
 import AdminCRM from "@/components/AdminCRM";
@@ -82,6 +83,15 @@ export default function Dashboard() {
         {/* Resume ↔ Job Description Matcher */}
         <Route path="/dashboard/matcher">
           <ResumeJobMatcherPanel
+            resumes={resumes}
+            activeResumeId={selectedResumeId}
+            onSelectResume={(id) => setSelectedResumeId(id)}
+          />
+        </Route>
+
+        {/* AI Resume Optimizer */}
+        <Route path="/dashboard/optimizer">
+          <ResumeOptimizerPanel
             resumes={resumes}
             activeResumeId={selectedResumeId}
             onSelectResume={(id) => setSelectedResumeId(id)}
